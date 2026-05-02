@@ -24,7 +24,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     out << "- RANP: " << cfg.ranp << "\n";
     out << "- iTrack: " << (cfg.itrack.empty() ? "N/A" : cfg.itrack) << "\n";
     out << "- App ID: " << (cfg.app_id.empty() ? "N/A" : cfg.app_id) << "\n";
-    out << "- Created: " << cfg.date_format << "\n"; // date_format reused as created date storage
+    out << "- Created: " << (cfg.created.empty() ? "N/A" : cfg.created) << "\n";
     out << "\n";
 
     // ── Links section ────────────────────────────────────────────────────────

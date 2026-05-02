@@ -12,7 +12,7 @@ static Config make_base_config() {
     cfg.name = "Test Project";
     cfg.itrack = "67890";
     cfg.app_id = "MyApp";
-    cfg.date_format = "2025-11-23"; // used as created date
+    cfg.created = "2025-11-23";
     cfg.links = {"teams", "itrack"};
     cfg.labels["teams"] = "Teams";
     cfg.labels["itrack"] = "iTrack";
@@ -34,7 +34,7 @@ TEST_CASE("render_header") {
     CHECK(contains(output, "- RANP: 12345"));
     CHECK(contains(output, "- iTrack: 67890"));
     CHECK(contains(output, "- App ID: MyApp"));
-    CHECK(contains(output, "- Created: 2025-11-23"));
+    CHECK(contains(output, "- Created: 2025-11-23"));  // from cfg.created
 }
 
 // ── Links ─────────────────────────────────────────────────────────────────────

@@ -7,7 +7,11 @@
 
 // Current config schema version written to .projot/config on `init`.
 // Increment only when the schema changes in a breaking way.
-static constexpr int PROJOT_CONFIG_SCHEMA_VERSION = 1;
+// The value is set by CMakeLists.txt as PROJOT_CONFIG_VERSION.
+#ifndef PROJOT_CONFIG_VERSION
+#define PROJOT_CONFIG_VERSION 1
+#endif
+static constexpr int PROJOT_CONFIG_SCHEMA_VERSION = PROJOT_CONFIG_VERSION;
 
 struct Config {
     // Schema version
@@ -24,6 +28,7 @@ struct Config {
     std::string name;
     std::string itrack;
     std::string date_format;
+    std::string created;       // ISO date when project was created (YYYY-MM-DD)
 
     // Links configuration
     std::vector<std::string> links;              // ordered link keys

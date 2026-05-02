@@ -87,6 +87,8 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.itrack = value;
         } else if (key == "date_format") {
             out.date_format = value;
+        } else if (key == "created") {
+            out.created = value;
         } else if (is_list_key(key)) {
             auto items = split_list(value);
             if (key == "github")   out.github  = items;
@@ -146,6 +148,9 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     file << "name = " << cfg.name << "\n";
     file << "itrack = " << cfg.itrack << "\n";
 
+    if (!cfg.created.empty()) {
+        file << "created = " << cfg.created << "\n";
+    }
     if (!cfg.date_format.empty()) {
         file << "date_format = " << cfg.date_format << "\n";
     }

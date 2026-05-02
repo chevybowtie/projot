@@ -23,6 +23,8 @@ set(CORE_SOURCES
     src/todo.cpp
     src/markdown.cpp
     src/renderer.cpp
+    src/cli.cpp
+    src/commands.cpp
 )
 
 add_library(projot_core STATIC ${CORE_SOURCES})
@@ -43,6 +45,10 @@ set(TEST_SOURCES
     tests/test_markdown_parser.cpp
     tests/test_renderer.cpp
     tests/test_todo_model.cpp
+    tests/test_commands.cpp
+    tests/test_hook.cpp
+    tests/test_versioning.cpp
+    tests/test_errors.cpp
 )
 
 add_executable(projot_tests ${TEST_SOURCES})
