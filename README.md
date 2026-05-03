@@ -1,5 +1,24 @@
 # projot
 
+- [Features (v0.1)](#features-v01)
+- [Quickstart](#quickstart)
+  - [1. Initialize the repository](#1-initialize-the-repository)
+  - [2. Start a project](#2-start-a-project)
+  - [3. Work with todos](#3-work-with-todos)
+  - [4. Manage URLs](#4-manage-urls)
+- [File Layout](#file-layout)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Project Structure](#project-structure)
+- [Building](#building)
+- [Installation](#installation)
+  - [From a pre-built release (recommended)](#from-a-pre-built-release-recommended)
+  - [Shell completion (optional)](#shell-completion-optional)
+  - [From source](#from-source)
+- [Roadmap](#roadmap)
+- [License](#license)
+- [Contributing](#contributing)
+
 projot is a cross-platform C++ command-line tool (Linux + Windows) that replaces a physical desk notepad for tracking project work, todos, notes, and URLs.
 
 projot is **repo-centric** — it runs inside a git repository and stores all project configuration and notes in a `.projot/` directory at the repo root, versioned alongside your code.
