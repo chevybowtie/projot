@@ -167,20 +167,69 @@ projot/
 
 Requires C++17 and CMake. No external dependencies.
 
+```sh
+make          # Linux (release build)
+make test     # build and run all tests
 ```
-cmake -B build
+
+Or directly with CMake (all platforms):
+
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
+See [docs/DEVELOPER.md](docs/DEVELOPER.md) for full build, install, and shell completion instructions.
+
 ---
 
-## Testing
+## Installation
 
-```
-cmake --build build --target test
+### From a pre-built release (recommended)
+
+Download the latest release from the [GitHub Releases](../../releases/latest) page.
+
+#### Linux
+
+```sh
+# Download and install the binary
+curl -Lo projot https://github.com/ORG/projot/releases/latest/download/projot-linux-x86_64
+chmod +x projot
+sudo mv projot /usr/local/bin/
+
+# (Optional) verify the SHA-256 checksum printed on the release page
+sha256sum projot
 ```
 
-Tests cover config parsing, markdown parsing and rendering, repo root discovery, stable todo IDs, URL deduplication, and all command behaviors.
+#### Windows
+
+1. Download `projot-windows-x86_64.exe` from the release page.
+2. Rename it to `projot.exe` and move it to a directory on your `PATH`  
+   (e.g. `C:\Users\<you>\AppData\Local\Programs\projot\`).
+3. Add that directory to `PATH` via **System Properties → Environment Variables**.
+
+### Shell completion (optional)
+
+Download the completion script for your shell from the same release page:
+
+| Shell | File to download | Install path |
+|---|---|---|
+| Bash | `projot.bash` | `~/.local/share/bash-completion/completions/projot` |
+| Zsh | `_projot` | `~/.zsh/completions/_projot` (must be on `$fpath`) |
+| Fish | `projot.fish` | `~/.config/fish/completions/projot.fish` |
+| PowerShell | `projot.ps1` | Dot-source from `$PROFILE` |
+
+Restart your shell after installing.
+
+### From source
+
+```sh
+git clone https://github.com/ORG/projot
+cd projot
+make
+sudo make install               # installs to /usr/local/bin
+make install-completion         # installs completion for current shell
+```
 
 ---
 
@@ -192,9 +241,7 @@ Planned post-v0.1 features:
 - Interactive TUI (ncurses)
 - Search and filtering across todos
 - Weekly/monthly reporting
-- Git hook integration (`install-hook`)
 - Export to HTML/PDF
-- Shell tab-completion (Bash/Zsh/Fish/PowerShell)
 - Project archiving
 
 ---
