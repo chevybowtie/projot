@@ -641,7 +641,7 @@ int cmd_render(const Args& args) {
     if (is_safe_ranp(ctx.config.ranp)) {
         std::string cmd = "git -C \"" + ctx.repo_root.string() +
                           "\" add .projot/" + ctx.config.ranp + ".md 2>/dev/null";
-        (void)std::system(cmd.c_str()); // return value intentionally ignored
+        int rc = std::system(cmd.c_str()); (void)rc;
     }
 
     return 0;
