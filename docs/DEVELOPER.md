@@ -13,14 +13,25 @@ No other dependencies are needed. The test framework ([doctest](https://github.c
 
 ## Building
 
-### Configure and build (debug)
+A `Makefile` wrapper is provided for Linux convenience. On Windows, use the CMake commands directly.
+
+| Target | Action |
+|---|---|
+| `make` | Configure (Release) and build |
+| `make debug` | Configure (Debug) and build |
+| `make test` | Build (Debug) and run all tests |
+| `make install` | Install binary to `$(PREFIX)/bin` (default: `/usr/local`) |
+| `make install-completion` | Install shell completion for the current shell |
+| `make clean` | Remove the `build/` directory |
+
+### Build with make (Linux)
 
 ```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
+make          # release build
+make debug    # debug build
 ```
 
-### Configure and build (release)
+### Configure and build directly with CMake (all platforms)
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -32,6 +43,12 @@ The compiled binary is at `build/projot` (or `build\projot.exe` on Windows).
 ---
 
 ## Running the tests
+
+```sh
+make test
+```
+
+Or directly with CMake/ctest:
 
 ```sh
 ctest --test-dir build --output-on-failure
@@ -54,24 +71,26 @@ To run the test binary directly for more verbose output:
 ### System-wide (Linux/macOS)
 
 ```sh
+make
+sudo make install          # installs to /usr/local/bin
+```
+
+Or with CMake directly:
+
+```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_INSTALL_PREFIX=/usr/local
 cmake --build build
 sudo cmake --install build
 ```
 
-This copies the `projot` binary to `/usr/local/bin`.
-
 ### Per-user (Linux/macOS)
 
 ```sh
-cmake -B build -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="$HOME/.local"
-cmake --build build
-cmake --install build
+make install PREFIX=~/.local
 ```
 
-Make sure `$HOME/.local/bin` is in your `PATH`.
+Make sure `~/.local/bin` is in your `PATH`.
 
 ### Windows
 
@@ -86,9 +105,24 @@ Add the install directory to your system `PATH` via **System Properties → Envi
 
 ---
 
-## Shell completion (planned)
+## Shell completion
 
-Completion scripts will live in `completions/` once implemented. See [DESIGN.md](DESIGN.md) for the roadmap.
+Completion scripts for Bash, Zsh, Fish, and PowerShell live in `completions/`.
+
+Install for the current shell automatically:
+
+```sh
+make install-completion
+```
+
+| Shell | Installed path |
+|---|---|
+| Bash | `~/.local/share/bash-completion/completions/projot` |
+| Zsh | `~/.zsh/completions/_projot` (must be on `$fpath`) |
+| Fish | `~/.config/fish/completions/projot.fish` |
+| PowerShell | Manual — dot-source `completions/projot.ps1` from `$PROFILE` |
+
+Restart your shell after installing, or source the file directly.
 
 ---
 
@@ -97,6 +131,8 @@ Completion scripts will live in `completions/` once implemented. See [DESIGN.md]
 ```
 src/          Core library + main entry point
 tests/        doctest test files and fixture data
+completions/  Shell completion scripts (bash, zsh, fish, powershell)
+scripts/      Developer helper scripts
 docs/         Design and developer documentation
 build/        CMake build output (not committed)
 ```
