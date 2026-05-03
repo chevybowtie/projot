@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            cc: gcc
+            cxx: g++
+            artifact: projot-linux-x86_64
+            binary: build/projot
+          - os: ubuntu-latest
+            compiler: clang
+            cc: clang
+            cxx: clang++
+            artifact: ""        # clang linux build — tests only, not released
+            binary: build/projot
+          - os: windows-latest
+            compiler: msvc
+            cc: ""
+            cxx: ""
+            artifact: projot-windows-x86_64.exe
+            binary: build/Release/projot.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake --build build
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Strip binary (GCC Linux only)
+        if: runner.os == 'Linux' && matrix.compiler == 'gcc'
+        run: strip build/projot
+
+      - name: Upload binary artifact
+        if: matrix.artifact != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: projot-linux-x86_64
+          path: dist/
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: projot-windows-x86_64.exe
+          path: dist/
+
+      - name: Rename binaries
+        run: |
+          mv dist/projot      dist/projot-linux-x86_64
+          mv dist/projot.exe  dist/projot-windows-x86_64.exe
+          chmod +x dist/projot-linux-x86_64
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/projot-linux-x86_64
+            dist/projot-windows-x86_64.exe
+            completions/projot.bash
+            completions/_projot
+            completions/projot.fish
+            completions/projot.ps1
+          generate_release_notes: true
