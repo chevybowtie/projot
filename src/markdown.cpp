@@ -131,7 +131,8 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
                 std::string url = trim(line.substr(colon + 2));
                 // Lowercase key for lookup
                 std::string lower_key = key;
-                std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(), ::tolower);
+                std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                 out.link_entries.emplace_back(lower_key, (url == "N/A") ? "" : url);
             }
             continue;
