@@ -1,0 +1,118 @@
+#compdef projot
+
+# projot zsh completion
+# Place in a directory on $fpath, e.g. ~/.zsh/completions/_projot
+
+_projot_open_todo_ids() {
+    local config ranp notes root
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || return
+    config="${root}/.projot/config"
+    ranp=$(grep -m1 '^ranp\s*=' "${config}" 2>/dev/null | sed 's/.*=\s*//' | tr -d '[:space:]')
+    notes="${root}/.projot/${ranp}.md"
+    grep -oE '^[0-9]+\. \[ \]' "${notes}" 2>/dev/null | grep -oE '^[0-9]+'
+}
+
+_projot() {
+    local state
+
+    _arguments -C \
+        '--help[show help]' \
+        '--version[show version]' \
+        '1:subcommand:->subcommand' \
+        '*::args:->args'
+
+    case $state in
+        subcommand)
+            local -a subcommands
+            subcommands=(
+                'init:initialize projot for this repository'
+                'new:start a new RANP project'
+                'add-todo:append a new todo'
+                'list:show project summary and todos'
+                'complete:mark a todo completed'
+                'add-note:add a note to a todo'
+                'set-link:set or update a single-value link URL'
+                'set-app-id:set the application ID'
+                'add-github:add a GitHub URL'
+                'add-swagger:add a Swagger URL'
+                'add-blizzard:add a Blizzard URL'
+                'render:re-render the notes file and stage it'
+                'install-hook:install the pre-commit git hook'
+            )
+            _describe 'subcommand' subcommands
+            ;;
+        args)
+            case $words[1] in
+                init)
+                    _arguments \
+                        '--app-id[application ID]:app id' \
+                        '*--github[GitHub URL]:url' \
+                        '*--swagger[Swagger URL]:url' \
+                        '*--blizzard[Blizzard URL]:url' \
+                        '--help[show help]'
+                    ;;
+                new)
+                    _arguments \
+                        '--ranp[RANP project number]:ranp' \
+                        '--name[project name]:name' \
+                        '--itrack[iTrack ticket number]:itrack' \
+                        '--teams[Teams channel URL]:url' \
+                        '--ranp-url[RANP system link]:url' \
+                        '--itrack-url[iTrack link]:url' \
+                        '--other[other URL]:url' \
+                        '--no-hook[skip hook installation]' \
+                        '--help[show help]'
+                    ;;
+                add-todo)
+                    _arguments \
+                        '--text[todo description]:text' \
+                        '--help[show help]'
+                    ;;
+                list)
+                    _arguments \
+                        '--open[open todos only]' \
+                        '--closed[closed todos only]' \
+                        '--all[all todos]' \
+                        '--help[show help]'
+                    ;;
+                complete)
+                    local -a ids
+                    ids=($(_projot_open_todo_ids))
+                    _arguments \
+                        "--todo[todo ID]:id:(${ids})" \
+                        '--help[show help]'
+                    ;;
+                add-note)
+                    local -a ids
+                    ids=($(_projot_open_todo_ids))
+                    _arguments \
+                        "--todo[todo ID]:id:(${ids})" \
+                        '--text[note text]:text' \
+                        '--help[show help]'
+                    ;;
+                set-link)
+                    _arguments \
+                        '--key[link key]:key:(teams itrack ranp other)' \
+                        '--url[URL]:url' \
+                        '--help[show help]'
+                    ;;
+                set-app-id)
+                    _arguments \
+                        '--app-id[application ID]:app id' \
+                        '--force[overwrite existing value]' \
+                        '--help[show help]'
+                    ;;
+                add-github|add-swagger|add-blizzard)
+                    _arguments \
+                        '--url[URL]:url' \
+                        '--help[show help]'
+                    ;;
+                render|install-hook)
+                    _arguments '--help[show help]'
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_projot
