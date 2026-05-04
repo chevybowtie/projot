@@ -37,7 +37,7 @@ struct Args {
 // Known boolean flags that take no value argument.
 inline const std::set<std::string>& boolean_flags() {
     static const std::set<std::string> s{
-        "force", "no-hook", "open", "closed", "all", "nomcp"
+        "force", "no-hook", "open", "closed", "all", "no-mcp"
     };
     return s;
 }

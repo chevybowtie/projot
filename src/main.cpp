@@ -35,7 +35,7 @@ static void print_usage() {
 // Valid flags per subcommand (used to detect unknown flags).
 static const std::map<std::string, std::set<std::string>>& valid_flags() {
     static const std::map<std::string, std::set<std::string>> m{
-        {"init",         {"app-id", "github", "swagger", "blizzard", "nomcp"}},
+        {"init",         {"app-id", "github", "swagger", "blizzard", "no-mcp"}},
         {"new",          {"ranp", "name", "itrack", "teams", "ranp-url",
                           "itrack-url", "other", "no-hook"}},
         {"add-todo",     {"text"}},

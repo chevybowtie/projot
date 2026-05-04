@@ -206,7 +206,7 @@ static bool setup_mcp(const fs::path& repo_root, std::string& error) {
     if (!mcp_src) {
         // Non-fatal: warn and continue.
         std::cerr << "warning: MCP server source files not found; skipping MCP setup.\n"
-                  << "         Pass --nomcp to suppress this warning.\n";
+                  << "         Pass --no-mcp to suppress this warning.\n";
         return true;
     }
 
@@ -265,7 +265,7 @@ int cmd_init(const Args& args) {
             "  --github <URL>      Add a GitHub URL (repeatable)\n"
             "  --swagger <URL>     Add a Swagger URL (repeatable)\n"
             "  --blizzard <URL>    Add a Blizzard URL (repeatable)\n"
-            "  --nomcp             Skip MCP server setup and VSCode configuration\n\n"
+            "  --no-mcp            Skip MCP server setup and VSCode configuration\n\n"
             "Example:\n"
             "  projot init --app-id MyApp --github https://github.com/org/repo\n";
         return 0;
@@ -301,7 +301,7 @@ int cmd_init(const Args& args) {
     std::cout << "Initialized projot for " << cfg.app_id
               << " in " << projot_dir.string() << "\n";
 
-    if (!args.has("nomcp")) {
+    if (!args.has("no-mcp")) {
         std::string mcp_error;
         if (!setup_mcp(*root, mcp_error)) {
             std::cerr << "error: MCP setup failed: " << mcp_error << "\n";
