@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>projot</id>
+    <version>$version$</version>
+    <authors>Paul Sturm &lt;paul.sturm@cotton-software.com&gt;</authors>
+    <description>Repo-centric developer notepad CLI tool for tracking todos, notes, and URLs inside a .projot/ directory at a git repository root.</description>
+    <projectUrl>https://github.com/Chevybowtie/projot</projectUrl>
+    <licenseUrl>https://github.com/Chevybowtie/projot/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>cli productivity notes todos</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
