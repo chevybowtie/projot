@@ -8,9 +8,9 @@ projot is **repo-centric**: it must be run from inside a git repository. All pro
 
 Each **project** is stored as a **single markdown file** with a strict, machine-parseable structure. The app allows a user to:
 
-- Create and manage a project notes file identified by a **RANP project number**.
+- Create and manage a project notes file identified by a **RPM project number**.
 - Track todos, completion dates, and notes.
-- Store relevant URLs (Teams channel, iTrack, RANP link, etc.).
+- Store relevant URLs (Teams channel, iTrack, RPM link, etc.).
 - Generate consistent, human-readable files that can be shared with supervisors or project managers.
 
 The initial version focuses on **one-shot CLI subcommands** (no TUI yet).  
@@ -22,7 +22,7 @@ The implementation uses **only the C++ standard library** and includes **unit te
 
 - Replace the handwritten notepad with a fast, simple CLI workflow.
 - Make it easy to answer questions such as:
-  - “What’s the status of RANP <number>?”
+  - “What’s the status of RPM <number>?”
   - “What are my current todos for this project?”
 - Provide a **per-user configuration file** that is simple and human-editable.
 - Store project data in markdown files with a strict, parseable structure.
@@ -49,13 +49,13 @@ The implementation uses **only the C++ standard library** and includes **unit te
 ### 4.1 Project Identity
 
 - **Repo ID:** App ID, stored in `.projot/config`. Set once per repo via `init`.
-- **Project ID:** RANP project number (string), stored in `.projot/config`. Set per project via `new`.
+- **Project ID:** RPM project number (string), stored in `.projot/config`. Set per project via `new`.
 - **One repository = one active project = one markdown file.**
 - projot discovers the project root by walking up from `$CWD` until it finds a `.git` directory. It is an error to run projot outside a git repository.
 - The notes file lives at:
 
 ```
-{repo_root}/.projot/{RANP}.md
+{repo_root}/.projot/{RPM}.md
 ```
 
 ### 4.3 Todo Identity
@@ -69,12 +69,12 @@ The implementation uses **only the C++ standard library** and includes **unit te
 
 Each project file contains:
 
-- RANP number
+- RPM number
 - iTrack number (optional)
 - App ID (optional) — stored in `.projot/config`; rendered into the document by projot
 - Project name
 - Date created
-- A configurable list of URLs (Teams, iTrack, RANP, Other — single values)
+- A configurable list of URLs (Teams, iTrack, RPM, Other — single values)
 - Zero or more GitHub repository URLs — stored in `.projot/config`; projot-managed section in the document
 - Zero or more Swagger/OpenAPI URLs — stored in `.projot/config`; projot-managed section in the document
 - Zero or more Blizzard URLs — stored in `.projot/config`; projot-managed section in the document
@@ -90,7 +90,7 @@ All projot files are stored under a `.projot/` directory at the repository root:
 ```
 {repo_root}/.projot/
     config          ← project configuration (key = value)
-    {RANP}.md       ← project notes file
+    {RPM}.md       ← project notes file
 ```
 
 Example:
@@ -143,11 +143,11 @@ Users may optionally specify `--config <path>` in later versions.
 | `swagger` | Optional | Comma-separated list of Swagger/OpenAPI URLs |
 | `blizzard` | Optional | Comma-separated list of Blizzard URLs |
 
-**Project-level** (set by `new`, specific to the RANP project):
+**Project-level** (set by `new`, specific to the RPM project):
 
 | Field | Required | Description |
 |---|---|---|
-| `ranp` | Required | The RANP project number |
+| `rpm` | Required | The RPM project number |
 | `name` | Required | Human-readable project name |
 | `itrack` | Required | iTrack ticket number |
 | `date_format` | Optional | Display-only date format (stored ISO always) |
@@ -179,8 +179,8 @@ blizzard = https://blizzard.example.com/project
 
 # --- Project-level fields (set by `new`) ---
 
-# RANP project number
-ranp = 12345
+# RPM project number
+rpm = 12345
 
 # Project name
 name = My Project
@@ -192,18 +192,18 @@ itrack = 67890
 date_format = YYYY-MM-DD
 
 # Which single-value URLs to include in the Links section
-links = teams, itrack, ranp, other
+links = teams, itrack, rpm, other
 
 # Human-friendly labels
 label.teams = Teams
 label.itrack = iTrack
-label.ranp = RANP
+label.rpm = RPM
 label.other = Other
 
 # Single-value link URLs
 link.teams = https://teams.microsoft.com/l/channel/...
 link.itrack = https://itrack.example.com/ticket/67890
-link.ranp = https://ranp.example.com/project/12345
+link.rpm = https://rpm.example.com/project/12345
 link.other = https://wiki.example.com/project
 ```
 
@@ -216,7 +216,7 @@ Project markdown files use a strict structure with a **required section order**:
 ```markdown
 # Project: {Project Name}
 
-- RANP: {RANP}
+- RPM: {RPM}
 - iTrack: {iTrack or "N/A"}
 - App ID: {App ID or "N/A"}  <!-- projot-managed: set via set-app-id -->
 - Created: {YYYY-MM-DD}
@@ -224,7 +224,7 @@ Project markdown files use a strict structure with a **required section order**:
 ## Links
 - Teams: {url or "N/A"}
 - iTrack: {url or "N/A"}
-- RANP: {url or "N/A"}
+- RPM: {url or "N/A"}
 - Other: {url or "N/A"}
 
 <!-- projot-managed: do not hand-edit sections below; use add-github/add-swagger/add-blizzard -->
@@ -262,7 +262,7 @@ The section order **Links → GitHub → Swagger → Blizzard → Todos** is req
 
 - On startup, walk up from `$CWD` to find a `.git` directory. Exit with an error if none found.
 - Load `.projot/config` from the repo root. Exit with a clear error if it is missing or malformed.
-- Read `ranp` from config to locate the notes file at `.projot/{RANP}.md`.
+- Read `rpm` from config to locate the notes file at `.projot/{RPM}.md`.
 - Use line-based parsing to detect sections.
 - Section order is canonical and required: **Links → GitHub → Swagger → Blizzard → Todos**. Parsing assumes this order.
 - Identify `## Todos` and parse numbered items.
@@ -296,7 +296,7 @@ Usage: projot <subcommand> [options]
 
 Setup commands:
   init          Initialize projot for this repository
-  new           Start a new RANP project in this repository
+  new           Start a new RPM project in this repository
 
 Project commands:
   add-todo      Append a new todo
@@ -327,7 +327,7 @@ Example — `projot add-todo --help`:
 Usage: projot add-todo --text "<description>"
 
 Append a new todo to the project notes file. The todo is assigned the next
-available stable ID and written to .projot/{RANP}.md.
+available stable ID and written to .projot/{RPM}.md.
 
 Required:
   --text "<description>"   Text of the new todo
@@ -353,18 +353,18 @@ Optional:
 - `--blizzard <URL>` (repeatable)
 
 #### `new`
-Start a new project in this repository. Writes project-level fields to `.projot/config` and creates the notes file `.projot/{RANP}.md`. Fails if a project is already configured (i.e. `ranp` is already set in config).
+Start a new project in this repository. Writes project-level fields to `.projot/config` and creates the notes file `.projot/{RPM}.md`. Fails if a project is already configured (i.e. `rpm` is already set in config).
 
 After creating the notes file, `new` installs a `pre-commit` git hook (see section 9.3) that calls `projot render` before every commit. This ensures the committed notes file always reflects the current config and todo state.
 
 Required:
-- `--ranp <RANP>`
+- `--rpm <RPM>`
 - `--name "<Project Name>"`
 - `--itrack <iTrack>`
 
 Optional:
 - `--teams <URL>`
-- `--ranp-url <URL>` — the RANP system link for this project
+- `--rpm-url <URL>` — the RPM system link for this project
 - `--itrack-url <URL>`
 - `--other <URL>`
 - `--no-hook` — skip git hook installation
@@ -384,7 +384,7 @@ Display a project summary and todos.
 
 Default output:
 ```
-Project: {Project Name}  |  RANP: {RANP}  |  iTrack: {iTrack}
+Project: {Project Name}  |  RPM: {RPM}  |  iTrack: {iTrack}
 
 1. First open todo
 2. Second open todo
@@ -412,7 +412,7 @@ Required:
 Set or update a single-value link URL in `.projot/config`.
 
 Required:
-- `--key <key>` — e.g. `teams`, `itrack`, `ranp`, `other`
+- `--key <key>` — e.g. `teams`, `itrack`, `rpm`, `other`
 - `--url <URL>`
 
 #### `set-app-id`
@@ -443,7 +443,7 @@ Required:
 - `--url <URL>`
 
 #### `render`
-Re-render `.projot/{RANP}.md` from `.projot/config` and the current todo state, then `git add .projot/{RANP}.md` so the regenerated file is staged for the current commit.
+Re-render `.projot/{RPM}.md` from `.projot/config` and the current todo state, then `git add .projot/{RPM}.md` so the regenerated file is staged for the current commit.
 
 This subcommand is called automatically by the pre-commit hook installed by `new`. It can also be run manually at any time to sync the notes file after hand-editing `.projot/config`.
 
@@ -455,7 +455,7 @@ No flags required. Exits 0 on success.
 
 #### Hook behaviour
 
-The hook calls `projot render`, which re-renders `.projot/{RANP}.md` from config and then runs `git add .projot/{RANP}.md`. This means:
+The hook calls `projot render`, which re-renders `.projot/{RPM}.md` from config and then runs `git add .projot/{RPM}.md`. This means:
 - Config changes (e.g. a new GitHub URL added with `add-github`) are reflected in the committed notes file automatically.
 - The committed markdown is always consistent with `.projot/config`.
 
@@ -507,8 +507,8 @@ Tab completion is delivered as **generated shell scripts** — projot itself doe
 
 - **Subcommand names** after `projot ` (e.g. `init`, `new`, `add-todo`, …)
 - **Flag names** for the current subcommand (e.g. after `projot add-todo `, complete `--text`)
-- **`--key` values** for `set-link`: complete `teams`, `itrack`, `ranp`, `other`
-- **`--todo` values** for `complete` and `add-note`: read open todo IDs from `.projot/{RANP}.md` at completion time (best-effort; silently skip if no file found)
+- **`--key` values** for `set-link`: complete `teams`, `itrack`, `rpm`, `other`
+- **`--todo` values** for `complete` and `add-note`: read open todo IDs from `.projot/{RPM}.md` at completion time (best-effort; silently skip if no file found)
 - **`-h` / `--help`** on every subcommand
 
 #### Implementation note
@@ -525,9 +525,9 @@ Run `make install-completion` after installing the binary (see section 14.3). Th
 
 - **Not in a git repo:** exit with a clear error if no `.git` directory is found walking up from `$CWD`.
 - **`init` on already-initialized repo:** exit with an error; user must remove `.projot/` to start over.
-- **`new` when project already configured:** exit with an error indicating `ranp` is already set.
+- **`new` when project already configured:** exit with an error indicating `rpm` is already set.
 - **Missing `.projot/config`:** exit with a clear error suggesting `projot init`.
-- **Missing notes file:** exit with a clear error if `.projot/{RANP}.md` does not exist; suggest `projot new`.
+- **Missing notes file:** exit with a clear error if `.projot/{RPM}.md` does not exist; suggest `projot new`.
 - **`complete` on already-completed todo:** print a warning and exit 0 (no-op).
 - **`add-note` on completed todo:** print a warning then proceed normally.
 - **`set-app-id` without `--force` when `app_id` already set:** exit with an error showing the current value.
@@ -620,7 +620,7 @@ tests/
 
 | Test | Description |
 |---|---|
-| `parse_header_fields` | Project name, RANP, iTrack, App ID, Created date all parsed correctly from header |
+| `parse_header_fields` | Project name, RPM, iTrack, App ID, Created date all parsed correctly from header |
 | `parse_header_na_values` | `N/A` values for optional fields → stored as empty string |
 | `parse_links_section` | All configured link keys and URLs extracted |
 | `parse_github_section` | Multiple GitHub URLs extracted as list |
@@ -695,19 +695,19 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `init_with_multiple_github` | `--github` repeated twice → both URLs in config |
 | `init_fails_if_already_init` | Second `init` on same repo → non-zero exit |
 | `init_requires_app_id` | `init` without `--app-id` → non-zero exit |
-| `new_writes_project_fields` | `new` writes `ranp`, `name`, `itrack` to config |
-| `new_creates_notes_file` | `new` creates `.projot/{RANP}.md` |
+| `new_writes_project_fields` | `new` writes `rpm`, `name`, `itrack` to config |
+| `new_creates_notes_file` | `new` creates `.projot/{RPM}.md` |
 | `new_notes_file_has_correct_header` | Notes file has `# Project:` with correct name |
 | `new_with_teams_url` | `--teams <url>` → `link.teams` in config, Teams in Links section |
-| `new_fails_if_ranp_set` | `ranp` already in config → non-zero exit |
-| `new_fails_without_required_flags` | Missing `--ranp`, `--name`, or `--itrack` → non-zero exit |
+| `new_fails_if_rpm_set` | `rpm` already in config → non-zero exit |
+| `new_fails_without_required_flags` | Missing `--rpm`, `--name`, or `--itrack` → non-zero exit |
 | `new_inherits_repo_fields` | GitHub URL set by `init` appears in rendered notes file |
 | `add_todo_appends` | `add-todo` adds entry with next ID, `Created` date |
 | `add_todo_stable_id` | Two `add-todo` calls → IDs 1 and 2 |
 | `list_default_shows_open` | `list` with no flag → only open todos shown |
 | `list_closed_flag` | `list --closed` → only closed todos |
 | `list_all_flag` | `list --all` → all todos |
-| `list_shows_header` | Output includes project name, RANP, iTrack line |
+| `list_shows_header` | Output includes project name, RPM, iTrack line |
 | `complete_marks_done` | `complete --todo 1` → re-parsed file shows `[x]`, `Completed:` date |
 | `complete_warns_if_already_done` | Re-completing → warning on stderr, exit 0, file unchanged |
 | `add_note_appends` | `add-note --todo 1 --text "note"` → note appears in re-parsed file |
@@ -721,7 +721,7 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `add_swagger_deduplicates` | Same for Swagger |
 | `add_blizzard_deduplicates` | Same for Blizzard |
 | `render_updates_file` | `render` re-writes notes file; re-parse yields consistent state |
-| `render_stages_file` | `render` calls `git add .projot/{RANP}.md` (verify via `git status`) |
+| `render_stages_file` | `render` calls `git add .projot/{RPM}.md` (verify via `git status`) |
 | `version_flag` | `projot --version` → prints `projot X.Y.Z`, exits 0 |
 
 ### 11.9 Git Hook (`test_hook.cpp`)
@@ -753,7 +753,7 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 |---|---|
 | `not_in_git_repo` | Run any command in a directory with no `.git` → non-zero exit, clear error message |
 | `missing_config` | `.git` exists but no `.projot/config` → message suggests `projot init` |
-| `missing_notes_file` | Config has `ranp` but `.projot/{RANP}.md` absent → message suggests `projot new` |
+| `missing_notes_file` | Config has `rpm` but `.projot/{RPM}.md` absent → message suggests `projot new` |
 | `invalid_todo_id` | `--todo 99` when only IDs 1–3 exist → non-zero exit, lists valid IDs |
 | `unknown_flag` | `projot add-todo --bogus` → non-zero exit, message includes `projot add-todo --help` |
 | `help_exits_zero` | `projot --help` → exit 0 |
@@ -806,7 +806,7 @@ Since projot is repo-centric, the notes file and config are already inside the g
 - `install-hook` can install or reinstall the hook at any time.
 
 **`.gitignore` guidance:**
-- Commit `.projot/config` and `.projot/{RANP}.md` — this is the point.
+- Commit `.projot/config` and `.projot/{RPM}.md` — this is the point.
 - Optionally add `.projot/*.bak` or similar if projot ever creates backup files.
 
 ### 12.5 Richer Configuration
@@ -850,7 +850,7 @@ projot targets Linux and Windows. The following guidelines apply to the implemen
 - Bash and Zsh scripts use POSIX-compatible shell syntax and should work on macOS as well.
 - The Fish script requires Fish 3+.
 - The PowerShell script requires PowerShell 5.1+ (Windows) or PowerShell 7+ (cross-platform).
-- Dynamic `--todo` completion reads `.projot/{RANP}.md` using the shell's own file-reading primitives, not by calling projot. This avoids Windows path issues and works even when the binary is not on `PATH` in the completion context.
+- Dynamic `--todo` completion reads `.projot/{RPM}.md` using the shell's own file-reading primitives, not by calling projot. This avoids Windows path issues and works even when the binary is not on `PATH` in the completion context.
 
 ### 13.5 Compiler Requirements
 - `std::filesystem` requires C++17. Minimum supported compilers:

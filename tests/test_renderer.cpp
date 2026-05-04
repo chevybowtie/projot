@@ -8,7 +8,7 @@
 
 static Config make_base_config() {
     Config cfg;
-    cfg.ranp = "12345";
+    cfg.rpm = "12345";
     cfg.name = "Test Project";
     cfg.itrack = "67890";
     cfg.app_id = "MyApp";
@@ -31,7 +31,7 @@ TEST_CASE("render_header") {
     auto cfg = make_base_config();
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "# Project: Test Project"));
-    CHECK(contains(output, "- RANP: 12345"));
+    CHECK(contains(output, "- RPM: 12345"));
     CHECK(contains(output, "- iTrack: 67890"));
     CHECK(contains(output, "- App ID: MyApp"));
     CHECK(contains(output, "- Created: 2025-11-23"));  // from cfg.created
@@ -49,11 +49,11 @@ TEST_CASE("render_links_from_config") {
 
 TEST_CASE("render_links_na_when_missing") {
     auto cfg = make_base_config();
-    cfg.links.push_back("ranp");
-    cfg.labels["ranp"] = "RANP";
-    // No link_urls["ranp"] set
+    cfg.links.push_back("rpm");
+    cfg.labels["rpm"] = "RPM";
+    // No link_urls["rpm"] set
     auto output = render_markdown(cfg, {});
-    CHECK(contains(output, "- RANP: N/A"));
+    CHECK(contains(output, "- RPM: N/A"));
 }
 
 // ── Managed sections ──────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ TEST_CASE("render_round_trip") {
     auto result = parse_markdown_string(output, proj);
     REQUIRE(result.ok);
     CHECK(proj.name == cfg.name);
-    CHECK(proj.ranp == cfg.ranp);
+    CHECK(proj.rpm == cfg.rpm);
     REQUIRE(proj.todos.size() == 2);
     CHECK(proj.todos[0].id == 1);
     CHECK(proj.todos[0].text == "Open todo");

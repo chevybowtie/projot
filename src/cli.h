@@ -10,6 +10,7 @@ struct Args {
     std::string subcommand;
     // Multi-value map: flags["github"] may hold several URLs if --github is repeated.
     std::map<std::string, std::vector<std::string>> flags;
+    std::vector<std::string> positional;    // non-flag tokens after the subcommand
     std::vector<std::string> unknown_flags; // unrecognised tokens (single-dash, etc.)
     bool help_requested    = false;
     bool version_requested = false;
