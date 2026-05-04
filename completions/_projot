@@ -4,11 +4,11 @@
 # Place in a directory on $fpath, e.g. ~/.zsh/completions/_projot
 
 _projot_open_todo_ids() {
-    local config ranp notes root
+    local config rpm notes root
     root=$(git rev-parse --show-toplevel 2>/dev/null) || return
     config="${root}/.projot/config"
-    ranp=$(grep -m1 '^ranp\s*=' "${config}" 2>/dev/null | sed 's/.*=\s*//' | tr -d '[:space:]')
-    notes="${root}/.projot/${ranp}.md"
+    rpm=$(grep -m1 '^rpm\s*=' "${config}" 2>/dev/null | sed 's/.*=\s*//' | tr -d '[:space:]')
+    notes="${root}/.projot/${rpm}.md"
     grep -oE '^[0-9]+\. \[ \]' "${notes}" 2>/dev/null | grep -oE '^[0-9]+'
 }
 
@@ -26,7 +26,7 @@ _projot() {
             local -a subcommands
             subcommands=(
                 'init:initialize projot for this repository'
-                'new:start a new RANP project'
+                'new:start a new RPM project'
                 'add-todo:append a new todo'
                 'list:show project summary and todos'
                 'complete:mark a todo completed'
@@ -53,11 +53,11 @@ _projot() {
                     ;;
                 new)
                     _arguments \
-                        '--ranp[RANP project number]:ranp' \
+                        '--rpm[RPM project number]:rpm' \
                         '--name[project name]:name' \
                         '--itrack[iTrack ticket number]:itrack' \
                         '--teams[Teams channel URL]:url' \
-                        '--ranp-url[RANP system link]:url' \
+                        '--rpm-url[RPM system link]:url' \
                         '--itrack-url[iTrack link]:url' \
                         '--other[other URL]:url' \
                         '--no-hook[skip hook installation]' \
@@ -65,7 +65,7 @@ _projot() {
                     ;;
                 add-todo)
                     _arguments \
-                        '--text[todo description]:text' \
+                        '1:description:' \
                         '--help[show help]'
                     ;;
                 list)
@@ -92,7 +92,7 @@ _projot() {
                     ;;
                 set-link)
                     _arguments \
-                        '--key[link key]:key:(teams itrack ranp other)' \
+                '--key[link key]:key:(teams itrack rpm other)' \
                         '--url[URL]:url' \
                         '--help[show help]'
                     ;;

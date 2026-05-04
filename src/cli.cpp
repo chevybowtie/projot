@@ -45,8 +45,12 @@ Args parse_args(int argc, char* argv[]) {
                 ++i;
             }
         } else {
-            // Unknown token (single-dash flags, stray positionals, etc.)
-            args.unknown_flags.push_back(arg);
+            // Single-dash flags → unknown; bare words → positional
+            if (arg.size() >= 1 && arg[0] == '-') {
+                args.unknown_flags.push_back(arg);
+            } else {
+                args.positional.push_back(arg);
+            }
             ++i;
         }
     }

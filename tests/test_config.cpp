@@ -21,7 +21,7 @@ TEST_CASE("parse_valid_full") {
     REQUIRE(result.ok);
     CHECK(cfg.config_version == 1);
     CHECK(cfg.app_id == "MyApp");
-    CHECK(cfg.ranp == "12345");
+    CHECK(cfg.rpm == "12345");
     CHECK(cfg.name == "My Project");
     CHECK(cfg.itrack == "67890");
     REQUIRE(cfg.github.size() == 2);
@@ -42,7 +42,7 @@ TEST_CASE("parse_repo_only") {
     CHECK(cfg.config_version == 1);
     CHECK(cfg.app_id == "RepoApp");
     CHECK(cfg.github.size() == 1);
-    CHECK(cfg.ranp.empty());
+    CHECK(cfg.rpm.empty());
     CHECK(cfg.name.empty());
     CHECK(cfg.itrack.empty());
     CHECK(cfg.links.empty());
@@ -135,11 +135,11 @@ TEST_CASE("parse_unknown_keys_ignored") {
 }
 
 TEST_CASE("parse_crlf_line_endings") {
-    auto path = write_temp("app_id = CrlfApp\r\nranp = 11111\r\n");
+    auto path = write_temp("app_id = CrlfApp\r\nrpm = 11111\r\n");
     Config cfg;
     parse_config(path, cfg);
     CHECK(cfg.app_id == "CrlfApp");
-    CHECK(cfg.ranp == "11111");
+    CHECK(cfg.rpm == "11111");
 }
 
 TEST_CASE("parse_missing_file") {
@@ -169,7 +169,7 @@ TEST_CASE("write_round_trip") {
     REQUIRE(parse_res.ok);
 
     CHECK(reparsed.app_id == orig.app_id);
-    CHECK(reparsed.ranp == orig.ranp);
+    CHECK(reparsed.rpm == orig.rpm);
     CHECK(reparsed.name == orig.name);
     CHECK(reparsed.itrack == orig.itrack);
     CHECK(reparsed.github == orig.github);
@@ -201,4 +201,92 @@ TEST_CASE("write_comments_header") {
     std::string first_line;
     std::getline(f, first_line);
     CHECK(first_line[0] == '#');
+}
+
+// ── Azure entry helpers ───────────────────────────────────────────────────────
+
+TEST_CASE("parse_azure_entry_name_and_url") {
+    auto e = parse_azure_entry("my-vault|https://portal.azure.com/vault");
+    CHECK(e.name == "my-vault");
+    CHECK(e.url  == "https://portal.azure.com/vault");
+}
+
+TEST_CASE("parse_azure_entry_url_only") {
+    auto e = parse_azure_entry("https://portal.azure.com/dns");
+    CHECK(e.name.empty());
+    CHECK(e.url == "https://portal.azure.com/dns");
+}
+
+TEST_CASE("parse_azure_entry_whitespace_trimmed") {
+    auto e = parse_azure_entry(" my-sub | https://portal.azure.com/sub ");
+    CHECK(e.name == "my-sub");
+    CHECK(e.url  == "https://portal.azure.com/sub");
+}
+
+TEST_CASE("format_azure_entry_with_name") {
+    AzureEntry e{"my-cluster", "https://portal.azure.com/aks"};
+    CHECK(format_azure_entry(e) == "my-cluster|https://portal.azure.com/aks");
+}
+
+TEST_CASE("format_azure_entry_url_only") {
+    AzureEntry e{"", "https://portal.azure.com/dns"};
+    CHECK(format_azure_entry(e) == "https://portal.azure.com/dns");
+}
+
+// ── Azure config parse/write ──────────────────────────────────────────────────
+
+TEST_CASE("parse_azure_fields") {
+    auto path = write_temp(
+        "azure_subscription = sub1|https://portal.azure.com/sub1, sub2|https://portal.azure.com/sub2\n"
+        "azure_key_vault = vault1|https://portal.azure.com/kv\n"
+        "azure_private_dns = https://portal.azure.com/dns\n"
+    );
+    Config cfg;
+    auto result = parse_config(path, cfg);
+    REQUIRE(result.ok);
+    REQUIRE(cfg.azure_subscription.size() == 2);
+    CHECK(cfg.azure_subscription[0] == "sub1|https://portal.azure.com/sub1");
+    CHECK(cfg.azure_subscription[1] == "sub2|https://portal.azure.com/sub2");
+    REQUIRE(cfg.azure_key_vault.size() == 1);
+    CHECK(cfg.azure_key_vault[0] == "vault1|https://portal.azure.com/kv");
+    REQUIRE(cfg.azure_private_dns.size() == 1);
+    CHECK(cfg.azure_private_dns[0] == "https://portal.azure.com/dns");
+}
+
+TEST_CASE("write_azure_round_trip") {
+    Config orig;
+    orig.app_id = "TestApp";
+    orig.rpm   = "99999";
+    orig.azure_subscription    = {"MySub|https://portal.azure.com/sub"};
+    orig.azure_key_vault       = {"my-vault|https://portal.azure.com/kv"};
+    orig.azure_resource_group  = {"my-rg|https://portal.azure.com/rg"};
+    orig.azure_aks             = {"my-aks|https://portal.azure.com/aks"};
+    orig.azure_log_analytics   = {"my-ws|https://portal.azure.com/la"};
+    orig.azure_storage         = {"my-container|https://portal.azure.com/st"};
+    orig.azure_private_dns     = {"https://portal.azure.com/dns"};
+
+    auto path = (std::filesystem::temp_directory_path() / "projot_azure_rt.cfg").string();
+    REQUIRE(write_config(path, orig).ok);
+
+    Config reparsed;
+    REQUIRE(parse_config(path, reparsed).ok);
+
+    CHECK(reparsed.azure_subscription   == orig.azure_subscription);
+    CHECK(reparsed.azure_key_vault      == orig.azure_key_vault);
+    CHECK(reparsed.azure_resource_group == orig.azure_resource_group);
+    CHECK(reparsed.azure_aks            == orig.azure_aks);
+    CHECK(reparsed.azure_log_analytics  == orig.azure_log_analytics);
+    CHECK(reparsed.azure_storage        == orig.azure_storage);
+    CHECK(reparsed.azure_private_dns    == orig.azure_private_dns);
+}
+
+TEST_CASE("azure_absent_when_empty") {
+    Config cfg;
+    cfg.app_id = "TestApp";
+    auto path = (std::filesystem::temp_directory_path() / "projot_no_azure.cfg").string();
+    write_config(path, cfg);
+
+    std::ifstream f(path);
+    std::string content((std::istreambuf_iterator<char>(f)), {});
+    CHECK(content.find("azure_") == std::string::npos);
 }

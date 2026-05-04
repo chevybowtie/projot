@@ -13,6 +13,19 @@
 #endif
 static constexpr int PROJOT_CONFIG_SCHEMA_VERSION = PROJOT_CONFIG_VERSION;
 
+// A single Azure resource entry with an optional name and a URL.
+// Stored in config as "name|url" (with name) or just "url" (without name).
+struct AzureEntry {
+    std::string name;  // may be empty for general/feature links
+    std::string url;
+};
+
+// Parse "name|url" or just "url" into an AzureEntry.
+AzureEntry parse_azure_entry(const std::string& s);
+
+// Format an AzureEntry as "name|url" when name is non-empty, else just "url".
+std::string format_azure_entry(const AzureEntry& e);
+
 struct Config {
     // Schema version
     int config_version = 0;
@@ -24,7 +37,7 @@ struct Config {
     std::vector<std::string> blizzard;
 
     // Project-level fields (set by `new`)
-    std::string ranp;
+    std::string rpm;
     std::string name;
     std::string itrack;
     std::string date_format;
@@ -34,6 +47,15 @@ struct Config {
     std::vector<std::string> links;              // ordered link keys
     std::map<std::string, std::string> labels;   // label.<key> -> display label
     std::map<std::string, std::string> link_urls; // link.<key> -> url
+
+    // Azure resources (project-level). Each entry is "name|url" or just "url".
+    std::vector<std::string> azure_subscription;
+    std::vector<std::string> azure_key_vault;
+    std::vector<std::string> azure_resource_group;
+    std::vector<std::string> azure_aks;
+    std::vector<std::string> azure_log_analytics;
+    std::vector<std::string> azure_storage;
+    std::vector<std::string> azure_private_dns;
 };
 
 // Result type for operations that can fail with a message
