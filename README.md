@@ -15,6 +15,7 @@
   - [From a pre-built release (recommended)](#from-a-pre-built-release-recommended)
   - [Shell completion (optional)](#shell-completion-optional)
   - [From source](#from-source)
+- [AI Integration (MCP Server)](#ai-integration-mcp-server)
 - [Roadmap](#roadmap)
 - [License](#license)
 - [Contributing](#contributing)
@@ -249,6 +250,22 @@ make
 sudo make install               # installs to /usr/local/bin
 make install-completion         # installs completion for current shell
 ```
+
+---
+
+## AI Integration (MCP Server)
+
+The `mcp/` directory contains a **Model Context Protocol server** that integrates `projot` with Claude, Copilot, and other AI assistants.
+
+With the MCP server configured, you can ask your AI assistant in your IDE to:
+
+- **Show TODOs**: *"Show my open TODOs"* → Lists them with IDs
+- **Complete TODOs**: *"Close TODO #2"* → Marks it done
+- **Add TODOs**: *"Add a TODO: fix the Windows build"*
+- **Set up projects**: *"Help me set up a new project"* → Creates branch, initializes projot metadata
+- **Open time tracking**: *"Open iTrack to charge time"* → Opens your iTrack URL in the browser
+
+See [mcp/README.md](mcp/README.md) for installation and usage instructions.
 
 ---
 
