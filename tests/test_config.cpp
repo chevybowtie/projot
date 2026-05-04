@@ -21,7 +21,7 @@ TEST_CASE("parse_valid_full") {
     REQUIRE(result.ok);
     CHECK(cfg.config_version == 1);
     CHECK(cfg.app_id == "MyApp");
-    CHECK(cfg.ranp == "12345");
+    CHECK(cfg.rpm == "12345");
     CHECK(cfg.name == "My Project");
     CHECK(cfg.itrack == "67890");
     REQUIRE(cfg.github.size() == 2);
@@ -42,7 +42,7 @@ TEST_CASE("parse_repo_only") {
     CHECK(cfg.config_version == 1);
     CHECK(cfg.app_id == "RepoApp");
     CHECK(cfg.github.size() == 1);
-    CHECK(cfg.ranp.empty());
+    CHECK(cfg.rpm.empty());
     CHECK(cfg.name.empty());
     CHECK(cfg.itrack.empty());
     CHECK(cfg.links.empty());
@@ -135,11 +135,11 @@ TEST_CASE("parse_unknown_keys_ignored") {
 }
 
 TEST_CASE("parse_crlf_line_endings") {
-    auto path = write_temp("app_id = CrlfApp\r\nranp = 11111\r\n");
+    auto path = write_temp("app_id = CrlfApp\r\nrpm = 11111\r\n");
     Config cfg;
     parse_config(path, cfg);
     CHECK(cfg.app_id == "CrlfApp");
-    CHECK(cfg.ranp == "11111");
+    CHECK(cfg.rpm == "11111");
 }
 
 TEST_CASE("parse_missing_file") {
@@ -169,7 +169,7 @@ TEST_CASE("write_round_trip") {
     REQUIRE(parse_res.ok);
 
     CHECK(reparsed.app_id == orig.app_id);
-    CHECK(reparsed.ranp == orig.ranp);
+    CHECK(reparsed.rpm == orig.rpm);
     CHECK(reparsed.name == orig.name);
     CHECK(reparsed.itrack == orig.itrack);
     CHECK(reparsed.github == orig.github);

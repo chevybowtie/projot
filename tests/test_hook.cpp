@@ -19,14 +19,14 @@ struct HookTempRepo {
         original = fs::current_path();
         fs::current_path(path);
 
-        // Write .projot/config with app_id and ranp so commands work
+        // Write .projot/config with app_id and rpm so commands work
         fs::create_directories(path / ".projot", ec);
         std::ofstream cfg(path / ".projot" / "config");
-        cfg << "config_version = 1\napp_id = TestApp\nranp = 1\nname = P\nitrack = 1\n";
+        cfg << "config_version = 1\napp_id = TestApp\nrpm = 1\nname = P\nitrack = 1\n";
         cfg.close();
         // Create minimal notes file
         std::ofstream notes(path / ".projot" / "1.md");
-        notes << "# Project: P\n- RANP: 1\n- iTrack: 1\n- App ID: TestApp\n"
+        notes << "# Project: P\n- RPM: 1\n- iTrack: 1\n- App ID: TestApp\n"
                  "- Created: 2025-01-01\n\n## Links\n\n## Todos\n\n";
     }
 
@@ -63,7 +63,7 @@ TEST_CASE("new_installs_hook") {
 
     Args a;
     a.subcommand = "new";
-    a.flags["ranp"].push_back("99");
+    a.flags["rpm"].push_back("99");
     a.flags["name"].push_back("P");
     a.flags["itrack"].push_back("1");
     // no --no-hook: hook should be installed
@@ -87,7 +87,7 @@ TEST_CASE("new_hook_content") {
 
     Args a;
     a.subcommand = "new";
-    a.flags["ranp"].push_back("88");
+    a.flags["rpm"].push_back("88");
     a.flags["name"].push_back("P");
     a.flags["itrack"].push_back("1");
     cmd_new(a);
@@ -108,7 +108,7 @@ TEST_CASE("new_no_hook_flag") {
 
     Args a;
     a.subcommand = "new";
-    a.flags["ranp"].push_back("77");
+    a.flags["rpm"].push_back("77");
     a.flags["name"].push_back("P");
     a.flags["itrack"].push_back("1");
     a.flags["no-hook"].push_back("true");

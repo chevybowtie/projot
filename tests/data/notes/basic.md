@@ -1,6 +1,6 @@
 # Project: Test Project
 
-- RANP: 12345
+- RPM: 12345
 - iTrack: 67890
 - App ID: MyApp
 - Created: 2025-11-23
@@ -8,7 +8,7 @@
 ## Links
 - Teams: https://teams.microsoft.com/channel
 - iTrack: https://itrack.example.com/67890
-- RANP: https://ranp.example.com/12345
+- RPM: https://ranp.example.com/12345
 
 ## Todos
 

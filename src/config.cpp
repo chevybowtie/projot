@@ -79,8 +79,8 @@ ParseResult parse_config(const std::string& path, Config& out) {
             catch (...) { out.config_version = 0; }
         } else if (key == "app_id") {
             out.app_id = value;
-        } else if (key == "ranp") {
-            out.ranp = value;
+        } else if (key == "rpm" || key == "ranp") {
+            out.rpm = value;
         } else if (key == "name") {
             out.name = value;
         } else if (key == "itrack") {
@@ -144,7 +144,7 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
 
     file << "# --- Project-level fields (set by `new`) ---\n";
     file << "\n";
-    file << "ranp = " << cfg.ranp << "\n";
+    file << "rpm = " << cfg.rpm << "\n";
     file << "name = " << cfg.name << "\n";
     file << "itrack = " << cfg.itrack << "\n";
 
