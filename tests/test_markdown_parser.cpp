@@ -8,7 +8,7 @@ TEST_CASE("parse_header_fields") {
     auto result = parse_markdown(PROJOT_TEST_DATA_DIR "/notes/basic.md", proj);
     REQUIRE(result.ok);
     CHECK(proj.name == "Test Project");
-    CHECK(proj.ranp == "12345");
+    CHECK(proj.rpm == "12345");
     CHECK(proj.itrack == "67890");
     CHECK(proj.app_id == "MyApp");
     CHECK(proj.created == "2025-11-23");
@@ -117,7 +117,7 @@ TEST_CASE("parse_multiple_todos") {
 TEST_CASE("parse_stable_ids_with_gap") {
     const std::string content =
         "# Project: Gap Project\n"
-        "- RANP: 1\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "- RPM: 1\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
         "## Links\n\n"
         "## Todos\n\n"
         "1. [ ] Todo one\n   - Created: 2025-01-01\n   - Notes:\n\n"
@@ -134,7 +134,7 @@ TEST_CASE("parse_stable_ids_with_gap") {
 TEST_CASE("parse_crlf_in_notes_file") {
     const std::string content =
         "# Project: CRLF Project\r\n"
-        "- RANP: 999\r\n"
+        "- RPM: 999\r\n"
         "- iTrack: N/A\r\n"
         "- App ID: N/A\r\n"
         "- Created: 2025-01-01\r\n"
@@ -152,8 +152,8 @@ TEST_CASE("parse_crlf_in_notes_file") {
     REQUIRE(proj.todos.size() == 1);
     CHECK(proj.todos[0].text == "CRLF todo");
     CHECK(proj.todos[0].text.back() != '\r');
-    CHECK(proj.ranp == "999");
-    CHECK(proj.ranp.back() != '\r');
+    CHECK(proj.rpm == "999");
+    CHECK(proj.rpm.back() != '\r');
 }
 
 TEST_CASE("parse_empty_todos_section") {
@@ -165,7 +165,7 @@ TEST_CASE("parse_empty_todos_section") {
 TEST_CASE("parse_no_todos_section") {
     const std::string content =
         "# Project: No Section\n"
-        "- RANP: 1\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "- RPM: 1\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
         "## Links\n\n";
     Project proj;
     parse_markdown_string(content, proj);

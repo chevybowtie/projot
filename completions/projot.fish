@@ -9,8 +9,8 @@ function __projot_open_todo_ids
     set -l root (git rev-parse --show-toplevel 2>/dev/null)
     or return
     set -l config "$root/.projot/config"
-    set -l ranp (grep -m1 '^ranp\s*=' "$config" 2>/dev/null | sed 's/.*=\s*//' | string trim)
-    set -l notes "$root/.projot/$ranp.md"
+    set -l rpm (grep -m1 '^rpm\s*=' "$config" 2>/dev/null | sed 's/.*=\s*//' | string trim)
+    set -l notes "$root/.projot/$rpm.md"
     grep -oE '^[0-9]+\. \[ \]' "$notes" 2>/dev/null | grep -oE '^[0-9]+'
 end
 
@@ -25,7 +25,7 @@ complete -c projot -n __projot_no_subcommand -l version -d 'Show version'
 
 # Subcommands
 complete -c projot -n __projot_no_subcommand -a init          -d 'Initialize projot for this repository'
-complete -c projot -n __projot_no_subcommand -a new           -d 'Start a new RANP project'
+complete -c projot -n __projot_no_subcommand -a new           -d 'Start a new RPM project'
 complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new todo'
 complete -c projot -n __projot_no_subcommand -a list          -d 'Show project summary and todos'
 complete -c projot -n __projot_no_subcommand -a complete      -d 'Mark a todo completed'
@@ -51,17 +51,16 @@ complete -c projot -n '__fish_seen_subcommand_from init' -l swagger  -d 'Swagger
 complete -c projot -n '__fish_seen_subcommand_from init' -l blizzard -d 'Blizzard URL' -r
 
 # new
-complete -c projot -n '__fish_seen_subcommand_from new' -l ranp      -d 'RANP project number' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l rpm       -d 'RPM project number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l name      -d 'Project name' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l itrack    -d 'iTrack ticket number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams     -d 'Teams channel URL' -r
-complete -c projot -n '__fish_seen_subcommand_from new' -l ranp-url  -d 'RANP system link' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l rpm-url   -d 'RPM system link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l itrack-url -d 'iTrack link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l other     -d 'Other URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l no-hook   -d 'Skip hook installation'
 
-# add-todo
-complete -c projot -n '__fish_seen_subcommand_from add-todo' -l text -d 'Todo description' -r
+# add-todo (accepts a positional description argument)
 
 # list
 complete -c projot -n '__fish_seen_subcommand_from list' -l open   -d 'Open todos only'
@@ -79,7 +78,7 @@ complete -c projot -n '__fish_seen_subcommand_from add-note' -l text -d 'Note te
 
 # set-link
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l key \
-    -d 'Link key' -r -a 'teams itrack ranp other'
+    -d 'Link key' -r -a 'teams itrack rpm other'
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l url -d 'URL' -r
 
 # set-app-id

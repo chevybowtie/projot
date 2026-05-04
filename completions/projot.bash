@@ -3,10 +3,10 @@
 # ~/.local/share/bash-completion/completions/projot
 
 _projot_open_todo_ids() {
-    local config ranp notes
+    local config rpm notes
     config="$(git -C . rev-parse --show-toplevel 2>/dev/null)/.projot/config"
-    ranp=$(grep -m1 '^ranp\s*=' "$config" 2>/dev/null | sed 's/.*=\s*//' | tr -d '[:space:]')
-    notes="$(git -C . rev-parse --show-toplevel 2>/dev/null)/.projot/${ranp}.md"
+    rpm=$(grep -m1 '^rpm\s*=' "$config" 2>/dev/null | sed 's/.*=\s*//' | tr -d '[:space:]')
+    notes="$(git -C . rev-parse --show-toplevel 2>/dev/null)/.projot/${rpm}.md"
     grep -oP '^\d+(?=\. \[ \])' "$notes" 2>/dev/null
 }
 
@@ -34,10 +34,10 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--app-id --github --swagger --blizzard --help" -- "${cur}") )
                 ;;
             new)
-                COMPREPLY=( $(compgen -W "--ranp --name --itrack --teams --ranp-url --itrack-url --other --no-hook --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--rpm --name --itrack --teams --rpm-url --itrack-url --other --no-hook --help" -- "${cur}") )
                 ;;
             add-todo)
-                COMPREPLY=( $(compgen -W "--text --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
             list)
                 COMPREPLY=( $(compgen -W "--open --closed --all --help" -- "${cur}") )
@@ -72,7 +72,7 @@ _projot() {
             COMPREPLY=( $(compgen -W "${ids}" -- "${cur}") )
             ;;
         --key)
-            COMPREPLY=( $(compgen -W "teams itrack ranp other" -- "${cur}") )
+            COMPREPLY=( $(compgen -W "teams itrack rpm other" -- "${cur}") )
             ;;
     esac
 }

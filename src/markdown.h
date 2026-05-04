@@ -5,11 +5,11 @@
 #include <vector>
 #include <map>
 
-// In-memory representation of a parsed .projot/{RANP}.md file.
+// In-memory representation of a parsed .projot/{RPM}.md file.
 struct Project {
     // Header fields
     std::string name;
-    std::string ranp;
+    std::string rpm;
     std::string itrack;
     std::string app_id;
     std::string created;

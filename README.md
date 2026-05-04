@@ -30,9 +30,9 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 - Initialize a repo with app-level metadata (`init`) then start a project (`new`).
 - Track todos with created/completed dates and stable numeric IDs.
 - Append notes under each todo.
-- Store project metadata: RANP number, iTrack, project name, app ID, created date.
+- Store project metadata: RPM number, iTrack, project name, app ID, created date, last updated date.
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
-- Configurable Links section with Teams, iTrack, RANP, and other single-value URLs.
+- Configurable Links section with Teams, iTrack, RPM, and other single-value URLs.
 - List open, closed, or all todos.
 - Cross-platform (Linux + Windows).
 - C++ standard library only — no external dependencies.
@@ -49,15 +49,15 @@ projot init --app-id MyApp --github https://github.com/org/repo
 ```
 
 ### 2. Start a project
-Run when assigned a new RANP project:
+Run when assigned a new RPM project:
 ```
-projot new --ranp 12345 --name "Widget Redesign" --itrack 67890 --teams https://teams.microsoft.com/...
+projot new --rpm 12345 --name "Widget Redesign" --itrack 67890 --teams https://teams.microsoft.com/...
 ```
 
 ### 3. Work with todos
 ```
 # Add a todo
-projot add-todo --text "Validate index rebuild plan"
+projot add-todo "Validate index rebuild plan"
 
 # List open todos
 projot list
@@ -66,7 +66,7 @@ projot list
 projot complete --todo 1
 
 # Add a note to a todo
-projot add-note --todo 1 --text "Waiting on supervisor feedback"
+projot add-note --todo 1 "Waiting on supervisor feedback"
 ```
 
 ### 4. Manage URLs
@@ -86,7 +86,7 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 {repo_root}/
 └── .projot/
     ├── config          ← project configuration (key = value)
-    └── {RANP}.md       ← project notes file
+    └── {RPM}.md        ← project notes file
 ```
 
 ### Notes file example
@@ -94,15 +94,16 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 ```markdown
 # Project: Widget Redesign
 
-- RANP: 12345
+- RPM: 12345
 - iTrack: 67890
 - App ID: MyApp
 - Created: 2025-11-23
+- Last Updated: 2025-11-23
 
 ## Links
 - Teams: https://teams.microsoft.com/...
 - iTrack: https://itrack.example.com/67890
-- RANP: https://ranp.example.com/12345
+- RPM: https://rpm.example.com/12345
 
 ## GitHub
 - https://github.com/org/repo
@@ -138,11 +139,11 @@ blizzard = https://blizzard.example.com/project
 
 **Project-level** (set by `new`):
 ```
-ranp = 12345
+rpm = 12345
 name = Widget Redesign
 itrack = 67890
 date_format = YYYY-MM-DD
-links = teams, itrack, ranp
+links = teams, itrack, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
 ```
@@ -154,8 +155,8 @@ link.teams = https://teams.microsoft.com/...
 | Command | Description |
 |---|---|
 | `init` | Initialize projot for this repo (repo-level setup) |
-| `new` | Start a new RANP project in this repo |
-| `add-todo` | Append a todo |
+| `new` | Start a new RPM project in this repo |
+| `add-todo` | Append a todo (`projot add-todo "message"`) |
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
 | `complete` | Mark a todo completed (`--todo <ID>`) |
 | `add-note` | Add a note to a todo (`--todo <ID> --text "..."`) |

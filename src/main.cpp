@@ -15,7 +15,7 @@ static void print_usage() {
         "Usage: projot <subcommand> [options]\n\n"
         "Setup commands:\n"
         "  init          Initialize projot for this repository\n"
-        "  new           Start a new RANP project in this repository\n\n"
+        "  new           Start a new RPM project in this repository\n\n"
         "Project commands:\n"
         "  add-todo      Append a new todo\n"
         "  list          Show project summary and todos\n"
@@ -26,6 +26,7 @@ static void print_usage() {
         "  add-github    Add a GitHub URL\n"
         "  add-swagger   Add a Swagger URL\n"
         "  add-blizzard  Add a Blizzard URL\n"
+        "  add-azure     Add an Azure resource (subscription, key-vault, etc.)\n"
         "  render        Re-render the notes file and stage it\n\n"
         "Maintenance commands:\n"
         "  install-hook  Install the pre-commit git hook\n\n"
@@ -36,17 +37,18 @@ static void print_usage() {
 static const std::map<std::string, std::set<std::string>>& valid_flags() {
     static const std::map<std::string, std::set<std::string>> m{
         {"init",         {"app-id", "github", "swagger", "blizzard"}},
-        {"new",          {"ranp", "name", "itrack", "teams", "ranp-url",
+        {"new",          {"rpm", "name", "itrack", "teams", "rpm-url",
                           "itrack-url", "other", "no-hook"}},
-        {"add-todo",     {"text"}},
+        {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
         {"complete",     {"todo"}},
-        {"add-note",     {"todo", "text"}},
+        {"add-note",     {"todo"}},
         {"set-link",     {"key", "url"}},
         {"set-app-id",   {"app-id", "force"}},
         {"add-github",   {"url"}},
         {"add-swagger",  {"url"}},
         {"add-blizzard", {"url"}},
+        {"add-azure",    {"type", "name", "url"}},
         {"render",       {}},
         {"install-hook", {}},
     };
@@ -80,6 +82,7 @@ int main(int argc, char* argv[]) {
         {"add-github",   cmd_add_github},
         {"add-swagger",  cmd_add_swagger},
         {"add-blizzard", cmd_add_blizzard},
+        {"add-azure",    cmd_add_azure},
         {"render",       cmd_render},
         {"install-hook", cmd_install_hook},
     };
@@ -107,6 +110,13 @@ int main(int argc, char* argv[]) {
         // Reject stray non-flag tokens (e.g. single-dash flags)
         if (!args.unknown_flags.empty()) {
             std::cerr << "error: unknown flag '" << args.unknown_flags[0] << "'. "
+                      << "Run 'projot " << args.subcommand << " --help' for usage.\n";
+            return 1;
+        }
+        // Reject unexpected positional arguments for commands that don't use them.
+        static const std::set<std::string> positional_commands{"add-todo", "add-note"};
+        if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
+            std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";
             return 1;
         }

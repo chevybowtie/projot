@@ -15,5 +15,6 @@ int cmd_set_app_id(const Args& args);
 int cmd_add_github(const Args& args);
 int cmd_add_swagger(const Args& args);
 int cmd_add_blizzard(const Args& args);
+int cmd_add_azure(const Args& args);
 int cmd_render(const Args& args);
 int cmd_install_hook(const Args& args);
