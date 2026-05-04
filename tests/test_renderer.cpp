@@ -227,3 +227,76 @@ TEST_CASE("render_app_id_na") {
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "- App ID: N/A"));
 }
+
+// ── Azure section ─────────────────────────────────────────────────────────────
+
+TEST_CASE("render_azure_section_named_resource") {
+    auto cfg = make_base_config();
+    cfg.azure_subscription = {"MySub|https://portal.azure.com/sub"};
+    auto output = render_markdown(cfg, {});
+    CHECK(contains(output, "## Azure"));
+    CHECK(contains(output, "### Subscriptions"));
+    CHECK(contains(output, "[MySub](https://portal.azure.com/sub)"));
+}
+
+TEST_CASE("render_azure_section_url_only") {
+    auto cfg = make_base_config();
+    cfg.azure_private_dns = {"https://portal.azure.com/dns"};
+    auto output = render_markdown(cfg, {});
+    CHECK(contains(output, "### Private DNS Zones"));
+    CHECK(contains(output, "- https://portal.azure.com/dns"));
+}
+
+TEST_CASE("render_azure_all_types") {
+    auto cfg = make_base_config();
+    cfg.azure_subscription    = {"sub|https://a.com"};
+    cfg.azure_key_vault       = {"kv|https://b.com"};
+    cfg.azure_resource_group  = {"rg|https://c.com"};
+    cfg.azure_aks             = {"aks|https://d.com"};
+    cfg.azure_log_analytics   = {"ws|https://e.com"};
+    cfg.azure_storage         = {"sa|https://f.com"};
+    cfg.azure_private_dns     = {"https://g.com"};
+    auto output = render_markdown(cfg, {});
+    CHECK(contains(output, "### Subscriptions"));
+    CHECK(contains(output, "### Key Vaults"));
+    CHECK(contains(output, "### Resource Groups"));
+    CHECK(contains(output, "### AKS Clusters"));
+    CHECK(contains(output, "### Log Analytics"));
+    CHECK(contains(output, "### Storage Containers"));
+    CHECK(contains(output, "### Private DNS Zones"));
+}
+
+TEST_CASE("render_azure_absent_when_empty") {
+    auto cfg = make_base_config();
+    auto output = render_markdown(cfg, {});
+    CHECK_FALSE(contains(output, "## Azure"));
+}
+
+TEST_CASE("render_azure_section_order") {
+    auto cfg = make_base_config();
+    cfg.azure_subscription = {"sub|https://a.com"};
+    cfg.github = {"https://github.com/org/r"};
+    auto output = render_markdown(cfg, {});
+    auto github_pos = output.find("## GitHub");
+    auto azure_pos  = output.find("## Azure");
+    auto todos_pos  = output.find("## Todos");
+    CHECK(github_pos < azure_pos);
+    CHECK(azure_pos  < todos_pos);
+}
+
+TEST_CASE("render_azure_managed_comment_updated") {
+    auto cfg = make_base_config();
+    cfg.azure_aks = {"my-aks|https://portal.azure.com/aks"};
+    auto output = render_markdown(cfg, {});
+    CHECK(contains(output, "add-azure"));
+}
+
+TEST_CASE("render_azure_deduplicates") {
+    auto cfg = make_base_config();
+    cfg.azure_aks = {"cluster|https://portal.azure.com/aks", "cluster|https://portal.azure.com/aks"};
+    auto output = render_markdown(cfg, {});
+    std::size_t count = 0, pos = 0;
+    const std::string needle = "portal.azure.com/aks";
+    while ((pos = output.find(needle, pos)) != std::string::npos) { ++count; pos += needle.size(); }
+    CHECK(count == 1);
+}

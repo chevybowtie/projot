@@ -380,6 +380,119 @@ TEST_CASE("add_blizzard_deduplicates") {
     CHECK(cfg.blizzard.size() == 1);
 }
 
+// ── add-azure ─────────────────────────────────────────────────────────────────
+
+TEST_CASE("add_azure_subscription_named") {
+    TempRepo repo("add_azure_subscription_named");
+    repo.init(); repo.new_project("az1");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("subscription");
+    a.flags["name"].push_back("MySub");
+    a.flags["url"].push_back("https://portal.azure.com/sub");
+    CHECK(cmd_add_azure(a) == 0);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    REQUIRE(cfg.azure_subscription.size() == 1);
+    CHECK(cfg.azure_subscription[0] == "MySub|https://portal.azure.com/sub");
+}
+
+TEST_CASE("add_azure_private_dns_url_only") {
+    TempRepo repo("add_azure_private_dns_url_only");
+    repo.init(); repo.new_project("az2");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("private-dns");
+    a.flags["url"].push_back("https://portal.azure.com/dns");
+    CHECK(cmd_add_azure(a) == 0);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    REQUIRE(cfg.azure_private_dns.size() == 1);
+    CHECK(cfg.azure_private_dns[0] == "https://portal.azure.com/dns");
+}
+
+TEST_CASE("add_azure_deduplicates") {
+    TempRepo repo("add_azure_deduplicates");
+    repo.init(); repo.new_project("az3");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("aks");
+    a.flags["name"].push_back("my-aks");
+    a.flags["url"].push_back("https://portal.azure.com/aks");
+    cmd_add_azure(a);
+    cmd_add_azure(a);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.azure_aks.size() == 1);
+}
+
+TEST_CASE("add_azure_invalid_type_fails") {
+    TempRepo repo("add_azure_invalid_type_fails");
+    repo.init(); repo.new_project("az4");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("cosmos-db");
+    a.flags["url"].push_back("https://portal.azure.com/cosmos");
+    CHECK(cmd_add_azure(a) != 0);
+}
+
+TEST_CASE("add_azure_missing_url_fails") {
+    TempRepo repo("add_azure_missing_url_fails");
+    repo.init(); repo.new_project("az5");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("storage");
+    CHECK(cmd_add_azure(a) != 0);
+}
+
+TEST_CASE("add_azure_renders_notes_file") {
+    TempRepo repo("add_azure_renders_notes_file");
+    repo.init(); repo.new_project("az6");
+    Args a;
+    a.subcommand = "add-azure";
+    a.flags["type"].push_back("key-vault");
+    a.flags["name"].push_back("my-kv");
+    a.flags["url"].push_back("https://portal.azure.com/kv");
+    cmd_add_azure(a);
+    // Check that the notes file was re-rendered and includes the Azure section
+    std::ifstream f((repo.path / ".projot" / "az6.md").string());
+    std::string content((std::istreambuf_iterator<char>(f)), {});
+    CHECK(content.find("## Azure") != std::string::npos);
+    CHECK(content.find("[my-kv](https://portal.azure.com/kv)") != std::string::npos);
+}
+
+TEST_CASE("add_azure_multiple_of_same_type") {
+    // Verify that two different subscriptions (PROD + NPRD) are both stored.
+    TempRepo repo("add_azure_multiple_of_same_type");
+    repo.init(); repo.new_project("az7");
+
+    Args a_prod;
+    a_prod.subcommand = "add-azure";
+    a_prod.flags["type"].push_back("subscription");
+    a_prod.flags["name"].push_back("PROD");
+    a_prod.flags["url"].push_back("https://portal.azure.com/subscriptions/prod-id");
+    CHECK(cmd_add_azure(a_prod) == 0);
+
+    Args a_nprd;
+    a_nprd.subcommand = "add-azure";
+    a_nprd.flags["type"].push_back("subscription");
+    a_nprd.flags["name"].push_back("NPRD");
+    a_nprd.flags["url"].push_back("https://portal.azure.com/subscriptions/nprd-id");
+    CHECK(cmd_add_azure(a_nprd) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    REQUIRE(cfg.azure_subscription.size() == 2);
+    CHECK(cfg.azure_subscription[0] == "PROD|https://portal.azure.com/subscriptions/prod-id");
+    CHECK(cfg.azure_subscription[1] == "NPRD|https://portal.azure.com/subscriptions/nprd-id");
+
+    // Confirm both appear in the rendered notes file
+    std::ifstream f((repo.path / ".projot" / "az7.md").string());
+    std::string content((std::istreambuf_iterator<char>(f)), {});
+    CHECK(content.find("[PROD](https://portal.azure.com/subscriptions/prod-id)") != std::string::npos);
+    CHECK(content.find("[NPRD](https://portal.azure.com/subscriptions/nprd-id)") != std::string::npos);
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 TEST_CASE("render_updates_file") {

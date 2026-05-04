@@ -26,6 +26,7 @@ static void print_usage() {
         "  add-github    Add a GitHub URL\n"
         "  add-swagger   Add a Swagger URL\n"
         "  add-blizzard  Add a Blizzard URL\n"
+        "  add-azure     Add an Azure resource (subscription, key-vault, etc.)\n"
         "  render        Re-render the notes file and stage it\n\n"
         "Maintenance commands:\n"
         "  install-hook  Install the pre-commit git hook\n\n"
@@ -47,6 +48,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"add-github",   {"url"}},
         {"add-swagger",  {"url"}},
         {"add-blizzard", {"url"}},
+        {"add-azure",    {"type", "name", "url"}},
         {"render",       {}},
         {"install-hook", {}},
     };
@@ -80,6 +82,7 @@ int main(int argc, char* argv[]) {
         {"add-github",   cmd_add_github},
         {"add-swagger",  cmd_add_swagger},
         {"add-blizzard", cmd_add_blizzard},
+        {"add-azure",    cmd_add_azure},
         {"render",       cmd_render},
         {"install-hook", cmd_install_hook},
     };

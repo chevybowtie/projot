@@ -46,9 +46,26 @@ static std::vector<std::string> dedup(const std::vector<std::string>& v) {
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
 
+// ── Azure entry helpers ──────────────────────────────────────────────────────
+
+AzureEntry parse_azure_entry(const std::string& s) {
+    const auto pipe = s.find('|');
+    if (pipe == std::string::npos) return {"", trim(s)};
+    return {trim(s.substr(0, pipe)), trim(s.substr(pipe + 1))};
+}
+
+std::string format_azure_entry(const AzureEntry& e) {
+    if (e.name.empty()) return e.url;
+    return e.name + "|" + e.url;
+}
+
 // List keys whose values are comma-separated lists.
 static bool is_list_key(const std::string& key) {
-    return key == "github" || key == "swagger" || key == "blizzard" || key == "links";
+    return key == "github" || key == "swagger" || key == "blizzard" || key == "links" ||
+           key == "azure_subscription" || key == "azure_key_vault" ||
+           key == "azure_resource_group" || key == "azure_aks" ||
+           key == "azure_log_analytics" || key == "azure_storage" ||
+           key == "azure_private_dns";
 }
 
 ParseResult parse_config(const std::string& path, Config& out) {
@@ -92,10 +109,17 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.created = value;
         } else if (is_list_key(key)) {
             auto items = split_list(value);
-            if (key == "github")   out.github  = items;
-            else if (key == "swagger")  out.swagger = items;
-            else if (key == "blizzard") out.blizzard = items;
-            else if (key == "links")    out.links    = items;
+            if (key == "github")                out.github                = items;
+            else if (key == "swagger")          out.swagger               = items;
+            else if (key == "blizzard")         out.blizzard              = items;
+            else if (key == "links")            out.links                 = items;
+            else if (key == "azure_subscription")   out.azure_subscription   = items;
+            else if (key == "azure_key_vault")      out.azure_key_vault      = items;
+            else if (key == "azure_resource_group") out.azure_resource_group = items;
+            else if (key == "azure_aks")            out.azure_aks            = items;
+            else if (key == "azure_log_analytics")  out.azure_log_analytics  = items;
+            else if (key == "azure_storage")        out.azure_storage        = items;
+            else if (key == "azure_private_dns")    out.azure_private_dns    = items;
         } else if (key.rfind("label.", 0) == 0) {
             out.labels[key.substr(6)] = value;
         } else if (key.rfind("link.", 0) == 0) {
@@ -189,6 +213,31 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
         if (std::find(written_links.begin(), written_links.end(), k) == written_links.end()) {
             file << "link." << k << " = " << v << "\n";
         }
+    }
+
+    // Azure resource fields (project-level)
+    bool has_azure = !cfg.azure_subscription.empty() || !cfg.azure_key_vault.empty() ||
+                     !cfg.azure_resource_group.empty() || !cfg.azure_aks.empty() ||
+                     !cfg.azure_log_analytics.empty() || !cfg.azure_storage.empty() ||
+                     !cfg.azure_private_dns.empty();
+    if (has_azure) {
+        file << "\n";
+        file << "# --- Azure resources ---\n";
+        file << "\n";
+        if (!cfg.azure_subscription.empty())
+            write_list("azure_subscription", cfg.azure_subscription);
+        if (!cfg.azure_key_vault.empty())
+            write_list("azure_key_vault", cfg.azure_key_vault);
+        if (!cfg.azure_resource_group.empty())
+            write_list("azure_resource_group", cfg.azure_resource_group);
+        if (!cfg.azure_aks.empty())
+            write_list("azure_aks", cfg.azure_aks);
+        if (!cfg.azure_log_analytics.empty())
+            write_list("azure_log_analytics", cfg.azure_log_analytics);
+        if (!cfg.azure_storage.empty())
+            write_list("azure_storage", cfg.azure_storage);
+        if (!cfg.azure_private_dns.empty())
+            write_list("azure_private_dns", cfg.azure_private_dns);
     }
 
     return {true, ""};
