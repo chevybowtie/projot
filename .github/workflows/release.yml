@@ -70,12 +70,30 @@ jobs:
         if: runner.os == 'Linux' && matrix.compiler == 'gcc'
         run: strip build/projot
 
+      - name: Pack Chocolatey package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          New-Item -Force -ItemType Directory dist | Out-Null
+          Copy-Item build\Release\projot.exe choco\tools\projot.exe
+          Copy-Item completions\projot.ps1   choco\tools\projot.ps1
+          choco pack choco\projot.nuspec --version $version --out dist\
+
       - name: Upload binary artifact
         if: matrix.artifact != ''
         uses: actions/upload-artifact@v4.3.6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.binary }}
+          if-no-files-found: error
+
+      - name: Upload Chocolatey package
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4.3.6
+        with:
+          name: projot-choco
+          path: dist\projot.*.nupkg
           if-no-files-found: error
 
   release:
@@ -99,6 +117,12 @@ jobs:
         uses: actions/download-artifact@v4.1.7
         with:
           name: projot-windows-x86_64.exe
+          path: dist/
+
+      - name: Download Chocolatey package
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: projot-choco
           path: dist/
 
       - name: Rename binaries
@@ -131,6 +155,7 @@ jobs:
           files: |
             dist/projot-linux-x86_64
             dist/projot-windows-x86_64.exe
+            dist/projot*.nupkg
             dist/projot_*.deb
             dist/projot-*-linux-x86_64.tar.gz
             completions/projot.bash

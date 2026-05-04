@@ -247,10 +247,24 @@ sudo cp -r share/* /usr/local/share/
 
 #### Windows
 
+**Option 1: Chocolatey package (recommended)**
+
+If you have [Chocolatey](https://chocolatey.org/) installed:
+
+```sh
+# Download the .nupkg from GitHub Releases, then install
+choco install projot.*.nupkg --source .
+```
+
+This installs the binary and enables PowerShell tab completion automatically.
+
+**Option 2: Manual binary**
+
 1. Download `projot-windows-x86_64.exe` from the release page.
 2. Rename it to `projot.exe` and move it to a directory on your `PATH`  
    (e.g. `C:\Users\<you>\AppData\Local\Programs\projot\`).
 3. Add that directory to `PATH` via **System Properties → Environment Variables**.
+4. For PowerShell completions, see the [Shell completion](#shell-completion-optional) section below.
 
 ### Shell completion (optional)
 
@@ -267,7 +281,7 @@ Download the completion script for your shell from the release page:
 | Bash | `projot.bash` | `~/.local/share/bash-completion/completions/projot` |
 | Zsh | `_projot` | `~/.zsh/completions/_projot` (must be on `$fpath`) |
 | Fish | `projot.fish` | `~/.config/fish/completions/projot.fish` |
-| PowerShell | `projot.ps1` | Dot-source from `$PROFILE` |
+| PowerShell | `projot.ps1` | Download and dot-source from `$PROFILE` |
 
 Restart your shell after installing.
 
