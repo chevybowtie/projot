@@ -12,6 +12,11 @@
 #include <filesystem>
 #include <algorithm>
 #include <cstdlib>   // std::system — required for `git add` (no std alternative)
+#include <optional>
+
+#ifdef __APPLE__
+#  include <mach-o/dyld.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -152,6 +157,101 @@ static bool install_hook_impl(const fs::path& repo_root,
     return true;
 }
 
+// ── MCP helpers ───────────────────────────────────────────────────────────────
+
+// Returns the path to the directory containing the running binary, or nullopt.
+static std::optional<fs::path> binary_dir() {
+#if defined(__linux__)
+    std::error_code ec;
+    fs::path exe = fs::read_symlink("/proc/self/exe", ec);
+    if (!ec) return exe.parent_path();
+#elif defined(__APPLE__)
+    // Query required buffer size first, then allocate.
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+    std::string buf(size, '\0');
+    if (_NSGetExecutablePath(buf.data(), &size) == 0) {
+        std::error_code ec;
+        fs::path exe = fs::canonical(buf.c_str(), ec);
+        if (!ec) return exe.parent_path();
+    }
+#endif
+    return std::nullopt;
+}
+
+// Searches for the bundled MCP directory relative to the binary location.
+// Checks:
+//   <bin_dir>/../mcp/                (source-tree or single-dir install)
+//   <bin_dir>/../share/projot/mcp/   (standard install prefix layout)
+static std::optional<fs::path> find_mcp_source_dir() {
+    auto dir = binary_dir();
+    if (!dir) return std::nullopt;
+
+    for (const fs::path& raw : {
+            *dir / ".." / "mcp",
+            *dir / ".." / "share" / "projot" / "mcp"}) {
+        std::error_code ec;
+        fs::path candidate = fs::weakly_canonical(raw, ec);
+        if (!ec && fs::exists(candidate / "server.js", ec))
+            return candidate;
+    }
+    return std::nullopt;
+}
+
+// Copies the MCP server files into <repo_root>/mcp/ and writes
+// .vscode/mcp.json if it does not already exist.
+// Returns false and sets `error` on failure.
+static bool setup_mcp(const fs::path& repo_root, std::string& error) {
+    auto mcp_src = find_mcp_source_dir();
+    if (!mcp_src) {
+        // Non-fatal: warn and continue.
+        std::cerr << "warning: MCP server source files not found; skipping MCP setup.\n"
+                  << "         Pass --no-mcp to suppress this warning.\n";
+        return true;
+    }
+
+    // Copy mcp/ files into the project.
+    fs::path mcp_dest = repo_root / "mcp";
+    std::error_code ec;
+    fs::create_directories(mcp_dest, ec);
+    if (ec) { error = "cannot create mcp/: " + ec.message(); return false; }
+
+    for (const char* fname : {"server.js", "package.json"}) {
+        fs::path src_file = *mcp_src / fname;
+        if (!fs::exists(src_file, ec)) {
+            std::cerr << "warning: expected MCP file not found: " << src_file.string() << "\n";
+            continue;
+        }
+        fs::copy_file(src_file, mcp_dest / fname,
+                      fs::copy_options::overwrite_existing, ec);
+        if (ec) { error = std::string("cannot copy ") + fname + ": " + ec.message(); return false; }
+    }
+
+    // Create .vscode/mcp.json (skip if already present).
+    fs::path vscode_dir = repo_root / ".vscode";
+    fs::create_directories(vscode_dir, ec);
+    if (ec) { error = "cannot create .vscode/: " + ec.message(); return false; }
+
+    fs::path mcp_json = vscode_dir / "mcp.json";
+    if (!fs::exists(mcp_json, ec)) {
+        std::ofstream f(mcp_json);
+        if (!f.is_open()) { error = "cannot write .vscode/mcp.json"; return false; }
+        f << "{\n"
+          << "  \"inputs\": [],\n"
+          << "  \"servers\": {\n"
+          << "    \"projot\": {\n"
+          << "      \"type\": \"stdio\",\n"
+          << "      \"command\": \"node\",\n"
+          << "      \"args\": [\"./mcp/server.js\"]\n"
+          << "    }\n"
+          << "  }\n"
+          << "}\n";
+    }
+
+    std::cout << "MCP server copied to mcp/ and VSCode configured in .vscode/mcp.json\n";
+    return true;
+}
+
 // ── init ──────────────────────────────────────────────────────────────────────
 
 int cmd_init(const Args& args) {
@@ -164,7 +264,8 @@ int cmd_init(const Args& args) {
             "Optional:\n"
             "  --github <URL>      Add a GitHub URL (repeatable)\n"
             "  --swagger <URL>     Add a Swagger URL (repeatable)\n"
-            "  --blizzard <URL>    Add a Blizzard URL (repeatable)\n\n"
+            "  --blizzard <URL>    Add a Blizzard URL (repeatable)\n"
+            "  --no-mcp            Skip MCP server setup and VSCode configuration\n\n"
             "Example:\n"
             "  projot init --app-id MyApp --github https://github.com/org/repo\n";
         return 0;
@@ -199,6 +300,15 @@ int cmd_init(const Args& args) {
 
     std::cout << "Initialized projot for " << cfg.app_id
               << " in " << projot_dir.string() << "\n";
+
+    if (!args.has("no-mcp")) {
+        std::string mcp_error;
+        if (!setup_mcp(*root, mcp_error)) {
+            std::cerr << "error: MCP setup failed: " << mcp_error << "\n";
+            return 1;
+        }
+    }
+
     return 0;
 }
 
