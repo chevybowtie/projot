@@ -35,6 +35,8 @@ add_executable(projot src/main.cpp)
 target_link_libraries(projot PRIVATE projot_core)
 
 install(TARGETS projot RUNTIME DESTINATION bin)
+install(FILES mcp/server.js mcp/package.json
+        DESTINATION share/projot/mcp)
 
 # Shell completions
 install(FILES completions/projot.bash
