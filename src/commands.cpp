@@ -166,11 +166,13 @@ static std::optional<fs::path> binary_dir() {
     fs::path exe = fs::read_symlink("/proc/self/exe", ec);
     if (!ec) return exe.parent_path();
 #elif defined(__APPLE__)
-    char buf[4096];
-    uint32_t size = static_cast<uint32_t>(sizeof(buf));
-    if (_NSGetExecutablePath(buf, &size) == 0) {
+    // Query required buffer size first, then allocate.
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+    std::string buf(size, '\0');
+    if (_NSGetExecutablePath(buf.data(), &size) == 0) {
         std::error_code ec;
-        fs::path exe = fs::canonical(buf, ec);
+        fs::path exe = fs::canonical(buf.c_str(), ec);
         if (!ec) return exe.parent_path();
     }
 #endif
@@ -179,18 +181,19 @@ static std::optional<fs::path> binary_dir() {
 
 // Searches for the bundled MCP directory relative to the binary location.
 // Checks:
-//   <bin_dir>/../mcp/          (source-tree or single-dir install)
-//   <bin_dir>/../share/projot/mcp/  (standard install prefix layout)
+//   <bin_dir>/../mcp/                (source-tree or single-dir install)
+//   <bin_dir>/../share/projot/mcp/   (standard install prefix layout)
 static std::optional<fs::path> find_mcp_source_dir() {
     auto dir = binary_dir();
     if (!dir) return std::nullopt;
 
-    for (const fs::path& candidate : {
+    for (const fs::path& raw : {
             *dir / ".." / "mcp",
             *dir / ".." / "share" / "projot" / "mcp"}) {
         std::error_code ec;
-        if (fs::exists(candidate / "server.js", ec))
-            return fs::canonical(candidate, ec);
+        fs::path candidate = fs::weakly_canonical(raw, ec);
+        if (!ec && fs::exists(candidate / "server.js", ec))
+            return candidate;
     }
     return std::nullopt;
 }
@@ -215,7 +218,10 @@ static bool setup_mcp(const fs::path& repo_root, std::string& error) {
 
     for (const char* fname : {"server.js", "package.json"}) {
         fs::path src_file = *mcp_src / fname;
-        if (!fs::exists(src_file, ec)) continue;
+        if (!fs::exists(src_file, ec)) {
+            std::cerr << "warning: expected MCP file not found: " << src_file.string() << "\n";
+            continue;
+        }
         fs::copy_file(src_file, mcp_dest / fname,
                       fs::copy_options::overwrite_existing, ec);
         if (ec) { error = std::string("cannot copy ") + fname + ": " + ec.message(); return false; }
