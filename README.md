@@ -66,7 +66,7 @@ projot list
 projot complete --todo 1
 
 # Add a note to a todo
-projot add-note --todo 1 --text "Waiting on supervisor feedback"
+projot add-note --todo 1 "Waiting on supervisor feedback"
 ```
 
 ### 4. Manage URLs
