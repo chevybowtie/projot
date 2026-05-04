@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "config.h"
+#include "user_config.h"
 #include "repo.h"
 #include "todo.h"
 #include "markdown.h"
@@ -239,23 +240,54 @@ int cmd_new(const Args& args) {
         return 1;
     }
 
+    UserConfig ucfg = load_user_config();
+
     ctx.config.ranp    = args.get("ranp");
     ctx.config.name    = args.get("name");
     ctx.config.itrack  = args.get("itrack");
     ctx.config.created = date_today();
 
-    // Build links list from provided optional flags
-    struct LinkDef { std::string key, label, flag; };
+    // Build links list from provided optional flags, then fall back to base URLs from
+    // user config for rpm and itrack when explicit URLs were not supplied.
+    struct LinkDef { std::string key, label, flag, base_url_key, id_value; };
     for (const auto& ld : std::vector<LinkDef>{
-            {"teams",  "Teams",  "teams"},
-            {"itrack", "iTrack", "itrack-url"},
-            {"ranp",   "RANP",   "ranp-url"},
-            {"other",  "Other",  "other"},
+            {"teams",  "Teams",  "teams",      "",       ""},
+            {"itrack", "iTrack", "itrack-url", "itrack", ctx.config.itrack},
+            {"ranp",   "RANP",   "ranp-url",   "rpm",    ctx.config.ranp},
+            {"other",  "Other",  "other",      "",       ""},
         }) {
+        std::string url;
         if (args.has(ld.flag)) {
-            ctx.config.links.push_back(ld.key);
+            url = args.get(ld.flag);
+        } else if (!ld.base_url_key.empty()) {
+            // Auto-populate from user config base URL if configured
+            auto it = ucfg.base_urls.find(ld.base_url_key);
+            if (it != ucfg.base_urls.end() && !it->second.empty() && !ld.id_value.empty()) {
+                url = it->second + ld.id_value;
+            }
+        }
+        if (!url.empty()) {
+            if (std::find(ctx.config.links.begin(), ctx.config.links.end(), ld.key)
+                    == ctx.config.links.end()) {
+                ctx.config.links.push_back(ld.key);
+            }
             ctx.config.labels[ld.key]    = ld.label;
-            ctx.config.link_urls[ld.key] = args.get(ld.flag);
+            ctx.config.link_urls[ld.key] = url;
+        }
+    }
+
+    // Auto-populate AppDB link from user config base URL + app_id, if not already set
+    {
+        auto it = ucfg.base_urls.find("appdb");
+        if (it != ucfg.base_urls.end() && !it->second.empty() && !ctx.config.app_id.empty()) {
+            if (ctx.config.link_urls.find("appdb") == ctx.config.link_urls.end()) {
+                if (std::find(ctx.config.links.begin(), ctx.config.links.end(), "appdb")
+                        == ctx.config.links.end()) {
+                    ctx.config.links.push_back("appdb");
+                }
+                ctx.config.labels["appdb"]    = "AppDB";
+                ctx.config.link_urls["appdb"] = it->second + ctx.config.app_id;
+            }
         }
     }
 
@@ -268,7 +300,8 @@ int cmd_new(const Args& args) {
     std::cout << "Created project " << ctx.config.name
               << " (RANP " << ctx.config.ranp << ")\n";
 
-    if (!args.has("no-hook")) {
+    // Install hook unless --no-hook was passed or user config disables it globally.
+    if (!args.has("no-hook") && ucfg.install_hooks) {
         bool appended = false;
         std::string hook_error;
         if (!install_hook_impl(ctx.repo_root, appended, hook_error)) {
@@ -680,5 +713,96 @@ int cmd_install_hook(const Args& args) {
         std::cout << "Installed pre-commit hook at "
                   << (*root / ".git" / "hooks" / "pre-commit").string() << "\n";
     }
+    return 0;
+}
+
+// ── config ────────────────────────────────────────────────────────────────────
+
+int cmd_config(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot config [options]\n\n"
+            "View or update the per-user (global) projot configuration.\n"
+            "Config is stored at the platform-standard location:\n"
+            "  Linux/macOS: $XDG_CONFIG_HOME/projot/config  (~/.config/projot/config)\n"
+            "  Windows:     %APPDATA%\\projot\\config\n\n"
+            "Base URL options (project number/ID is appended to form the full link URL):\n"
+            "  --base-url-rpm <URL>      Base URL for RPM (RANP) links\n"
+            "  --base-url-itrack <URL>   Base URL for iTrack links\n"
+            "  --base-url-github <URL>   Base URL for GitHub links\n"
+            "  --base-url-appdb <URL>    Base URL for AppDB links\n\n"
+            "Toggle options:\n"
+            "  --use-mcp <true|false>      Enable/disable MCP server use (default: true)\n"
+            "  --install-hooks <true|false> Enable/disable git hook installation on 'new' (default: true)\n\n"
+            "With no options, displays the current configuration.\n\n"
+            "Examples:\n"
+            "  projot config\n"
+            "  projot config --base-url-itrack https://itrack.com/browse/\n"
+            "  projot config --install-hooks false\n"
+            "  projot config --use-mcp false\n";
+        return 0;
+    }
+
+    const std::string path = get_user_config_path();
+    if (path.empty()) {
+        std::cerr << "error: cannot determine user config path "
+                     "(HOME or APPDATA environment variable not set).\n";
+        return 1;
+    }
+
+    UserConfig cfg = load_user_config();
+
+    bool modified = false;
+
+    auto set_bool = [](const std::string& v) -> bool {
+        return (v == "true" || v == "1" || v == "yes");
+    };
+
+    if (args.has("base-url-rpm")) {
+        cfg.base_urls["rpm"] = args.get("base-url-rpm");
+        modified = true;
+    }
+    if (args.has("base-url-itrack")) {
+        cfg.base_urls["itrack"] = args.get("base-url-itrack");
+        modified = true;
+    }
+    if (args.has("base-url-github")) {
+        cfg.base_urls["github"] = args.get("base-url-github");
+        modified = true;
+    }
+    if (args.has("base-url-appdb")) {
+        cfg.base_urls["appdb"] = args.get("base-url-appdb");
+        modified = true;
+    }
+    if (args.has("use-mcp")) {
+        cfg.use_mcp = set_bool(args.get("use-mcp"));
+        modified = true;
+    }
+    if (args.has("install-hooks")) {
+        cfg.install_hooks = set_bool(args.get("install-hooks"));
+        modified = true;
+    }
+
+    if (modified) {
+        auto result = write_user_config(path, cfg);
+        if (!result.ok) {
+            std::cerr << "error: " << result.error << "\n";
+            return 1;
+        }
+        std::cout << "User config saved to " << path << "\n";
+    } else {
+        // Display current configuration
+        std::cout << "User config: " << path << "\n\n";
+        const std::vector<std::string> known_keys = {"rpm", "itrack", "github", "appdb"};
+        for (const auto& k : known_keys) {
+            auto it = cfg.base_urls.find(k);
+            std::cout << "base_url." << k << " = "
+                      << (it != cfg.base_urls.end() && !it->second.empty()
+                              ? it->second : "(not set)") << "\n";
+        }
+        std::cout << "use_mcp = "       << (cfg.use_mcp       ? "true" : "false") << "\n";
+        std::cout << "install_hooks = " << (cfg.install_hooks ? "true" : "false") << "\n";
+    }
+
     return 0;
 }

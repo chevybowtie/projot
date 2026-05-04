@@ -19,6 +19,7 @@ endif()
 # ── Core library (shared by main binary and tests) ──────────────────────────
 set(CORE_SOURCES
     src/config.cpp
+    src/user_config.cpp
     src/repo.cpp
     src/todo.cpp
     src/markdown.cpp
@@ -41,6 +42,7 @@ enable_testing()
 
 set(TEST_SOURCES
     tests/test_config.cpp
+    tests/test_user_config.cpp
     tests/test_repo_discovery.cpp
     tests/test_markdown_parser.cpp
     tests/test_renderer.cpp

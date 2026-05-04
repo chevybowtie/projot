@@ -28,7 +28,8 @@ static void print_usage() {
         "  add-blizzard  Add a Blizzard URL\n"
         "  render        Re-render the notes file and stage it\n\n"
         "Maintenance commands:\n"
-        "  install-hook  Install the pre-commit git hook\n\n"
+        "  install-hook  Install the pre-commit git hook\n"
+        "  config        View or update per-user (global) configuration\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -49,6 +50,8 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"add-blizzard", {"url"}},
         {"render",       {}},
         {"install-hook", {}},
+        {"config",       {"base-url-rpm", "base-url-itrack", "base-url-github",
+                          "base-url-appdb", "use-mcp", "install-hooks"}},
     };
     return m;
 }
@@ -82,6 +85,7 @@ int main(int argc, char* argv[]) {
         {"add-blizzard", cmd_add_blizzard},
         {"render",       cmd_render},
         {"install-hook", cmd_install_hook},
+        {"config",       cmd_config},
     };
 
     auto cmd_it = commands.find(args.subcommand);
