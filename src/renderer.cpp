@@ -45,10 +45,14 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     out << "\n";
 
     // ── Managed sections comment ─────────────────────────────────────────────
-    bool has_managed = !cfg.github.empty() || !cfg.swagger.empty() || !cfg.blizzard.empty();
+    bool has_managed = !cfg.github.empty() || !cfg.swagger.empty() || !cfg.blizzard.empty() ||
+                       !cfg.azure_subscription.empty() || !cfg.azure_key_vault.empty() ||
+                       !cfg.azure_resource_group.empty() || !cfg.azure_aks.empty() ||
+                       !cfg.azure_log_analytics.empty() || !cfg.azure_storage.empty() ||
+                       !cfg.azure_private_dns.empty();
     if (has_managed) {
         out << "<!-- projot-managed: do not hand-edit sections below; "
-               "use add-github/add-swagger/add-blizzard -->\n";
+               "use add-github/add-swagger/add-blizzard/add-azure -->\n";
         out << "\n";
     }
 
@@ -74,6 +78,43 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "## Blizzard\n";
         for (const auto& url : blizzard) out << "- " << url << "\n";
         out << "\n";
+    }
+
+    // ── Azure ─────────────────────────────────────────────────────────────────
+    struct AzureSection { const char* heading; const std::vector<std::string>& entries; };
+    const AzureSection azure_sections[] = {
+        {"Subscriptions",      cfg.azure_subscription},
+        {"Key Vaults",         cfg.azure_key_vault},
+        {"Resource Groups",    cfg.azure_resource_group},
+        {"AKS Clusters",       cfg.azure_aks},
+        {"Log Analytics",      cfg.azure_log_analytics},
+        {"Storage Containers", cfg.azure_storage},
+        {"Private DNS Zones",  cfg.azure_private_dns},
+    };
+
+    bool any_azure = false;
+    for (const auto& sec : azure_sections) {
+        if (!sec.entries.empty()) { any_azure = true; break; }
+    }
+
+    if (any_azure) {
+        out << "## Azure\n";
+        out << "\n";
+        for (const auto& sec : azure_sections) {
+            const auto deduped = dedup_urls(sec.entries);
+            if (deduped.empty()) continue;
+            out << "### " << sec.heading << "\n";
+            for (const auto& raw : deduped) {
+                AzureEntry e = parse_azure_entry(raw);
+                if (!e.name.empty() && !e.url.empty())
+                    out << "- [" << e.name << "](" << e.url << ")\n";
+                else if (!e.url.empty())
+                    out << "- " << e.url << "\n";
+                else if (!e.name.empty())
+                    out << "- " << e.name << "\n";
+            }
+            out << "\n";
+        }
     }
 
     // ── Todos ─────────────────────────────────────────────────────────────────

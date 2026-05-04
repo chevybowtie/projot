@@ -621,6 +621,93 @@ int cmd_add_github(const Args& args)   { return cmd_add_url(args, "github");   }
 int cmd_add_swagger(const Args& args)  { return cmd_add_url(args, "swagger");  }
 int cmd_add_blizzard(const Args& args) { return cmd_add_url(args, "blizzard"); }
 
+// ── add-azure ─────────────────────────────────────────────────────────────────
+
+struct AzureTypeDef {
+    const char* key;
+    const char* label;
+    std::vector<std::string> Config::* field;
+};
+
+static const AzureTypeDef AZURE_TYPES[] = {
+    {"subscription",   "Subscriptions",      &Config::azure_subscription},
+    {"key-vault",      "Key Vaults",         &Config::azure_key_vault},
+    {"resource-group", "Resource Groups",    &Config::azure_resource_group},
+    {"aks",            "AKS Clusters",       &Config::azure_aks},
+    {"log-analytics",  "Log Analytics",      &Config::azure_log_analytics},
+    {"storage",        "Storage Containers", &Config::azure_storage},
+    {"private-dns",    "Private DNS Zones",  &Config::azure_private_dns},
+};
+
+static const AzureTypeDef* find_azure_type(const std::string& key) {
+    for (const auto& t : AZURE_TYPES) {
+        if (t.key == key) return &t;
+    }
+    return nullptr;
+}
+
+int cmd_add_azure(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot add-azure --type <type> --url <URL> [--name <name>]\n\n"
+            "Add an Azure resource entry to the project config.\n\n"
+            "Required:\n"
+            "  --type <type>   Resource type. One of:\n"
+            "                    subscription, key-vault, resource-group,\n"
+            "                    aks, log-analytics, storage, private-dns\n"
+            "  --url <URL>     URL to the resource or feature in Azure portal\n\n"
+            "Optional:\n"
+            "  --name <name>   Human-readable resource name\n\n"
+            "Examples:\n"
+            "  projot add-azure --type subscription --name \"My Sub\" "
+                "--url https://portal.azure.com/...\n"
+            "  projot add-azure --type private-dns "
+                "--url https://portal.azure.com/...\n";
+        return 0;
+    }
+
+    if (!args.has("type") || !args.has("url")) {
+        std::cerr << "error: --type and --url are required. "
+                     "Run 'projot add-azure --help' for usage.\n";
+        return 1;
+    }
+
+    const std::string type_key = args.get("type");
+    const AzureTypeDef* tdef = find_azure_type(type_key);
+    if (!tdef) {
+        std::cerr << "error: unknown Azure resource type '" << type_key << "'. "
+                     "Valid types: subscription, key-vault, resource-group, "
+                     "aks, log-analytics, storage, private-dns\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    AzureEntry entry;
+    entry.name = args.get("name");
+    entry.url  = args.get("url");
+    const std::string raw = format_azure_entry(entry);
+
+    auto& list = ctx.config.*tdef->field;
+    if (std::find(list.begin(), list.end(), raw) != list.end()) {
+        std::cout << "Entry already present (skipped).\n";
+        return 0;
+    }
+    list.push_back(raw);
+
+    auto save = write_config(config_path_str(ctx), ctx.config);
+    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+
+    Project proj;
+    if (parse_markdown(notes_path_str(ctx), proj).ok)
+        render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+
+    std::cout << "Added Azure " << tdef->label << ": " << raw << "\n";
+    return 0;
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 int cmd_render(const Args& args) {
