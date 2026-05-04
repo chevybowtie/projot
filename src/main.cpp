@@ -42,7 +42,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
         {"complete",     {"todo"}},
-        {"add-note",     {"todo", "text"}},
+        {"add-note",     {"todo"}},
         {"set-link",     {"key", "url"}},
         {"set-app-id",   {"app-id", "force"}},
         {"add-github",   {"url"}},
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         // Reject unexpected positional arguments for commands that don't use them.
-        static const std::set<std::string> positional_commands{"add-todo"};
+        static const std::set<std::string> positional_commands{"add-todo", "add-note"};
         if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
             std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";

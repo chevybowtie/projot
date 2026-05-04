@@ -436,19 +436,30 @@ int cmd_complete(const Args& args) {
 int cmd_add_note(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot add-note --todo <ID> --text \"<note>\"\n\n"
+            "Usage: projot add-note --todo <ID> \"<note>\"\n\n"
             "Add a note to a todo.\n\n"
             "Required:\n"
-            "  --todo <ID>      Stable numeric todo ID\n"
-            "  --text \"<note>\"  Note text\n\n"
+            "  --todo <ID>    Stable numeric todo ID\n"
+            "  \"<note>\"       Note text\n\n"
             "Example:\n"
-            "  projot add-note --todo 1 --text \"Waiting on supervisor feedback\"\n";
+            "  projot add-note --todo 1 \"Waiting on supervisor feedback\"\n";
         return 0;
     }
 
-    if (!args.has("todo") || !args.has("text")) {
-        std::cerr << "error: --todo and --text are required. "
+    if (!args.has("todo")) {
+        std::cerr << "error: --todo is required. "
                      "Run 'projot add-note --help' for usage.\n";
+        return 1;
+    }
+
+    // Accept note text as a positional argument (primary form) or via legacy --text flag.
+    std::string text;
+    if (!args.positional.empty()) {
+        text = args.positional[0];
+    } else if (args.has("text")) {
+        text = args.get("text");
+    } else {
+        std::cerr << "error: note text is required. Run 'projot add-note --help' for usage.\n";
         return 1;
     }
 
@@ -474,7 +485,7 @@ int cmd_add_note(const Args& args) {
         return 1;
     }
 
-    auto result = add_note(proj.todos, id, args.get("text"));
+    auto result = add_note(proj.todos, id, text);
     if (result.warned) std::cerr << "warning: " << result.message << "\n";
 
     auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);

@@ -406,7 +406,7 @@ Add a note under a specific todo. Warns if the todo is already completed but pro
 
 Required:
 - `--todo <ID>`
-- `--text "<note>"`
+- `"<note>"` — note text as positional argument
 
 #### `set-link`
 Set or update a single-value link URL in `.projot/config`.
@@ -710,7 +710,7 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `list_shows_header` | Output includes project name, RPM, iTrack line |
 | `complete_marks_done` | `complete --todo 1` → re-parsed file shows `[x]`, `Completed:` date |
 | `complete_warns_if_already_done` | Re-completing → warning on stderr, exit 0, file unchanged |
-| `add_note_appends` | `add-note --todo 1 --text "note"` → note appears in re-parsed file |
+| `add_note_appends` | `add-note --todo 1 "note"` → note appears in re-parsed file |
 | `add_note_warns_if_closed` | `add-note` on closed todo → warning on stderr, note still written |
 | `set_link_new_key` | `set-link --key teams --url <url>` → `link.teams` written to config |
 | `set_link_update_key` | `set-link` on existing key → value replaced, not duplicated |
