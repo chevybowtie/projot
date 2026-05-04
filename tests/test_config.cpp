@@ -256,7 +256,7 @@ TEST_CASE("parse_azure_fields") {
 TEST_CASE("write_azure_round_trip") {
     Config orig;
     orig.app_id = "TestApp";
-    orig.ranp   = "99999";
+    orig.rpm   = "99999";
     orig.azure_subscription    = {"MySub|https://portal.azure.com/sub"};
     orig.azure_key_vault       = {"my-vault|https://portal.azure.com/kv"};
     orig.azure_resource_group  = {"my-rg|https://portal.azure.com/rg"};
