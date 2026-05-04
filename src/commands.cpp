@@ -650,7 +650,8 @@ int cmd_add_azure(const Args& args) {
     if (args.help_requested) {
         std::cout <<
             "Usage: projot add-azure --type <type> --url <URL> [--name <name>]\n\n"
-            "Add an Azure resource entry to the project config.\n\n"
+            "Add an Azure resource entry to the project config.\n"
+            "Run the command once per resource to build up a list.\n\n"
             "Required:\n"
             "  --type <type>   Resource type. One of:\n"
             "                    subscription, key-vault, resource-group,\n"
@@ -659,8 +660,12 @@ int cmd_add_azure(const Args& args) {
             "Optional:\n"
             "  --name <name>   Human-readable resource name\n\n"
             "Examples:\n"
-            "  projot add-azure --type subscription --name \"My Sub\" "
-                "--url https://portal.azure.com/...\n"
+            "  # Add two subscriptions (run once per subscription)\n"
+            "  projot add-azure --type subscription --name \"PROD\" "
+                "--url https://portal.azure.com/#@tenant/subscriptions/prod-id\n"
+            "  projot add-azure --type subscription --name \"NPRD\" "
+                "--url https://portal.azure.com/#@tenant/subscriptions/nprd-id\n\n"
+            "  # Add a general management link (no name needed)\n"
             "  projot add-azure --type private-dns "
                 "--url https://portal.azure.com/...\n";
         return 0;

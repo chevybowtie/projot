@@ -461,6 +461,38 @@ TEST_CASE("add_azure_renders_notes_file") {
     CHECK(content.find("[my-kv](https://portal.azure.com/kv)") != std::string::npos);
 }
 
+TEST_CASE("add_azure_multiple_of_same_type") {
+    // Verify that two different subscriptions (PROD + NPRD) are both stored.
+    TempRepo repo("add_azure_multiple_of_same_type");
+    repo.init(); repo.new_project("az7");
+
+    Args a_prod;
+    a_prod.subcommand = "add-azure";
+    a_prod.flags["type"].push_back("subscription");
+    a_prod.flags["name"].push_back("PROD");
+    a_prod.flags["url"].push_back("https://portal.azure.com/subscriptions/prod-id");
+    CHECK(cmd_add_azure(a_prod) == 0);
+
+    Args a_nprd;
+    a_nprd.subcommand = "add-azure";
+    a_nprd.flags["type"].push_back("subscription");
+    a_nprd.flags["name"].push_back("NPRD");
+    a_nprd.flags["url"].push_back("https://portal.azure.com/subscriptions/nprd-id");
+    CHECK(cmd_add_azure(a_nprd) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    REQUIRE(cfg.azure_subscription.size() == 2);
+    CHECK(cfg.azure_subscription[0] == "PROD|https://portal.azure.com/subscriptions/prod-id");
+    CHECK(cfg.azure_subscription[1] == "NPRD|https://portal.azure.com/subscriptions/nprd-id");
+
+    // Confirm both appear in the rendered notes file
+    std::ifstream f((repo.path / ".projot" / "az7.md").string());
+    std::string content((std::istreambuf_iterator<char>(f)), {});
+    CHECK(content.find("[PROD](https://portal.azure.com/subscriptions/prod-id)") != std::string::npos);
+    CHECK(content.find("[NPRD](https://portal.azure.com/subscriptions/nprd-id)") != std::string::npos);
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 TEST_CASE("render_updates_file") {
