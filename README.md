@@ -211,6 +211,18 @@ Download the latest release from the [GitHub Releases](../../releases/latest) pa
 
 #### Linux
 
+**Option 1: Debian package (recommended)**
+
+```sh
+# Download and install the .deb package
+wget https://github.com/ORG/projot/releases/latest/download/projot_*.deb
+sudo apt install ./projot_*.deb
+```
+
+This includes the binary and shell completions for bash, zsh, and fish.
+
+**Option 2: Binary only**
+
 ```sh
 # Download and install the binary
 curl -Lo projot https://github.com/ORG/projot/releases/latest/download/projot-linux-x86_64
@@ -219,6 +231,18 @@ sudo mv projot /usr/local/bin/
 
 # (Optional) verify the SHA-256 checksum printed on the release page
 sha256sum projot
+```
+
+For shell completions with this method, see the [Shell completion](#shell-completion-optional) section below.
+
+**Option 3: Tarball**
+
+```sh
+# Download the tarball (useful for non-Debian systems)
+wget https://github.com/ORG/projot/releases/latest/download/projot-*-linux-x86_64.tar.gz
+tar -xzf projot-*-linux-x86_64.tar.gz
+sudo cp -r bin/* /usr/local/bin/
+sudo cp -r share/* /usr/local/share/
 ```
 
 #### Windows
@@ -230,7 +254,13 @@ sha256sum projot
 
 ### Shell completion (optional)
 
-Download the completion script for your shell from the same release page:
+**Recommended: Install via package manager** (Linux)
+
+If you installed projot via the `.deb` package, shell completions are included automatically and enabled on your next shell restart. No additional steps needed.
+
+**Manual installation** (for non-packaged installs)
+
+Download the completion script for your shell from the release page:
 
 | Shell | File to download | Install path |
 |---|---|---|
