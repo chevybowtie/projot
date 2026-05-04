@@ -36,6 +36,19 @@ target_link_libraries(projot PRIVATE projot_core)
 
 install(TARGETS projot RUNTIME DESTINATION bin)
 
+# Shell completions
+install(FILES completions/projot.bash
+    DESTINATION share/bash-completion/completions
+    RENAME projot)
+install(FILES completions/_projot
+    DESTINATION share/zsh/vendor-completions)
+install(FILES completions/projot.fish
+    DESTINATION share/fish/vendor_completions.d)
+
+# Documentation
+install(FILES LICENSE README.md
+    DESTINATION share/doc/projot)
+
 # ── Tests ────────────────────────────────────────────────────────────────────
 enable_testing()
 

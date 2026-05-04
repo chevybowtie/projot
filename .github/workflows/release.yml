@@ -107,12 +107,32 @@ jobs:
           mv dist/projot.exe  dist/projot-windows-x86_64.exe
           chmod +x dist/projot-linux-x86_64
 
+      - name: Build for packaging
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: Install to staging directory
+        run: cmake --install build --prefix dist/staging
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          version="${{ github.ref_name }}"
+          version="${version#v}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Build .deb and tar.gz packages
+        run: bash scripts/package.sh --version "${{ steps.version.outputs.version }}" --prefix dist/staging --output-dir dist
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             dist/projot-linux-x86_64
             dist/projot-windows-x86_64.exe
+            dist/projot_*.deb
+            dist/projot-*-linux-x86_64.tar.gz
             completions/projot.bash
             completions/_projot
             completions/projot.fish
