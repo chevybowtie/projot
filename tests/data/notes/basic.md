@@ -8,7 +8,7 @@
 ## Links
 - Teams: https://teams.microsoft.com/channel
 - iTrack: https://itrack.example.com/67890
-- RPM: https://ranp.example.com/12345
+- RPM: https://rpm.example.com/12345
 
 ## Todos
 

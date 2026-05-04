@@ -112,6 +112,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
             } else if (starts_with(line, "- RPM: ")) {
                 out.rpm = trim(line.substr(7));
             } else if (starts_with(line, "- RANP: ")) {
+                // Legacy: accept old "RANP" label for backward compatibility with existing notes files.
                 out.rpm = trim(line.substr(8));
             } else if (starts_with(line, "- iTrack: ")) {
                 const auto v = trim(line.substr(10));
