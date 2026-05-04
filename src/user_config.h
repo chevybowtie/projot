@@ -5,6 +5,12 @@
 #include <string>
 #include <map>
 
+// Returns true when a config value string represents a truthy boolean
+// ("true", "1", or "yes"). Used by both parse_user_config and cmd_config.
+inline bool parse_bool_value(const std::string& v) {
+    return v == "true" || v == "1" || v == "yes";
+}
+
 // Per-user (global) configuration for projot.
 // Stored at a platform-standard location:
 //   Linux/macOS: $XDG_CONFIG_HOME/projot/config  (default: ~/.config/projot/config)

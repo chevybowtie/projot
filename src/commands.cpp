@@ -755,7 +755,7 @@ int cmd_config(const Args& args) {
     bool modified = false;
 
     auto set_bool = [](const std::string& v) -> bool {
-        return (v == "true" || v == "1" || v == "yes");
+        return parse_bool_value(v);
     };
 
     if (args.has("base-url-rpm")) {

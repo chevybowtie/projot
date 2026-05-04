@@ -52,9 +52,9 @@ ParseResult parse_user_config(const std::string& path, UserConfig& out) {
         if (key.rfind("base_url.", 0) == 0) {
             out.base_urls[key.substr(9)] = value;
         } else if (key == "use_mcp") {
-            out.use_mcp = (value == "true" || value == "1" || value == "yes");
+            out.use_mcp = parse_bool_value(value);
         } else if (key == "install_hooks") {
-            out.install_hooks = (value == "true" || value == "1" || value == "yes");
+            out.install_hooks = parse_bool_value(value);
         }
         // Unknown keys are silently ignored (future-proofing).
     }

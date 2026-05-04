@@ -201,6 +201,7 @@ struct TempHome {
         std::error_code ec;
         fs::remove_all(dir, ec);
         fs::create_directories(dir, ec);
+        REQUIRE_FALSE(ec);  // abort test if temp directory cannot be created
 
         const char* h = std::getenv("HOME");
         if (h) prev_home = h;
