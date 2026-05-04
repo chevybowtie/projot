@@ -57,7 +57,7 @@ TEST_CASE("missing_notes_file") {
     fs::create_directories(repo.path / ".projot");
     // Config has ranp but notes file doesn't exist
     std::ofstream cfg(repo.path / ".projot" / "config");
-    cfg << "config_version = 1\napp_id = App\nranp = 12345\nname = P\nitrack = 1\n";
+    cfg << "config_version = 1\napp_id = App\nrpm = 12345\nname = P\nitrack = 1\n";
     cfg.close();
     // .projot/12345.md does NOT exist
     CHECK(cmd_add_todo(make_err_args("add-todo", {{"text", "T"}})) != 0);
@@ -69,10 +69,10 @@ TEST_CASE("invalid_todo_id") {
     ErrorTempRepo repo("invalid_todo_id");
     fs::create_directories(repo.path / ".projot");
     std::ofstream cfg(repo.path / ".projot" / "config");
-    cfg << "config_version = 1\napp_id = App\nranp = 1\nname = P\nitrack = 1\n";
+    cfg << "config_version = 1\napp_id = App\nrpm = 1\nname = P\nitrack = 1\n";
     cfg.close();
     std::ofstream notes(repo.path / ".projot" / "1.md");
-    notes << "# Project: P\n- RANP: 1\n- iTrack: 1\n- App ID: App\n"
+    notes << "# Project: P\n- RPM: 1\n- iTrack: 1\n- App ID: App\n"
              "- Created: 2025-01-01\n\n## Links\n\n## Todos\n\n"
              "1. [ ] Only todo\n   - Created: 2025-01-01\n   - Notes:\n\n";
     notes.close();

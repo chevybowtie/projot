@@ -24,7 +24,7 @@ struct Config {
     std::vector<std::string> blizzard;
 
     // Project-level fields (set by `new`)
-    std::string ranp;
+    std::string rpm;
     std::string name;
     std::string itrack;
     std::string date_format;

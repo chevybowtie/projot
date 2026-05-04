@@ -38,13 +38,13 @@ struct TempRepo {
     }
 
     // Run new with required fields and return exit code.
-    int new_project(const std::string& ranp = "12345",
+    int new_project(const std::string& rpm = "12345",
                     const std::string& name = "Test Project",
                     const std::string& itrack = "67890",
                     bool no_hook = true) {
         Args a;
         a.subcommand = "new";
-        a.flags["ranp"].push_back(ranp);
+        a.flags["rpm"].push_back(rpm);
         a.flags["name"].push_back(name);
         a.flags["itrack"].push_back(itrack);
         if (no_hook) a.flags["no-hook"].push_back("true");
@@ -121,7 +121,7 @@ TEST_CASE("new_writes_project_fields") {
     repo.new_project("11111", "My Proj", "22222");
     Config cfg;
     parse_config((repo.path / ".projot" / "config").string(), cfg);
-    CHECK(cfg.ranp == "11111");
+    CHECK(cfg.rpm == "11111");
     CHECK(cfg.name == "My Proj");
     CHECK(cfg.itrack == "22222");
 }
@@ -140,7 +140,7 @@ TEST_CASE("new_notes_file_has_correct_header") {
     Project proj;
     parse_markdown((repo.path / ".projot" / "44444.md").string(), proj);
     CHECK(proj.name == "Widget Redesign");
-    CHECK(proj.ranp == "44444");
+    CHECK(proj.rpm == "44444");
 }
 
 TEST_CASE("new_with_teams_url") {
@@ -148,7 +148,7 @@ TEST_CASE("new_with_teams_url") {
     repo.init();
     Args a;
     a.subcommand = "new";
-    a.flags["ranp"].push_back("66666");
+    a.flags["rpm"].push_back("66666");
     a.flags["name"].push_back("T");
     a.flags["itrack"].push_back("1");
     a.flags["teams"].push_back("https://teams.microsoft.com/t");
@@ -159,8 +159,8 @@ TEST_CASE("new_with_teams_url") {
     CHECK(cfg.link_urls["teams"] == "https://teams.microsoft.com/t");
 }
 
-TEST_CASE("new_fails_if_ranp_set") {
-    TempRepo repo("new_fails_if_ranp_set");
+TEST_CASE("new_fails_if_rpm_set") {
+    TempRepo repo("new_fails_if_rpm_set");
     repo.init();
     repo.new_project("77777");
     int ret = repo.new_project("88888");
@@ -171,7 +171,7 @@ TEST_CASE("new_fails_without_required_flags") {
     TempRepo repo("new_fails_without_required_flags");
     repo.init();
     // Missing --itrack
-    Args a = make_args("new", {{"ranp", "1"}, {"name", "P"}});
+    Args a = make_args("new", {{"rpm", "1"}, {"name", "P"}});
     CHECK(cmd_new(a) != 0);
 }
 

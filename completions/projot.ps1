@@ -20,9 +20,9 @@ Register-ArgumentCompleter -Native -CommandName projot -ScriptBlock {
             $root = & git rev-parse --show-toplevel 2>$null
             if (-not $root) { return @() }
             $config = Join-Path $root '.projot\config'
-            $ranpLine = Get-Content $config -ErrorAction Stop | Where-Object { $_ -match '^ranp\s*=' } | Select-Object -First 1
-            $ranp = ($ranpLine -replace '^ranp\s*=\s*', '').Trim()
-            $notes = Join-Path $root ".projot\$ranp.md"
+            $rpmLine = Get-Content $config -ErrorAction Stop | Where-Object { $_ -match '^rpm\s*=' } | Select-Object -First 1
+            $rpm = ($rpmLine -replace '^rpm\s*=\s*', '').Trim()
+            $notes = Join-Path $root ".projot\$rpm.md"
             (Get-Content $notes -ErrorAction Stop) |
                 Where-Object { $_ -match '^\d+\. \[ \]' } |
                 ForEach-Object { ($_ -split '\.')[0] }
@@ -48,7 +48,7 @@ Register-ArgumentCompleter -Native -CommandName projot -ScriptBlock {
     }
 
     if ($prevToken -eq '--key') {
-        return @('teams', 'itrack', 'ranp', 'other') |
+        return @('teams', 'itrack', 'rpm', 'other') |
             Where-Object { $_ -like "$wordToComplete*" } |
             ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
     }
@@ -56,8 +56,8 @@ Register-ArgumentCompleter -Native -CommandName projot -ScriptBlock {
     # Flag completion per subcommand
     $flags = switch ($subcommand) {
         'init'         { @('--app-id', '--github', '--swagger', '--blizzard', '--help') }
-        'new'          { @('--ranp', '--name', '--itrack', '--teams', '--ranp-url', '--itrack-url', '--other', '--no-hook', '--help') }
-        'add-todo'     { @('--text', '--help') }
+        'new'          { @('--rpm', '--name', '--itrack', '--teams', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help') }
+        'add-todo'     { @('--help') }
         'list'         { @('--open', '--closed', '--all', '--help') }
         'complete'     { @('--todo', '--help') }
         'add-note'     { @('--todo', '--text', '--help') }

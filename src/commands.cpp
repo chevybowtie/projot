@@ -70,16 +70,16 @@ static std::string config_path_str(const Context& ctx) {
 }
 
 static std::string notes_path_str(const Context& ctx) {
-    return (ctx.repo_root / ".projot" / (ctx.config.ranp + ".md")).string();
+    return (ctx.repo_root / ".projot" / (ctx.config.rpm + ".md")).string();
 }
 
 // Verifies that a project is configured and the notes file exists.
 static bool require_project(const Context& ctx) {
-    if (ctx.config.ranp.empty()) {
+    if (ctx.config.rpm.empty()) {
         std::cerr << "error: no project configured. Run 'projot new' first.\n";
         return false;
     }
-    fs::path notes = ctx.repo_root / ".projot" / (ctx.config.ranp + ".md");
+    fs::path notes = ctx.repo_root / ".projot" / (ctx.config.rpm + ".md");
     if (!fs::exists(notes)) {
         std::cerr << "error: notes file " << notes.string()
                   << " not found. Run 'projot new' first.\n";
@@ -88,8 +88,8 @@ static bool require_project(const Context& ctx) {
     return true;
 }
 
-// Validate that RANP is safe to embed in a shell command.
-static bool is_safe_ranp(const std::string& s) {
+// Validate that RPM is safe to embed in a shell command.
+static bool is_safe_rpm(const std::string& s) {
     if (s.empty()) return false;
     for (char c : s) {
         if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_')
@@ -207,25 +207,25 @@ int cmd_init(const Args& args) {
 int cmd_new(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot new --ranp <RANP> --name \"<Name>\" --itrack <iTrack> [options]\n\n"
-            "Start a new RANP project in this repository.\n\n"
+            "Usage: projot new --rpm <RPM> --name \"<Name>\" --itrack <iTrack> [options]\n\n"
+            "Start a new RPM project in this repository.\n\n"
             "Required:\n"
-            "  --ranp <RANP>             RANP project number\n"
+            "  --rpm <RPM>               RPM project number\n"
             "  --name \"<Project Name>\"   Human-readable project name\n"
             "  --itrack <iTrack>         iTrack ticket number\n\n"
             "Optional:\n"
             "  --teams <URL>             Teams channel URL\n"
-            "  --ranp-url <URL>          RANP system link\n"
+            "  --rpm-url <URL>           RPM system link\n"
             "  --itrack-url <URL>        iTrack link\n"
             "  --other <URL>             Other URL\n"
             "  --no-hook                 Skip pre-commit hook installation\n\n"
             "Example:\n"
-            "  projot new --ranp 12345 --name \"Widget Redesign\" --itrack 67890\n";
+            "  projot new --rpm 12345 --name \"Widget Redesign\" --itrack 67890\n";
         return 0;
     }
 
-    if (!args.has("ranp") || !args.has("name") || !args.has("itrack")) {
-        std::cerr << "error: --ranp, --name, and --itrack are required. "
+    if (!args.has("rpm") || !args.has("name") || !args.has("itrack")) {
+        std::cerr << "error: --rpm, --name, and --itrack are required. "
                      "Run 'projot new --help' for usage.\n";
         return 1;
     }
@@ -233,13 +233,13 @@ int cmd_new(const Args& args) {
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
 
-    if (!ctx.config.ranp.empty()) {
-        std::cerr << "error: a project (RANP " << ctx.config.ranp
+    if (!ctx.config.rpm.empty()) {
+        std::cerr << "error: a project (RPM " << ctx.config.rpm
                   << ") is already configured.\n";
         return 1;
     }
 
-    ctx.config.ranp    = args.get("ranp");
+    ctx.config.rpm     = args.get("rpm");
     ctx.config.name    = args.get("name");
     ctx.config.itrack  = args.get("itrack");
     ctx.config.created = date_today();
@@ -249,7 +249,7 @@ int cmd_new(const Args& args) {
     for (const auto& ld : std::vector<LinkDef>{
             {"teams",  "Teams",  "teams"},
             {"itrack", "iTrack", "itrack-url"},
-            {"ranp",   "RANP",   "ranp-url"},
+            {"rpm",    "RPM",    "rpm-url"},
             {"other",  "Other",  "other"},
         }) {
         if (args.has(ld.flag)) {
@@ -266,7 +266,7 @@ int cmd_new(const Args& args) {
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     std::cout << "Created project " << ctx.config.name
-              << " (RANP " << ctx.config.ranp << ")\n";
+              << " (RPM " << ctx.config.rpm << ")\n";
 
     if (!args.has("no-hook")) {
         bool appended = false;
@@ -289,17 +289,23 @@ int cmd_new(const Args& args) {
 int cmd_add_todo(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot add-todo --text \"<description>\"\n\n"
+            "Usage: projot add-todo \"<description>\"\n\n"
             "Append a new todo to the project notes file.\n\n"
             "Required:\n"
-            "  --text \"<description>\"   Text of the new todo\n\n"
+            "  \"<description>\"   Text of the new todo\n\n"
             "Example:\n"
-            "  projot add-todo --text \"Validate index rebuild plan\"\n";
+            "  projot add-todo \"Validate index rebuild plan\"\n";
         return 0;
     }
 
-    if (!args.has("text")) {
-        std::cerr << "error: --text is required. Run 'projot add-todo --help' for usage.\n";
+    // Accept text as a positional argument (primary form) or via legacy --text flag.
+    std::string text;
+    if (!args.positional.empty()) {
+        text = args.positional[0];
+    } else if (args.has("text")) {
+        text = args.get("text");
+    } else {
+        std::cerr << "error: todo text is required. Run 'projot add-todo --help' for usage.\n";
         return 1;
     }
 
@@ -313,7 +319,7 @@ int cmd_add_todo(const Args& args) {
 
     Todo t;
     t.id           = next_todo_id(proj.todos);
-    t.text         = args.get("text");
+    t.text         = text;
     t.created_date = date_today();
     proj.todos.push_back(t);
 
@@ -354,7 +360,7 @@ int cmd_list(const Args& args) {
     else if (args.has("all")) filter = TodoFilter::All;
 
     std::cout << "Project: " << ctx.config.name
-              << "  |  RANP: " << ctx.config.ranp
+              << "  |  RPM: " << ctx.config.rpm
               << "  |  iTrack: " << (ctx.config.itrack.empty() ? "N/A" : ctx.config.itrack)
               << "\n\n";
 
@@ -486,7 +492,7 @@ int cmd_set_link(const Args& args) {
             "Usage: projot set-link --key <key> --url <URL>\n\n"
             "Set or update a single-value link URL.\n\n"
             "Required:\n"
-            "  --key <key>   Link key (e.g. teams, itrack, ranp, other)\n"
+            "  --key <key>   Link key (e.g. teams, itrack, rpm, other)\n"
             "  --url <URL>   URL value\n\n"
             "Example:\n"
             "  projot set-link --key teams --url https://teams.microsoft.com/...\n";
@@ -560,8 +566,8 @@ int cmd_set_app_id(const Args& args) {
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     // Re-render notes if a project exists
-    if (!ctx.config.ranp.empty()) {
-        fs::path notes = ctx.repo_root / ".projot" / (ctx.config.ranp + ".md");
+    if (!ctx.config.rpm.empty()) {
+        fs::path notes = ctx.repo_root / ".projot" / (ctx.config.rpm + ".md");
         if (fs::exists(notes)) {
             Project proj;
             if (parse_markdown(notes.string(), proj).ok)
@@ -637,10 +643,10 @@ int cmd_render(const Args& args) {
     auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
-    // Stage the rendered file. RANP is validated before embedding in the command.
-    if (is_safe_ranp(ctx.config.ranp)) {
+    // Stage the rendered file. RPM is validated before embedding in the command.
+    if (is_safe_rpm(ctx.config.rpm)) {
         std::string cmd = "git -C \"" + ctx.repo_root.string() +
-                          "\" add .projot/" + ctx.config.ranp + ".md 2>/dev/null";
+                          "\" add .projot/" + ctx.config.rpm + ".md 2>/dev/null";
         int rc = std::system(cmd.c_str()); (void)rc;
     }
 
