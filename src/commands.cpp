@@ -11,6 +11,7 @@
 #include <sstream>
 #include <filesystem>
 #include <algorithm>
+#include <functional>
 #include <cstdlib>   // std::system — required for `git add` (no std alternative)
 #include <optional>
 
@@ -72,6 +73,28 @@ static Context load_context() {
 
 static std::string projot_file_path(const Context& ctx, const std::string& filename) {
     return (ctx.repo_root / ".projot" / filename).string();
+}
+
+// Execute a command that modifies a project's todos and re-renders the file.
+// Takes a callback that modifies the Project and returns the result/message.
+// If success_msg is non-empty, prints it after successful render.
+// Returns exit code (0 = success, 1 = error).
+using ProjectModifier = std::function<ParseResult(Project&)>;
+static int execute_project_command(const Context& ctx,
+                                    ProjectModifier modifier,
+                                    const std::string& success_msg = "") {
+    Project proj;
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+
+    auto result = modifier(proj);
+    if (!result.ok) { std::cerr << "error: " << result.error << "\n"; return 1; }
+
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
+    if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
+
+    if (!success_msg.empty()) std::cout << success_msg << "\n";
+    return 0;
 }
 
 // Verifies that a project is configured and the notes file exists.
@@ -351,21 +374,15 @@ int cmd_add_todo(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
-    if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
-
-    Todo t;
-    t.id           = next_todo_id(proj.todos);
-    t.text         = text;
-    t.created_date = date_today();
-    proj.todos.push_back(t);
-
-    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-    if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
-
-    std::cout << "Added todo " << t.id << ": " << t.text << "\n";
-    return 0;
+    return execute_project_command(ctx, [&](Project& proj) {
+        Todo t;
+        t.id           = next_todo_id(proj.todos);
+        t.text         = text;
+        t.created_date = date_today();
+        proj.todos.push_back(t);
+        std::cout << "Added todo " << t.id << ": " << t.text << "\n";
+        return ParseResult{true, ""};
+    });
 }
 
 // ── list ─────────────────────────────────────────────────────────────────────
@@ -434,6 +451,10 @@ int cmd_complete(const Args& args) {
         return 1;
     }
 
+    int id;
+    try { id = std::stoi(args.get("todo")); }
+    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
@@ -441,10 +462,6 @@ int cmd_complete(const Args& args) {
     Project proj;
     auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
-
-    int id;
-    try { id = std::stoi(args.get("todo")); }
-    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
 
     if (!find_todo(proj.todos, id)) {
         std::cerr << "error: todo " << id << " not found.";
@@ -494,6 +511,11 @@ int cmd_add_note(const Args& args) {
         std::cerr << "error: note text is required. Run 'projot add-note --help' for usage.\n";
         return 1;
     }
+
+    int id;
+    try { id = std::stoi(args.get("todo")); }
+    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+
     std::string text = args.positional[0];
 
     auto ctx = load_context();
@@ -503,10 +525,6 @@ int cmd_add_note(const Args& args) {
     Project proj;
     auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
-
-    int id;
-    try { id = std::stoi(args.get("todo")); }
-    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
 
     if (!find_todo(proj.todos, id)) {
         std::cerr << "error: todo " << id << " not found.";
