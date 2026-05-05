@@ -53,10 +53,12 @@ struct TempRepo {
 };
 
 static Args make_args(const std::string& sub,
-                      std::initializer_list<std::pair<std::string,std::string>> flags = {}) {
+                      std::initializer_list<std::pair<std::string,std::string>> flags = {},
+                      const std::string& positional = "") {
     Args a;
     a.subcommand = sub;
     for (const auto& [k, v] : flags) a.flags[k].push_back(v);
+    if (!positional.empty()) a.positional.push_back(positional);
     return a;
 }
 
@@ -194,7 +196,7 @@ TEST_CASE("new_inherits_repo_fields") {
 TEST_CASE("add_todo_appends") {
     TempRepo repo("add_todo_appends");
     repo.init(); repo.new_project("1");
-    Args a = make_args("add-todo", {{"text", "My first todo"}});
+    Args a = make_args("add-todo", {}, "My first todo");
     CHECK(cmd_add_todo(a) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "1.md").string(), proj);
@@ -206,8 +208,8 @@ TEST_CASE("add_todo_appends") {
 TEST_CASE("add_todo_stable_id") {
     TempRepo repo("add_todo_stable_id");
     repo.init(); repo.new_project("2");
-    cmd_add_todo(make_args("add-todo", {{"text", "First"}}));
-    cmd_add_todo(make_args("add-todo", {{"text", "Second"}}));
+    cmd_add_todo(make_args("add-todo", {}, "First"));
+    cmd_add_todo(make_args("add-todo", {}, "Second"));
     Project proj;
     parse_markdown((repo.path / ".projot" / "2.md").string(), proj);
     REQUIRE(proj.todos.size() == 2);
@@ -220,8 +222,8 @@ TEST_CASE("add_todo_stable_id") {
 TEST_CASE("list_default_shows_open") {
     TempRepo repo("list_default_shows_open");
     repo.init(); repo.new_project("3");
-    cmd_add_todo(make_args("add-todo", {{"text", "Open one"}}));
-    cmd_add_todo(make_args("add-todo", {{"text", "Open two"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Open one"));
+    cmd_add_todo(make_args("add-todo", {}, "Open two"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Just check it returns 0 (output goes to stdout which we can't easily capture here)
     CHECK(cmd_list(make_args("list")) == 0);
@@ -230,7 +232,7 @@ TEST_CASE("list_default_shows_open") {
 TEST_CASE("list_closed_flag") {
     TempRepo repo("list_closed_flag");
     repo.init(); repo.new_project("4");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     CHECK(cmd_list(make_args("list", {{"closed", "true"}})) == 0);
 }
@@ -238,7 +240,7 @@ TEST_CASE("list_closed_flag") {
 TEST_CASE("list_all_flag") {
     TempRepo repo("list_all_flag");
     repo.init(); repo.new_project("5");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     CHECK(cmd_list(make_args("list", {{"all", "true"}})) == 0);
 }
 
@@ -247,7 +249,7 @@ TEST_CASE("list_all_flag") {
 TEST_CASE("complete_marks_done") {
     TempRepo repo("complete_marks_done");
     repo.init(); repo.new_project("6");
-    cmd_add_todo(make_args("add-todo", {{"text", "Todo"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Todo"));
     CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "6.md").string(), proj);
@@ -259,7 +261,7 @@ TEST_CASE("complete_marks_done") {
 TEST_CASE("complete_warns_if_already_done") {
     TempRepo repo("complete_warns_if_already_done");
     repo.init(); repo.new_project("7");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Second complete should warn but return 0
     CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
@@ -270,8 +272,8 @@ TEST_CASE("complete_warns_if_already_done") {
 TEST_CASE("add_note_appends") {
     TempRepo repo("add_note_appends");
     repo.init(); repo.new_project("8");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
-    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}, {"text", "My note"}})) == 0);
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "My note")) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "8.md").string(), proj);
     REQUIRE(!proj.todos.empty());
@@ -282,10 +284,10 @@ TEST_CASE("add_note_appends") {
 TEST_CASE("add_note_warns_if_closed") {
     TempRepo repo("add_note_warns_if_closed");
     repo.init(); repo.new_project("9");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Should warn but still return 0 and write note
-    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}, {"text", "Late"}})) == 0);
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "Late")) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "9.md").string(), proj);
     CHECK(!proj.todos[0].notes.empty());
@@ -498,7 +500,7 @@ TEST_CASE("add_azure_multiple_of_same_type") {
 TEST_CASE("render_updates_file") {
     TempRepo repo("render_updates_file");
     repo.init(); repo.new_project("18");
-    cmd_add_todo(make_args("add-todo", {{"text", "Render me"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Render me"));
     // Manually corrupt the notes file
     {
         std::ofstream f((repo.path / ".projot" / "18.md").string());
