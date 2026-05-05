@@ -32,6 +32,7 @@ git push origin v0.1.4
 ### 4. GitHub Actions builds and publishes
 
 The release workflow automatically:
+
 - Builds binaries on Linux (GCC) and Windows (MSVC)
 - Runs all tests
 - Creates packages:
@@ -42,17 +43,18 @@ The release workflow automatically:
 
 ## What gets released
 
-| Format | Platform | Includes | Install |
-|--------|----------|----------|---------|
-| `.deb` | Linux | Binary + completions (bash/zsh/fish) | `sudo apt install ./projot_*.deb` |
-| `tar.gz` | Linux | Binary + completions + docs | Extract and `cp` to desired location |
-| `.nupkg` | Windows | Binary + PowerShell completion | `choco install projot.*.nupkg --source .` |
-| `.exe` | Windows | Binary only | Manual PATH setup |
-| Bash/Zsh/Fish/PS1 | All | Individual completion scripts | Manual download + installation |
+| Format           | Platform | Includes                              | Install                                        |
+|------------------|----------|---------------------------------------|------------------------------------------------|
+| `.deb`           | Linux    | Binary + completions (bash/zsh/fish) | `sudo apt install ./projot_*.deb`              |
+| `tar.gz`         | Linux    | Binary + completions + docs           | Extract and `cp` to desired location            |
+| `.nupkg`         | Windows  | Binary + PowerShell completion        | `choco install projot.*.nupkg --source .`      |
+| `.exe`           | Windows  | Binary only                           | Manual PATH setup                              |
+| Bash/Zsh/Fish/PS1| All      | Individual completion scripts         | Manual download + installation                 |
 
 ## Version numbering
 
 Version is defined in `CMakeLists.txt` line 2:
+
 ```cmake
 project(projot VERSION X.Y.Z LANGUAGES CXX)
 ```
