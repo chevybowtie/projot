@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(projot VERSION 0.1.4 LANGUAGES CXX)
+project(projot VERSION 0.1.5 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -35,6 +35,8 @@ add_executable(projot src/main.cpp)
 target_link_libraries(projot PRIVATE projot_core)
 
 install(TARGETS projot RUNTIME DESTINATION bin)
+install(FILES mcp/server.js mcp/package.json
+        DESTINATION share/projot/mcp)
 
 # Shell completions
 install(FILES completions/projot.bash

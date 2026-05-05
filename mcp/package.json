@@ -1,0 +1,13 @@
+{
+  "name": "projot-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server that wraps projot CLI, letting AI assistants manage TODOs",
+  "type": "module",
+  "bin": {
+    "projot-mcp": "server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo 'Testing MCP server...' && echo '{\"method\": \"initialize\"}' | node server.js"
+  }
+}

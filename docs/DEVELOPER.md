@@ -44,25 +44,21 @@ The compiled binary is at `build/projot` (or `build\projot.exe` on Windows).
 
 ## Running the tests
 
-```sh
-make test
-```
-
-Or directly with CMake/ctest:
-
-```sh
-ctest --test-dir build --output-on-failure
-```
-
-All tests are compiled into a single `projot_tests` binary and registered as one CTest entry. The `--output-on-failure` flag prints the doctest output only for failing cases.
-
-To run the test binary directly for more verbose output:
+Run the test binary for verbose output:
 
 ```sh
 ./build/projot_tests
 ./build/projot_tests --test-case="render_header"   # run a single case
 ./build/projot_tests --list-test-cases              # list all cases
 ```
+
+Or use ctest for a summary:
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+All tests are compiled into a single `projot_tests` binary and registered as one CTest entry.
 
 ---
 
