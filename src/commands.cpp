@@ -198,60 +198,6 @@ static std::optional<fs::path> find_mcp_source_dir() {
     return std::nullopt;
 }
 
-// Copies the MCP server files into <repo_root>/mcp/ and writes
-// .vscode/mcp.json if it does not already exist.
-// Returns false and sets `error` on failure.
-static bool setup_mcp(const fs::path& repo_root, std::string& error) {
-    auto mcp_src = find_mcp_source_dir();
-    if (!mcp_src) {
-        // Non-fatal: warn and continue.
-        std::cerr << "warning: MCP server source files not found; skipping MCP setup.\n"
-                  << "         Pass --no-mcp to suppress this warning.\n";
-        return true;
-    }
-
-    // Copy mcp/ files into the project.
-    fs::path mcp_dest = repo_root / "mcp";
-    std::error_code ec;
-    fs::create_directories(mcp_dest, ec);
-    if (ec) { error = "cannot create mcp/: " + ec.message(); return false; }
-
-    for (const char* fname : {"server.js", "package.json"}) {
-        fs::path src_file = *mcp_src / fname;
-        if (!fs::exists(src_file, ec)) {
-            std::cerr << "warning: expected MCP file not found: " << src_file.string() << "\n";
-            continue;
-        }
-        fs::copy_file(src_file, mcp_dest / fname,
-                      fs::copy_options::overwrite_existing, ec);
-        if (ec) { error = std::string("cannot copy ") + fname + ": " + ec.message(); return false; }
-    }
-
-    // Create .vscode/mcp.json (skip if already present).
-    fs::path vscode_dir = repo_root / ".vscode";
-    fs::create_directories(vscode_dir, ec);
-    if (ec) { error = "cannot create .vscode/: " + ec.message(); return false; }
-
-    fs::path mcp_json = vscode_dir / "mcp.json";
-    if (!fs::exists(mcp_json, ec)) {
-        std::ofstream f(mcp_json);
-        if (!f.is_open()) { error = "cannot write .vscode/mcp.json"; return false; }
-        f << "{\n"
-          << "  \"inputs\": [],\n"
-          << "  \"servers\": {\n"
-          << "    \"projot\": {\n"
-          << "      \"type\": \"stdio\",\n"
-          << "      \"command\": \"node\",\n"
-          << "      \"args\": [\"./mcp/server.js\"]\n"
-          << "    }\n"
-          << "  }\n"
-          << "}\n";
-    }
-
-    std::cout << "MCP server copied to mcp/ and VSCode configured in .vscode/mcp.json\n";
-    return true;
-}
-
 // ── init ──────────────────────────────────────────────────────────────────────
 
 int cmd_init(const Args& args) {
@@ -264,8 +210,7 @@ int cmd_init(const Args& args) {
             "Optional:\n"
             "  --github <URL>      Add a GitHub URL (repeatable)\n"
             "  --swagger <URL>     Add a Swagger URL (repeatable)\n"
-            "  --blizzard <URL>    Add a Blizzard URL (repeatable)\n"
-            "  --no-mcp            Skip MCP server setup and VSCode configuration\n\n"
+            "  --blizzard <URL>    Add a Blizzard URL (repeatable)\n\n"
             "Example:\n"
             "  projot init --app-id MyApp --github https://github.com/org/repo\n";
         return 0;
@@ -300,14 +245,6 @@ int cmd_init(const Args& args) {
 
     std::cout << "Initialized projot for " << cfg.app_id
               << " in " << projot_dir.string() << "\n";
-
-    if (!args.has("no-mcp")) {
-        std::string mcp_error;
-        if (!setup_mcp(*root, mcp_error)) {
-            std::cerr << "error: MCP setup failed: " << mcp_error << "\n";
-            return 1;
-        }
-    }
 
     return 0;
 }
@@ -899,5 +836,206 @@ int cmd_install_hook(const Args& args) {
         std::cout << "Installed pre-commit hook at "
                   << (*root / ".git" / "hooks" / "pre-commit").string() << "\n";
     }
+    return 0;
+}
+
+// ── install-mcp-server ────────────────────────────────────────────────────────
+
+// Writes or updates .claude/settings.json with the projot MCP server config.
+// Returns true on success or idempotent "already done" cases.
+// Returns false on hard error (sets error string).
+// If manual action is required, sets manual_action to the instruction text and returns true.
+static bool install_claude_mcp(const fs::path& repo_root,
+                                std::string& error,
+                                std::string& manual_action) {
+    fs::path claude_dir = repo_root / ".claude";
+    fs::path settings_file = claude_dir / "settings.json";
+    std::error_code ec;
+
+    // Sentinel for "projot is already configured"
+    const std::string projot_sentinel = "\"projot\"";
+
+    // Case 1: File does not exist — create directory and write fresh config
+    if (!fs::exists(settings_file, ec)) {
+        fs::create_directories(claude_dir, ec);
+        if (ec) { error = "cannot create .claude/: " + ec.message(); return false; }
+
+        std::ofstream f(settings_file);
+        if (!f.is_open()) { error = "cannot write .claude/settings.json"; return false; }
+
+        f << "{\n"
+          << "  \"mcpServers\": {\n"
+          << "    \"projot\": {\n"
+          << "      \"command\": \"node\",\n"
+          << "      \"args\": [\"./mcp/server.js\"]\n"
+          << "    }\n"
+          << "  }\n"
+          << "}\n";
+        return true;
+    }
+
+    // Case 2+: File exists — check if already configured
+    std::ifstream f_read(settings_file);
+    if (!f_read.is_open()) { error = "cannot read .claude/settings.json"; return false; }
+
+    std::string content((std::istreambuf_iterator<char>(f_read)),
+                        std::istreambuf_iterator<char>());
+    f_read.close();
+
+    // Check if projot is already configured
+    if (content.find(projot_sentinel) != std::string::npos) {
+        // Already done — idempotent
+        return true;
+    }
+
+    // Case 3: File has mcpServers but no projot entry — manual instruction
+    if (content.find("\"mcpServers\"") != std::string::npos) {
+        manual_action = "note: .claude/settings.json already has an mcpServers block.\n"
+                       "Add the following entry to it manually:\n\n"
+                       "    \"projot\": {\n"
+                       "      \"command\": \"node\",\n"
+                       "      \"args\": [\"./mcp/server.js\"]\n"
+                       "    }\n";
+        return true;
+    }
+
+    // Case 4: File has no mcpServers — inject the full block before the last }
+    size_t last_brace = content.rfind('}');
+    if (last_brace == std::string::npos) {
+        error = ".claude/settings.json is malformed (no closing brace)";
+        return false;
+    }
+
+    std::string to_inject = ",\n  \"mcpServers\": {\n"
+                           "    \"projot\": {\n"
+                           "      \"command\": \"node\",\n"
+                           "      \"args\": [\"./mcp/server.js\"]\n"
+                           "    }\n"
+                           "  }";
+
+    content.insert(last_brace, to_inject);
+
+    std::ofstream f_write(settings_file);
+    if (!f_write.is_open()) { error = "cannot write .claude/settings.json"; return false; }
+    f_write << content;
+    return true;
+}
+
+// Check if Node.js is available on PATH
+static bool node_available() {
+    return std::system("node --version > /dev/null 2>&1") == 0;
+}
+
+int cmd_install_mcp_server(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot install-mcp-server [options]\n\n"
+            "Configure the projot MCP server for use with Claude Code and VS Code.\n\n"
+            "Writes .claude/settings.json (Claude Code) and .vscode/mcp.json (VS Code)\n"
+            "with the server configuration. Skips any file that is already configured.\n\n"
+            "Requires Node.js 16+ to be installed for the MCP server to run.\n\n"
+            "Optional:\n"
+            "  --no-vscode    Skip VS Code (.vscode/mcp.json) configuration\n\n"
+            "Example:\n"
+            "  projot install-mcp-server\n";
+        return 0;
+    }
+
+    auto root = find_repo_root();
+    if (!root) {
+        std::cerr << "error: not inside a git repository.\n";
+        return 1;
+    }
+
+    // Warn if Node.js is not available (non-fatal)
+    if (!node_available()) {
+        std::cerr << "warning: Node.js not found on PATH. MCP server requires Node.js 16+.\n"
+                  << "         Install Node.js and try again, or see mcp/README.md for manual setup.\n";
+    }
+
+    // Ensure mcp/server.js exists in the repo
+    fs::path mcp_in_repo = *root / "mcp" / "server.js";
+    if (!fs::exists(mcp_in_repo)) {
+        // Try to copy from install location
+        auto mcp_src = find_mcp_source_dir();
+        if (!mcp_src) {
+            std::cerr << "error: mcp/server.js not found and cannot locate bundled MCP files.\n"
+                      << "       ensure projot was installed correctly.\n";
+            return 1;
+        }
+
+        fs::path mcp_dest = *root / "mcp";
+        std::error_code ec;
+        fs::create_directories(mcp_dest, ec);
+        if (ec) {
+            std::cerr << "error: cannot create mcp/: " << ec.message() << "\n";
+            return 1;
+        }
+
+        for (const char* fname : {"server.js", "package.json"}) {
+            fs::path src_file = *mcp_src / fname;
+            if (!fs::exists(src_file, ec)) {
+                std::cerr << "warning: expected MCP file not found: " << src_file.string() << "\n";
+                continue;
+            }
+            fs::copy_file(src_file, mcp_dest / fname,
+                         fs::copy_options::overwrite_existing, ec);
+            if (ec) {
+                std::cerr << "error: cannot copy " << fname << ": " << ec.message() << "\n";
+                return 1;
+            }
+        }
+    }
+
+    // Configure .claude/settings.json
+    std::string error, manual_action;
+    if (!install_claude_mcp(*root, error, manual_action)) {
+        std::cerr << "error: " << error << "\n";
+        return 1;
+    }
+
+    if (!manual_action.empty()) {
+        std::cout << manual_action;
+    } else {
+        std::cout << "Configured MCP server in .claude/settings.json\n";
+    }
+
+    // Configure .vscode/mcp.json unless --no-vscode
+    if (!args.has("no-vscode")) {
+        fs::path vscode_dir = *root / ".vscode";
+        fs::path mcp_json = vscode_dir / "mcp.json";
+        std::error_code ec;
+
+        if (!fs::exists(mcp_json, ec)) {
+            fs::create_directories(vscode_dir, ec);
+            if (ec) {
+                std::cerr << "error: cannot create .vscode/: " << ec.message() << "\n";
+                return 1;
+            }
+
+            std::ofstream f(mcp_json);
+            if (!f.is_open()) {
+                std::cerr << "error: cannot write .vscode/mcp.json\n";
+                return 1;
+            }
+
+            f << "{\n"
+              << "  \"inputs\": [],\n"
+              << "  \"servers\": {\n"
+              << "    \"projot\": {\n"
+              << "      \"type\": \"stdio\",\n"
+              << "      \"command\": \"node\",\n"
+              << "      \"args\": [\"./mcp/server.js\"]\n"
+              << "    }\n"
+              << "  }\n"
+              << "}\n";
+
+            std::cout << "Configured MCP server in .vscode/mcp.json\n";
+        } else {
+            std::cout << "VS Code MCP configuration already exists in .vscode/mcp.json\n";
+        }
+    }
+
+    std::cout << "MCP server is ready. Reload your editor to enable tab completion and tools.\n";
     return 0;
 }
