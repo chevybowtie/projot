@@ -70,12 +70,8 @@ static Context load_context() {
     return ctx;
 }
 
-static std::string config_path_str(const Context& ctx) {
-    return (ctx.repo_root / ".projot" / "config").string();
-}
-
-static std::string notes_path_str(const Context& ctx) {
-    return (ctx.repo_root / ".projot" / (ctx.config.rpm + ".md")).string();
+static std::string projot_file_path(const Context& ctx, const std::string& filename) {
+    return (ctx.repo_root / ".projot" / filename).string();
 }
 
 // Verifies that a project is configured and the notes file exists.
@@ -306,10 +302,10 @@ int cmd_new(const Args& args) {
         }
     }
 
-    auto save = write_config(config_path_str(ctx), ctx.config);
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
-    auto render = render_to_file(notes_path_str(ctx), ctx.config, {});
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, {});
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     std::cout << "Created project " << ctx.config.name
@@ -356,7 +352,7 @@ int cmd_add_todo(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(notes_path_str(ctx), proj);
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
     Todo t;
@@ -365,7 +361,7 @@ int cmd_add_todo(const Args& args) {
     t.created_date = date_today();
     proj.todos.push_back(t);
 
-    auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     std::cout << "Added todo " << t.id << ": " << t.text << "\n";
@@ -394,7 +390,7 @@ int cmd_list(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(notes_path_str(ctx), proj);
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
     TodoFilter filter = TodoFilter::Open;
@@ -443,7 +439,7 @@ int cmd_complete(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(notes_path_str(ctx), proj);
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
     int id;
@@ -466,7 +462,7 @@ int cmd_complete(const Args& args) {
         return 0;
     }
 
-    auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     std::cout << "Completed todo " << id << ".\n";
@@ -505,7 +501,7 @@ int cmd_add_note(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(notes_path_str(ctx), proj);
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
     int id;
@@ -525,7 +521,7 @@ int cmd_add_note(const Args& args) {
     auto result = add_note(proj.todos, id, text);
     if (result.warned) std::cerr << "warning: " << result.message << "\n";
 
-    auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     std::cout << "Added note to todo " << id << ".\n";
@@ -565,13 +561,13 @@ int cmd_set_link(const Args& args) {
         ctx.config.links.push_back(key);
     }
 
-    auto save = write_config(config_path_str(ctx), ctx.config);
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     // Re-render notes to pick up the updated link
     Project proj;
-    if (parse_markdown(notes_path_str(ctx), proj).ok)
-        render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
+        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
 
     std::cout << "Set link " << key << " = " << args.get("url") << "\n";
     return 0;
@@ -610,7 +606,7 @@ int cmd_set_app_id(const Args& args) {
 
     ctx.config.app_id = args.get("app-id");
 
-    auto save = write_config(config_path_str(ctx), ctx.config);
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     // Re-render notes if a project exists
@@ -660,12 +656,12 @@ static int cmd_add_url(const Args& args, const std::string& kind) {
     }
     list.push_back(url);
 
-    auto save = write_config(config_path_str(ctx), ctx.config);
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     Project proj;
-    if (parse_markdown(notes_path_str(ctx), proj).ok)
-        render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
+        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
 
     std::cout << "Added " << kind << " URL: " << url << "\n";
     return 0;
@@ -756,12 +752,12 @@ int cmd_add_azure(const Args& args) {
     }
     list.push_back(raw);
 
-    auto save = write_config(config_path_str(ctx), ctx.config);
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     Project proj;
-    if (parse_markdown(notes_path_str(ctx), proj).ok)
-        render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
+        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
 
     std::cout << "Added Azure " << tdef->label << ": " << raw << "\n";
     return 0;
@@ -777,10 +773,10 @@ int cmd_render(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(notes_path_str(ctx), proj);
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
-    auto render = render_to_file(notes_path_str(ctx), ctx.config, proj.todos);
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     // Stage the rendered file. RPM is validated before embedding in the command.
