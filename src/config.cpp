@@ -87,8 +87,7 @@ ParseResult parse_config(const std::string& path, Config& out) {
             catch (...) { out.config_version = 0; }
         } else if (key == "app_id") {
             out.app_id = value;
-        } else if (key == "rpm" || key == "ranp") {
-            // Accept legacy "ranp" key for backward compatibility with existing config files.
+        } else if (key == "rpm") {
             out.rpm = value;
         } else if (key == "name") {
             out.name = value;
