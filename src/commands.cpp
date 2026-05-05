@@ -345,16 +345,11 @@ int cmd_add_todo(const Args& args) {
         return 0;
     }
 
-    // Accept text as a positional argument (primary form) or via legacy --text flag.
-    std::string text;
-    if (!args.positional.empty()) {
-        text = args.positional[0];
-    } else if (args.has("text")) {
-        text = args.get("text");
-    } else {
+    if (args.positional.empty()) {
         std::cerr << "error: todo text is required. Run 'projot add-todo --help' for usage.\n";
         return 1;
     }
+    std::string text = args.positional[0];
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
@@ -499,16 +494,11 @@ int cmd_add_note(const Args& args) {
         return 1;
     }
 
-    // Accept note text as a positional argument (primary form) or via legacy --text flag.
-    std::string text;
-    if (!args.positional.empty()) {
-        text = args.positional[0];
-    } else if (args.has("text")) {
-        text = args.get("text");
-    } else {
+    if (args.positional.empty()) {
         std::cerr << "error: note text is required. Run 'projot add-note --help' for usage.\n";
         return 1;
     }
+    std::string text = args.positional[0];
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
