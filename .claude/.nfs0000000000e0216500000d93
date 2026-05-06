@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmake --build build)",
+      "Bash(ctest --test-dir build --output-on-failure)",
+      "Bash(./build/projot --help)"
+    ]
+  }
+}

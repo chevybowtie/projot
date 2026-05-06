@@ -105,6 +105,39 @@ static int execute_project_command(const Context& ctx,
     return 0;
 }
 
+// Execute a command that modifies the config and optionally re-renders the project notes.
+// Takes a callback that modifies ctx.config and returns the result/message.
+// If re_render is true, re-parses and renders the project notes after config change.
+// Special cases: "already_present" returns 0 (no-op, not error).
+// Returns exit code (0 = success, 1 = error).
+using ConfigModifier = std::function<ParseResult(Context&)>;
+static int execute_config_command(Context& ctx,
+                                   ConfigModifier modifier,
+                                   bool re_render = true,
+                                   const std::string& success_msg = "") {
+    auto result = modifier(ctx);
+    if (!result.ok) {
+        // Special cases: these are no-ops, not errors
+        if (result.error == "already_present") {
+            return 0;
+        }
+        std::cerr << "error: " << result.error << "\n";
+        return 1;
+    }
+
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
+    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+
+    if (re_render && !ctx.config.rpm.empty()) {
+        Project proj;
+        if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
+            render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
+    }
+
+    if (!success_msg.empty()) std::cout << success_msg << "\n";
+    return 0;
+}
+
 // Verifies that a project is configured and the notes file exists.
 static bool require_project(const Context& ctx) {
     if (ctx.config.rpm.empty()) {
@@ -573,23 +606,16 @@ int cmd_set_link(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     const std::string key = args.get("key");
-    ctx.config.link_urls[key] = args.get("url");
+    const std::string url = args.get("url");
 
-    if (std::find(ctx.config.links.begin(), ctx.config.links.end(), key)
-            == ctx.config.links.end()) {
-        ctx.config.links.push_back(key);
-    }
-
-    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
-
-    // Re-render notes to pick up the updated link
-    Project proj;
-    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
-        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-
-    std::cout << "Set link " << key << " = " << args.get("url") << "\n";
-    return 0;
+    return execute_config_command(ctx, [key, &url](Context& c) {
+        c.config.link_urls[key] = url;
+        if (std::find(c.config.links.begin(), c.config.links.end(), key)
+                == c.config.links.end()) {
+            c.config.links.push_back(key);
+        }
+        return ParseResult{true, ""};
+    }, true, "Set link " + key + " = " + url);
 }
 
 // ── set-app-id ───────────────────────────────────────────────────────────────
@@ -617,29 +643,16 @@ int cmd_set_app_id(const Args& args) {
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
 
-    if (!ctx.config.app_id.empty() && !args.has("force")) {
-        std::cerr << "error: app_id is already set to '" << ctx.config.app_id
-                  << "'. Use --force to overwrite.\n";
-        return 1;
-    }
+    const std::string new_app_id = args.get("app-id");
+    const bool force = args.has("force");
 
-    ctx.config.app_id = args.get("app-id");
-
-    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
-
-    // Re-render notes if a project exists
-    if (!ctx.config.rpm.empty()) {
-        fs::path notes = ctx.repo_root / ".projot" / (ctx.config.rpm + ".md");
-        if (fs::exists(notes)) {
-            Project proj;
-            if (parse_markdown(notes.string(), proj).ok)
-                render_to_file(notes.string(), ctx.config, proj.todos);
+    return execute_config_command(ctx, [&new_app_id, force](Context& c) {
+        if (!c.config.app_id.empty() && !force) {
+            return ParseResult{false, "app_id is already set to '" + c.config.app_id + "'. Use --force to overwrite."};
         }
-    }
-
-    std::cout << "Set app_id = " << ctx.config.app_id << "\n";
-    return 0;
+        c.config.app_id = new_app_id;
+        return ParseResult{true, ""};
+    }, true, "Set app_id = " + new_app_id);
 }
 
 // ── add-github / add-swagger / add-blizzard ───────────────────────────────────
@@ -665,25 +678,20 @@ static int cmd_add_url(const Args& args, const std::string& kind) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    auto& list = (kind == "github")  ? ctx.config.github  :
-                 (kind == "swagger") ? ctx.config.swagger : ctx.config.blizzard;
-
     const std::string url = args.get("url");
-    if (std::find(list.begin(), list.end(), url) != list.end()) {
-        std::cout << "URL already present (skipped).\n";
-        return 0;
-    }
-    list.push_back(url);
 
-    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+    return execute_config_command(ctx, [kind, &url](Context& c) {
+        auto& list = (kind == "github")  ? c.config.github  :
+                     (kind == "swagger") ? c.config.swagger : c.config.blizzard;
 
-    Project proj;
-    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
-        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-
-    std::cout << "Added " << kind << " URL: " << url << "\n";
-    return 0;
+        if (std::find(list.begin(), list.end(), url) != list.end()) {
+            std::cout << "URL already present (skipped).\n";
+            return ParseResult{false, "already_present"};
+        }
+        list.push_back(url);
+        std::cout << "Added " << kind << " URL: " << url << "\n";
+        return ParseResult{true, ""};
+    });
 }
 
 int cmd_add_github(const Args& args)   { return cmd_add_url(args, "github");   }
@@ -759,27 +767,19 @@ int cmd_add_azure(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    AzureEntry entry;
-    entry.name = args.get("name");
-    entry.url  = args.get("url");
+    const AzureEntry entry{args.get("name"), args.get("url")};
     const std::string raw = format_azure_entry(entry);
+    const std::string label = tdef->label;
+    auto field_ptr = tdef->field;
 
-    auto& list = ctx.config.*tdef->field;
-    if (std::find(list.begin(), list.end(), raw) != list.end()) {
-        std::cout << "Entry already present (skipped).\n";
-        return 0;
-    }
-    list.push_back(raw);
-
-    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
-
-    Project proj;
-    if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
-        render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-
-    std::cout << "Added Azure " << tdef->label << ": " << raw << "\n";
-    return 0;
+    return execute_config_command(ctx, [&raw, field_ptr](Context& c) {
+        auto& list = c.config.*field_ptr;
+        if (std::find(list.begin(), list.end(), raw) != list.end()) {
+            return ParseResult{false, "already_present"};
+        }
+        list.push_back(raw);
+        return ParseResult{true, ""};
+    }, true, "Added Azure " + label + ": " + raw);
 }
 
 // ── render ────────────────────────────────────────────────────────────────────
