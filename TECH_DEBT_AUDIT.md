@@ -47,7 +47,7 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 | F004 | Error handling | src/commands.cpp:583–584, 631–632, 677–678, 773–774 | High | M | **RESOLVED:** Silent error skips eliminated by moving to execute_config_command/execute_project_command pattern; all commands now check .ok and report errors. | ✓ Always check .ok flag and report errors; remove silent skip pattern |
 | F005 | Security hygiene | src/commands.cpp:800, 926 | Medium | M | Reliance on `std::system("git add ...")` and `std::system("node --version")` for critical operations; uses `is_safe_rpm()` to validate RPM before embedding in shell command but approach is fragile | Use libgit2 C++ binding or shell-agnostic git library; avoid `std::system` entirely |
 | F006 | Documentation drift | src/commands.h:18 | Medium | S | **RESOLVED:** Added 1-line docstring to all 15 command declarations in commands.h (lines 7-50) explaining purpose of each command. | ✓ Add docstring to each command function with 1-line purpose |
-| F007 | Consistency rot | src/commands.cpp:348–357, 502–511 | Medium | S | Dual-form argument handling for `add-todo` and `add-note`: accepts positional arg (new) or `--text` flag (legacy). Dead code path; no user-facing reason to maintain legacy flag | Remove `--text` flag parsing; positional argument is the canonical form per README |
+| F007 | Consistency rot | src/commands.cpp:348–357, 502–511 | Medium | S | **RESOLVED:** Removed `--text` flag parsing from add-todo and add-note; positional argument is now canonical form. | ✓ Remove `--text` flag parsing; positional argument is the canonical form per README |
 | F008 | Test debt | tests/test_commands.cpp | Medium | M | No test coverage for silent error-skip cases (F004); add-note, set-link, add-github/swagger/blizzard commands have minimal coverage (mostly happy-path) | Add test cases for parse_markdown/render_to_file failures on set-link, add-github, add-azure commands |
 | F009 | Architectural decay | src/commands.cpp:642–686 | Medium | S | Three similar command implementations (`add-github`, `add-swagger`, `add-blizzard`) all call shared helper `cmd_add_url()` with a string parameter to distinguish behavior | This is acceptable for now but signals that a data-driven approach (iterate over URL list metadata) might be cleaner post-v0.1 |
 | F010 | Consistency rot | src/commands.cpp:73–79 | Medium | S | Two nearly identical path construction helpers: `config_path_str()` and `notes_path_str()`. Trivial but duplication. | Replace with inline construction or a single path builder |
@@ -57,7 +57,7 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 | F014 | Consistency rot | src/commands.cpp:33–71 | Low | S | `load_context()` struct and flow (find root → parse config → version check) is repeated in one-off style. Single-use struct not reused elsewhere. | Acceptable as-is; improves readability vs. passing 3 return values |
 | F015 | Documentation drift | src/markdown.h:35 | Low | S | **RESOLVED:** Updated docstring from "RANP" to "RPM" in src/markdown.h:8 | ✓ Update comment to reflect current terminology |
 | F016 | Test debt | tests/test_commands.cpp, tests/test_hook.cpp | Low | M | Hook tests do not cover case where `.git/hooks/` directory does not exist and cannot be created (unwritable parent). Current code handles gracefully but test gap | Add test for unwritable hooks directory scenario |
-| F017 | Consistency rot | src/config.cpp:99 | Low | S | Legacy `ranp` key still accepted in config parsing for backward compatibility ("RANP" → "RPM" rename). Now v0.1; this can be removed post-release | Document backward-compatibility scope and remove `ranp` fallback after v1.0 if needed |
+| F017 | Consistency rot | src/config.cpp:99 | Low | S | **RESOLVED:** Removed legacy `ranp` config key parsing. Clean break from old terminology. | ✓ Document backward-compatibility scope and remove `ranp` fallback after v1.0 if needed |
 | F018 | Performance | src/renderer.cpp:53–60 | Low | S | Checks for empty Azure sections inside render loop instead of pre-computing which sections are non-empty | Negligible impact (one-time render per command); acceptable for v0.1 |
 | F019 | Architectural decay | src/main.cpp:37–57 | Low | S | Valid flags per subcommand are defined statically in main.cpp; adding a new subcommand requires editing both commands.h and main.cpp | Create command registry (table-driven) post-v0.1 to avoid parallel definitions |
 | F020 | Security hygiene | src/commands.cpp:97–104, 797 | Low | S | RPM validation function `is_safe_rpm()` checks only alphanumeric + dash/underscore; relies on caller to use it before embedding in shell. No static enforcement | Refactor to remove std::system call entirely (see F005) |
@@ -124,9 +124,9 @@ Low-effort, medium+ severity improvements:
 
 - [x] **F006:** Add 1-line docstrings to all command functions in commands.h — **COMPLETED**
 - [x] **F015:** Update docstring from "RANP" to "RPM" (src/markdown.h:35) — **COMPLETED**
-- [ ] **F017:** Remove legacy `ranp` config key parsing (src/config.cpp:99)
+- [x] **F017:** Remove legacy `ranp` config key parsing (src/config.cpp:99) — **COMPLETED**
+- [x] **F007:** Remove `--text` flag support from add-todo and add-note (use positional only) — **COMPLETED**
 - [ ] **F010:** Merge `config_path_str()` and `notes_path_str()` into single builder
-- [ ] **F007:** Remove `--text` flag support from add-todo and add-note (use positional only)
 
 ---
 
@@ -156,19 +156,23 @@ Low-effort, medium+ severity improvements:
 
 projot is a well-engineered v0.1 release with minimal critical debt. The identified issues are primarily **organizational** (boilerplate, file size, consistency) rather than **functional** (bugs, crashes, data loss). All 15 commands work correctly; all tests pass.
 
-**Completed in this session:**
+**Completed (across all sessions):**
 
+**High-impact:**
 1. ✓ Extract command boilerplate (F003) — 13 commands now use helpers
 2. ✓ Remove silent error skips (F004) — all commands check .ok
 3. ✓ Deduplicate utils (F002) — shared deduplicate<T> template
+
+**Quick wins:**
 4. ✓ Add docstrings (F006) — all 15 commands documented
 5. ✓ Update RANP→RPM (F015) — terminology consistency
+6. ✓ Remove legacy `ranp` config key (F017) — clean break from old terminology
+7. ✓ Remove `--text` flag (F007) — legacy code removed
 
-**Remaining priorities for next cycle:**
+**Remaining for next cycle:**
 
-1. Remove legacy `ranp` config key (F017) — backward-compat cleanup
-2. Merge path builders (F010) — trivial simplification
-3. Remove `--text` flag (F007) — legacy code removal
-4. Reduce file size (F001) — post-v0.1 refactoring for scale
+1. Merge path builders (F010) — trivial simplification
+2. Reduce file size (F001) — post-v0.1 refactoring for scale
+3. F008: Test coverage for error cases — add tests for parse/render failures
 
-The codebase is now in excellent shape for v0.2 with all high-impact boilerplate issues resolved.
+The codebase is now in excellent shape for v0.2 with all high-impact boilerplate issues resolved and all quick wins completed.
