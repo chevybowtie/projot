@@ -137,7 +137,7 @@ jobs:
           cmake --build build
 
       - name: Install to staging directory
-        run: cmake --install build --prefix dist/staging
+        run: cmake --install build --prefix dist/staging/usr
 
       - name: Extract version from tag
         id: version
