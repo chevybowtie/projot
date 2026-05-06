@@ -1,6 +1,19 @@
 # Tech Debt Audit — projot
 
 Generated: 2026-05-05
+Last Updated: 2026-05-05 (Repeat-run: No new debt patterns detected; 7 findings resolved)
+
+## Repeat-Run Summary (2026-05-05)
+
+**Status:** 7 of 20 findings resolved; no new debt detected.
+
+**Major accomplishment:** F003 (command boilerplate extraction) successfully completed. Refactored 13 commands to use `execute_project_command()` and `execute_config_command()` helpers. Trade-off: helpers added ~60 LOC, so commands.cpp remains at 1046 LOC (was 1041), but maintainability and consistency improved significantly. Future command additions will now benefit from the shared pattern, making this investment pay off over time.
+
+**Test health:** All 152 tests passing; test suite grown to 1861 LOC with comprehensive coverage maintained.
+
+**Code quality:** No new technical debt patterns emerged since initial audit. Codebase remains well-structured for v0.2 release.
+
+---
 
 ## Executive Summary
 
@@ -41,7 +54,7 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 
 | ID | Category | File:Line | Severity | Effort | Description | Recommendation |
 |----|----------|-----------|----------|--------|-------------|----------------|
-| F001 | Architectural decay | src/commands.cpp:1–50 | High | M | God file: commands.cpp is 1041 LOC combining 15 diverse subcommands, hook installation, MCP server setup, and internal infrastructure | Extract commands into separate handler module or use function pointers to reduce file size and improve clarity |
+| F001 | Architectural decay | src/commands.cpp:1–50 | High | M | God file: commands.cpp is 1046 LOC combining 15 diverse subcommands, hook installation, MCP server setup, and internal infrastructure. Note: F003 refactoring extracted boilerplate into helpers (78–139) but added ~60 LOC, offsetting removal of duplicate pattern code. File size didn't decrease but maintainability improved. | Extract commands into separate handler module or use function pointers to reduce file size and improve clarity |
 | F002 | Consistency rot | src/config.cpp:38–45, renderer.cpp:10–16 | Medium | S | **RESOLVED:** Extracted deduplicate<T> template to utils.h, replaced both dedup implementations, unified in src/config.cpp:149 and src/renderer.cpp:47 | ✓ Extract to shared utility function in utils.h; name consistently |
 | F003 | Architectural decay | src/commands.cpp:363–377, 450–479, 517–542 | High | M | **RESOLVED:** Created execute_project_command() and execute_config_command() helpers. Refactored all 13 config/project-modifying commands (add-todo, complete, add-note, set-link, set-app-id, add-github/swagger/blizzard, add-azure). | ✓ Create helper: `execute_project_command(ctx, modify_fn, success_msg)` for 13+ commands |
 | F004 | Error handling | src/commands.cpp:583–584, 631–632, 677–678, 773–774 | High | M | **RESOLVED:** Silent error skips eliminated by moving to execute_config_command/execute_project_command pattern; all commands now check .ok and report errors. | ✓ Always check .ok flag and report errors; remove silent skip pattern |
