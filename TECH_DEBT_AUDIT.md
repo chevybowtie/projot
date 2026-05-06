@@ -1,11 +1,11 @@
 # Tech Debt Audit — projot
 
 Generated: 2026-05-05
-Last Updated: 2026-05-05 (Repeat-run: No new debt patterns detected; 7 findings resolved)
+Last Updated: 2026-05-05 (Repeat-run: No new debt patterns detected; 8 findings resolved)
 
 ## Repeat-Run Summary (2026-05-05)
 
-**Status:** 7 of 20 findings resolved; no new debt detected.
+**Status:** 8 of 20 findings resolved; no new debt detected.
 
 **Major accomplishment:** F003 (command boilerplate extraction) successfully completed. Refactored 13 commands to use `execute_project_command()` and `execute_config_command()` helpers. Trade-off: helpers added ~60 LOC, so commands.cpp remains at 1046 LOC (was 1041), but maintainability and consistency improved significantly. Future command additions will now benefit from the shared pattern, making this investment pay off over time.
 
@@ -54,7 +54,7 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 
 | ID | Category | File:Line | Severity | Effort | Description | Recommendation |
 |----|----------|-----------|----------|--------|-------------|----------------|
-| F001 | Architectural decay | src/commands.cpp:1–50 | High | M | God file: commands.cpp is 1046 LOC combining 15 diverse subcommands, hook installation, MCP server setup, and internal infrastructure. Note: F003 refactoring extracted boilerplate into helpers (78–139) but added ~60 LOC, offsetting removal of duplicate pattern code. File size didn't decrease but maintainability improved. | Extract commands into separate handler module or use function pointers to reduce file size and improve clarity |
+| F001 | Architectural decay | src/commands.cpp → src/commands_*.cpp | High | M | **RESOLVED:** Split commands.cpp (1046 LOC) into 5 focused files by concern: commands_internal.h (shared header), commands_shared.cpp (shared implementations), commands_project.cpp (5 project commands), commands_config.cpp (7 config commands), commands_maint.cpp (3 maintenance commands). Command dispatch remains in main.cpp unchanged. Total ~970 LOC across files; improved clarity and maintainability. | ✓ Split into separate files by concern |
 | F002 | Consistency rot | src/config.cpp:38–45, renderer.cpp:10–16 | Medium | S | **RESOLVED:** Extracted deduplicate<T> template to utils.h, replaced both dedup implementations, unified in src/config.cpp:149 and src/renderer.cpp:47 | ✓ Extract to shared utility function in utils.h; name consistently |
 | F003 | Architectural decay | src/commands.cpp:363–377, 450–479, 517–542 | High | M | **RESOLVED:** Created execute_project_command() and execute_config_command() helpers. Refactored all 13 config/project-modifying commands (add-todo, complete, add-note, set-link, set-app-id, add-github/swagger/blizzard, add-azure). | ✓ Create helper: `execute_project_command(ctx, modify_fn, success_msg)` for 13+ commands |
 | F004 | Error handling | src/commands.cpp:583–584, 631–632, 677–678, 773–774 | High | M | **RESOLVED:** Silent error skips eliminated by moving to execute_config_command/execute_project_command pattern; all commands now check .ok and report errors. | ✓ Always check .ok flag and report errors; remove silent skip pattern |
@@ -84,6 +84,7 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 **Status:** Resolved via `execute_project_command()` and `execute_config_command()` helpers in commands.cpp:78–139.
 
 **Summary:** Refactored all 13 config/project-modifying commands to use the boilerplate helpers:
+
 - **Project modifiers:** cmd_add_todo, cmd_complete, cmd_add_note
 - **Config modifiers:** cmd_set_link, cmd_set_app_id, cmd_add_github/swagger/blizzard, cmd_add_azure
 
@@ -101,18 +102,17 @@ Each command now delegates parse→modify→render logic to the helper, reducing
 
 **Summary:** Extracted shared utility function in utils.h:76–86 (template). Removed duplicate functions from config.cpp and renderer.cpp; now both use the shared template.
 
-### 4. **F001 — Reduce commands.cpp file size** Medium impact, medium-large effort
+### 4. **F001 — Reduce commands.cpp file size** ⭐ **COMPLETED**
 
-**Why:** 1041 LOC is hard to navigate and mixes concerns.
+**Status:** Resolved. Split commands.cpp (1046 LOC) into 5 focused files.
 
-**Strategy (post-v0.1):** Split by concern:
+**Summary:** Extracted shared infrastructure into `commands_internal.h` and `commands_shared.cpp`. Split 15 command implementations by concern:
 
-- `commands_project.cpp` — add-todo, list, complete, add-note, set-link
-- `commands_config.cpp` — init, new, set-app-id, add-github, add-swagger, add-blizzard, add-azure
-- `commands_maint.cpp` — render, install-hook, install-mcp-server
-- Keep command dispatch in main.cpp
+- **commands_project.cpp** — cmd_add_todo, cmd_list, cmd_complete, cmd_add_note, cmd_set_link (5 commands)
+- **commands_config.cpp** — cmd_init, cmd_new, cmd_set_app_id, cmd_add_github/swagger/blizzard, cmd_add_azure (7 commands)
+- **commands_maint.cpp** — cmd_render, cmd_install_hook, cmd_install_mcp_server (3 commands, + 5 static helpers)
 
-This is structurally safe because commands have no inter-dependencies; they each load fresh context independently.
+Command dispatch in main.cpp remains unchanged. No public API changes. All tests pass; clean compile.
 
 ### 5. **F005 — Replace std::system calls** Medium-low impact, medium effort
 
@@ -172,20 +172,22 @@ projot is a well-engineered v0.1 release with minimal critical debt. The identif
 **Completed (across all sessions):**
 
 **High-impact:**
+
 1. ✓ Extract command boilerplate (F003) — 13 commands now use helpers
 2. ✓ Remove silent error skips (F004) — all commands check .ok
 3. ✓ Deduplicate utils (F002) — shared deduplicate<T> template
+4. ✓ Reduce file size (F001) — commands.cpp split into 5 focused files
 
 **Quick wins:**
-4. ✓ Add docstrings (F006) — all 15 commands documented
-5. ✓ Update RANP→RPM (F015) — terminology consistency
-6. ✓ Remove legacy `ranp` config key (F017) — clean break from old terminology
-7. ✓ Remove `--text` flag (F007) — legacy code removed
+5. ✓ Add docstrings (F006) — all 15 commands documented
+6. ✓ Update RANP→RPM (F015) — terminology consistency
+7. ✓ Remove legacy `ranp` config key (F017) — clean break from old terminology
+8. ✓ Remove `--text` flag (F007) — legacy code removed
 
 **Remaining for next cycle:**
 
 1. Merge path builders (F010) — trivial simplification
-2. Reduce file size (F001) — post-v0.1 refactoring for scale
-3. F008: Test coverage for error cases — add tests for parse/render failures
+2. Test coverage for error cases (F008) — add tests for parse/render failures
+3. Replace std::system calls (F005) — post-v0.1 refactoring for robustness
 
 The codebase is now in excellent shape for v0.2 with all high-impact boilerplate issues resolved and all quick wins completed.
