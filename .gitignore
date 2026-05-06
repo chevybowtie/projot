@@ -32,3 +32,4 @@ third_party/
 # Test outputs
 *.log
 test_results/
+.claude/.nfs00000*
