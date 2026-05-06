@@ -495,6 +495,113 @@ TEST_CASE("add_azure_multiple_of_same_type") {
     CHECK(content.find("[NPRD](https://portal.azure.com/subscriptions/nprd-id)") != std::string::npos);
 }
 
+// ── error path coverage (F008) ────────────────────────────────────────────────
+
+TEST_CASE("add_todo_missing_text_fails") {
+    TempRepo repo("add_todo_missing_text_fails");
+    repo.init(); repo.new_project("e1");
+    // No positional argument — should fail
+    CHECK(cmd_add_todo(make_args("add-todo")) != 0);
+}
+
+TEST_CASE("complete_missing_todo_flag_fails") {
+    TempRepo repo("complete_missing_todo_flag_fails");
+    repo.init(); repo.new_project("e2");
+    CHECK(cmd_complete(make_args("complete")) != 0);
+}
+
+TEST_CASE("complete_nonexistent_id_fails") {
+    TempRepo repo("complete_nonexistent_id_fails");
+    repo.init(); repo.new_project("e3");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    // ID 99 does not exist
+    CHECK(cmd_complete(make_args("complete", {{"todo", "99"}})) != 0);
+}
+
+TEST_CASE("complete_nonnumeric_id_fails") {
+    TempRepo repo("complete_nonnumeric_id_fails");
+    repo.init(); repo.new_project("e4");
+    CHECK(cmd_complete(make_args("complete", {{"todo", "abc"}})) != 0);
+}
+
+TEST_CASE("add_note_missing_todo_flag_fails") {
+    TempRepo repo("add_note_missing_todo_flag_fails");
+    repo.init(); repo.new_project("e5");
+    // No --todo flag
+    CHECK(cmd_add_note(make_args("add-note", {}, "note text")) != 0);
+}
+
+TEST_CASE("add_note_missing_text_fails") {
+    TempRepo repo("add_note_missing_text_fails");
+    repo.init(); repo.new_project("e6");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    // --todo provided but no positional note text
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}})) != 0);
+}
+
+TEST_CASE("add_note_nonexistent_id_fails") {
+    TempRepo repo("add_note_nonexistent_id_fails");
+    repo.init(); repo.new_project("e7");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "99"}}, "note")) != 0);
+}
+
+TEST_CASE("set_link_missing_flags_fails") {
+    TempRepo repo("set_link_missing_flags_fails");
+    repo.init(); repo.new_project("e8");
+    // Missing --url
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "teams"}})) != 0);
+    // Missing --key
+    CHECK(cmd_set_link(make_args("set-link", {{"url", "https://x.com"}})) != 0);
+}
+
+TEST_CASE("add_github_missing_url_fails") {
+    TempRepo repo("add_github_missing_url_fails");
+    repo.init(); repo.new_project("e9");
+    CHECK(cmd_add_github(make_args("add-github")) != 0);
+}
+
+TEST_CASE("add_swagger_missing_url_fails") {
+    TempRepo repo("add_swagger_missing_url_fails");
+    repo.init(); repo.new_project("e10");
+    CHECK(cmd_add_swagger(make_args("add-swagger")) != 0);
+}
+
+TEST_CASE("add_blizzard_missing_url_fails") {
+    TempRepo repo("add_blizzard_missing_url_fails");
+    repo.init(); repo.new_project("e11");
+    CHECK(cmd_add_blizzard(make_args("add-blizzard")) != 0);
+}
+
+TEST_CASE("add_todo_fails_without_project") {
+    TempRepo repo("add_todo_fails_without_project");
+    repo.init();
+    // new_project not called — no RPM set
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "T")) != 0);
+}
+
+TEST_CASE("add_note_fails_without_project") {
+    TempRepo repo("add_note_fails_without_project");
+    repo.init();
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "note")) != 0);
+}
+
+TEST_CASE("complete_fails_without_project") {
+    TempRepo repo("complete_fails_without_project");
+    repo.init();
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) != 0);
+}
+
+TEST_CASE("add_todo_fails_if_notes_file_deleted") {
+    TempRepo repo("add_todo_fails_if_notes_file_deleted");
+    repo.init(); repo.new_project("e12");
+    // Delete the notes file after project creation
+    std::error_code ec;
+    fs::remove(repo.path / ".projot" / "e12.md", ec);
+    // execute_project_command parse_markdown should fail → return 1
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "T")) != 0);
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 TEST_CASE("render_updates_file") {

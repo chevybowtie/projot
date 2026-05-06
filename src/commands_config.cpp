@@ -184,6 +184,24 @@ int cmd_set_app_id(const Args& args) {
 
 // ── add-github / add-swagger / add-blizzard ───────────────────────────────────
 
+struct UrlListDef {
+    const char* key;
+    std::vector<std::string> Config::* field;
+};
+
+static const UrlListDef URL_LIST_TYPES[] = {
+    {"github",   &Config::github},
+    {"swagger",  &Config::swagger},
+    {"blizzard", &Config::blizzard},
+};
+
+static const UrlListDef* find_url_list_type(const std::string& key) {
+    for (const auto& t : URL_LIST_TYPES) {
+        if (t.key == key) return &t;
+    }
+    return nullptr;
+}
+
 static int cmd_add_url(const Args& args, const std::string& kind) {
     if (args.help_requested) {
         std::cout << "Usage: projot add-" << kind << " --url <URL>\n\n"
@@ -201,15 +219,20 @@ static int cmd_add_url(const Args& args, const std::string& kind) {
         return 1;
     }
 
+    const UrlListDef* tdef = find_url_list_type(kind);
+    if (!tdef) {
+        std::cerr << "error: unknown URL list kind '" << kind << "'\n";
+        return 1;
+    }
+
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
     const std::string url = args.get("url");
 
-    return execute_config_command(ctx, [kind, &url](Context& c) {
-        auto& list = (kind == "github")  ? c.config.github  :
-                     (kind == "swagger") ? c.config.swagger : c.config.blizzard;
+    return execute_config_command(ctx, [tdef, &url, &kind](Context& c) {
+        auto& list = c.config.*tdef->field;
 
         if (std::find(list.begin(), list.end(), url) != list.end()) {
             std::cout << "URL already present (skipped).\n";
