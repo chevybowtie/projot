@@ -78,6 +78,7 @@ static std::string projot_file_path(const Context& ctx, const std::string& filen
 // Execute a command that modifies a project's todos and re-renders the file.
 // Takes a callback that modifies the Project and returns the result/message.
 // If success_msg is non-empty, prints it after successful render.
+// Special case: error message "already_completed" returns 0 (warning, not error).
 // Returns exit code (0 = success, 1 = error).
 using ProjectModifier = std::function<ParseResult(Project&)>;
 static int execute_project_command(const Context& ctx,
@@ -88,7 +89,14 @@ static int execute_project_command(const Context& ctx,
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
     auto result = modifier(proj);
-    if (!result.ok) { std::cerr << "error: " << result.error << "\n"; return 1; }
+    if (!result.ok) {
+        // Special case: "already_completed" is a warning, not an error
+        if (result.error != "already_completed") {
+            std::cerr << "error: " << result.error << "\n";
+            return 1;
+        }
+        return 0;
+    }
 
     auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
@@ -463,27 +471,26 @@ int cmd_complete(const Args& args) {
     auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
 
-    if (!find_todo(proj.todos, id)) {
-        std::cerr << "error: todo " << id << " not found.";
-        if (!proj.todos.empty()) {
-            std::cerr << " Valid IDs:";
-            for (const auto& t : proj.todos) std::cerr << " " << t.id;
+    return execute_project_command(ctx, [id](Project& proj) {
+        if (!find_todo(proj.todos, id)) {
+            std::string msg = "todo " + std::to_string(id) + " not found.";
+            if (!proj.todos.empty()) {
+                msg += " Valid IDs:";
+                for (const auto& t : proj.todos) msg += " " + std::to_string(t.id);
+            }
+            return ParseResult{false, msg};
         }
-        std::cerr << "\n";
-        return 1;
-    }
 
-    auto result = complete_todo(proj.todos, id, date_today());
-    if (result.warned) {
-        std::cerr << "warning: " << result.message << "\n";
-        return 0;
-    }
+        auto result = complete_todo(proj.todos, id, date_today());
+        if (result.warned) {
+            std::cerr << "warning: " << result.message << "\n";
+            // Don't modify the project if warning occurred
+            return ParseResult{false, "already_completed"};
+        }
 
-    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-    if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
-
-    std::cout << "Completed todo " << id << ".\n";
-    return 0;
+        std::cout << "Completed todo " << id << ".\n";
+        return ParseResult{true, ""};
+    });
 }
 
 // ── add-note ─────────────────────────────────────────────────────────────────
@@ -522,28 +529,22 @@ int cmd_add_note(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
-    if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
-
-    if (!find_todo(proj.todos, id)) {
-        std::cerr << "error: todo " << id << " not found.";
-        if (!proj.todos.empty()) {
-            std::cerr << " Valid IDs:";
-            for (const auto& t : proj.todos) std::cerr << " " << t.id;
+    return execute_project_command(ctx, [id, &text](Project& proj) {
+        if (!find_todo(proj.todos, id)) {
+            std::string msg = "todo " + std::to_string(id) + " not found.";
+            if (!proj.todos.empty()) {
+                msg += " Valid IDs:";
+                for (const auto& t : proj.todos) msg += " " + std::to_string(t.id);
+            }
+            return ParseResult{false, msg};
         }
-        std::cerr << "\n";
-        return 1;
-    }
 
-    auto result = add_note(proj.todos, id, text);
-    if (result.warned) std::cerr << "warning: " << result.message << "\n";
+        auto result = add_note(proj.todos, id, text);
+        if (result.warned) std::cerr << "warning: " << result.message << "\n";
 
-    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-    if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
-
-    std::cout << "Added note to todo " << id << ".\n";
-    return 0;
+        std::cout << "Added note to todo " << id << ".\n";
+        return ParseResult{true, ""};
+    });
 }
 
 // ── set-link ─────────────────────────────────────────────────────────────────
