@@ -30,7 +30,8 @@ static void print_usage() {
         "  render        Re-render the notes file and stage it\n\n"
         "Maintenance commands:\n"
         "  install-hook        Install the pre-commit git hook\n"
-        "  install-mcp-server  Configure MCP server for Claude Code and VS Code\n\n"
+        "  install-mcp-server  Configure MCP server for Claude Code and VS Code\n"
+        "  set-global          Set global defaults (rpm_base_url, itrack_base_url)\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -53,6 +54,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"render",       {}},
         {"install-hook", {}},
         {"install-mcp-server", {"no-vscode"}},
+        {"set-global",   {"rpm-base-url", "itrack-base-url"}},
     };
     return m;
 }
@@ -88,6 +90,7 @@ int main(int argc, char* argv[]) {
         {"render",       cmd_render},
         {"install-hook", cmd_install_hook},
         {"install-mcp-server", cmd_install_mcp_server},
+        {"set-global",   cmd_set_global},
     };
 
     auto cmd_it = commands.find(args.subcommand);

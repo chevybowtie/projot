@@ -8,7 +8,8 @@
       "Bash(cmake --build /home/paul/Documents/projects/projot/build)",
       "Bash(ctest --test-dir /home/paul/Documents/projects/projot/build --output-on-failure)",
       "Bash(./build/projot_tests)",
-      "Bash(ctest --test-dir build)"
+      "Bash(ctest --test-dir build)",
+      "Bash(./build/projot set-global *)"
     ]
   }
 }

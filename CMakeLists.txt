@@ -49,6 +49,8 @@ install(FILES completions/_projot
     DESTINATION share/zsh/vendor-completions)
 install(FILES completions/projot.fish
     DESTINATION share/fish/vendor_completions.d)
+install(FILES completions/projot.ps1
+    DESTINATION share/projot)
 
 # Documentation
 install(FILES LICENSE README.md

@@ -48,3 +48,4 @@ int cmd_install_hook(const Args& args);
 
 // Configure MCP server integration for Claude Code and VS Code.
 int cmd_install_mcp_server(const Args& args);
+int cmd_set_global(const Args& args);

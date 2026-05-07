@@ -40,6 +40,11 @@ struct Config {
     std::string rpm;
     std::string name;
     std::string itrack;
+
+    // Global-level fields (from ~/.config/projot/config; may be overridden per-repo)
+    std::string rpm_base_url;
+    std::string itrack_base_url;
+
     std::string date_format;
     std::string created;       // ISO date when project was created (YYYY-MM-DD)
 
@@ -71,6 +76,9 @@ ParseResult parse_config(const std::string& path, Config& out);
 // Write a Config to disk in canonical format.
 // Returns ok=false with an error message on failure.
 ParseResult write_config(const std::string& path, const Config& cfg);
+
+// Write only global config fields (rpm_base_url, itrack_base_url) to disk.
+ParseResult write_global_config(const std::string& path, const Config& cfg);
 
 // Split a comma-separated value string into trimmed tokens.
 std::vector<std::string> split_list(const std::string& value);
