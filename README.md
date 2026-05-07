@@ -12,9 +12,6 @@
 - [Project Structure](#project-structure)
 - [Building](#building)
 - [Installation](#installation)
-  - [From a pre-built release (recommended)](#from-a-pre-built-release-recommended)
-  - [Shell completion (optional)](#shell-completion-optional)
-  - [From source](#from-source)
 - [AI Integration (MCP Server)](#ai-integration-mcp-server)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -184,117 +181,26 @@ projot/
 
 ---
 
+## Installation
+
+Choose your platform:
+
+- **[Linux Installation](docs/INSTALL-LINUX.md)** — Debian package, binary, tarball, or build from source
+- **[Windows Installation](docs/INSTALL-WINDOWS.md)** — Chocolatey, manual binary, or build from source
+
+Both guides cover binary installation, shell completion, and building from source for your platform.
+
 ## Building
 
 Requires C++17 and CMake. No external dependencies.
 
 ```sh
-make          # Linux (release build)
-make test     # build and run all tests
-```
-
-Or directly with CMake (all platforms):
-
-```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
+ctest --test-dir build --output-on-failure   # run tests
 ```
 
-See [docs/DEVELOPER.md](docs/DEVELOPER.md) for full build, install, and shell completion instructions.
-
----
-
-## Installation
-
-### From a pre-built release (recommended)
-
-Download the latest release from the [GitHub Releases](../../releases/latest) page.
-
-#### Linux
-
-**Option 1: Debian package (recommended)**
-
-```sh
-# Download and install the .deb package
-wget https://github.com/ORG/projot/releases/latest/download/projot_*.deb
-sudo apt install ./projot_*.deb
-```
-
-This includes the binary and shell completions for bash, zsh, and fish.
-
-**Option 2: Binary only**
-
-```sh
-# Download and install the binary
-curl -Lo projot https://github.com/ORG/projot/releases/latest/download/projot-linux-x86_64
-chmod +x projot
-sudo mv projot /usr/local/bin/
-
-# (Optional) verify the SHA-256 checksum printed on the release page
-sha256sum projot
-```
-
-For shell completions with this method, see the [Shell completion](#shell-completion-optional) section below.
-
-**Option 3: Tarball**
-
-```sh
-# Download the tarball (useful for non-Debian systems)
-wget https://github.com/ORG/projot/releases/latest/download/projot-*-linux-x86_64.tar.gz
-tar -xzf projot-*-linux-x86_64.tar.gz
-sudo cp -r bin/* /usr/local/bin/
-sudo cp -r share/* /usr/local/share/
-```
-
-#### Windows
-
-**Option 1: Chocolatey package (recommended)**
-
-If you have [Chocolatey](https://chocolatey.org/) installed:
-
-```sh
-# Download the .nupkg from GitHub Releases, then install
-choco install projot.*.nupkg --source .
-```
-
-This installs the binary and enables PowerShell tab completion automatically.
-
-**Option 2: Manual binary**
-
-1. Download `projot-windows-x86_64.exe` from the release page.
-2. Rename it to `projot.exe` and move it to a directory on your `PATH`  
-   (e.g. `C:\Users\<you>\AppData\Local\Programs\projot\`).
-3. Add that directory to `PATH` via **System Properties → Environment Variables**.
-4. For PowerShell completions, see the [Shell completion](#shell-completion-optional) section below.
-
-### Shell completion (optional)
-
-**Recommended: Install via package manager** (Linux)
-
-If you installed projot via the `.deb` package, shell completions are included automatically and enabled on your next shell restart. No additional steps needed.
-
-**Manual installation** (for non-packaged installs)
-
-Download the completion script for your shell from the release page:
-
-| Shell | File to download | Install path |
-|---|---|---|
-| Bash | `projot.bash` | `~/.local/share/bash-completion/completions/projot` |
-| Zsh | `_projot` | `~/.zsh/completions/_projot` (must be on `$fpath`) |
-| Fish | `projot.fish` | `~/.config/fish/completions/projot.fish` |
-| PowerShell | `projot.ps1` | Download and dot-source from `$PROFILE` |
-
-Restart your shell after installing.
-
-### From source
-
-```sh
-git clone https://github.com/ORG/projot
-cd projot
-make
-sudo make install               # installs to /usr/local/bin
-make install-completion         # installs completion for current shell
-```
+Platform-specific build instructions are in the Linux and Windows installation guides.
 
 ---
 
