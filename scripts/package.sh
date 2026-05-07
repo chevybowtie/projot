@@ -50,10 +50,12 @@ Version: $version
 Section: utils
 Priority: optional
 Architecture: amd64
-Maintainer: Paul Sturm <bills@paulsturm.net>
+Maintainer: Paul Sturm <paul.sturm@cotton-software.com>
 Description: Repo-centric developer notepad
  CLI tool for tracking todos, notes, and URLs inside a .projot/
- directory at a git repository root.
+ directory at a git repository root. Generates a project 
+ summary markdown file with the collected information for easy
+ reporting.
 EOF
 
 # Build .deb
