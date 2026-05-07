@@ -1,77 +1,107 @@
 # projot PowerShell completion
-# Dot-source this file from your $PROFILE:
-#   . "$HOME\Documents\projot\completions\projot.ps1"
+# Add to your PowerShell profile with:
+#   . "path/to/projot.ps1"
+# Or install via projot's installer
 
-Register-ArgumentCompleter -Native -CommandName projot -ScriptBlock {
+$projotSubcommands = @(
+    'init', 'new', 'add-todo', 'list', 'complete', 'add-note',
+    'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
+    'add-azure', 'render', 'install-hook', 'install-mcp-server', 'set-global'
+)
+
+$projotFlags = @{
+    'init'               = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
+    'new'                = @('--rpm', '--name', '--itrack', '--teams', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help')
+    'add-todo'           = @('--help')
+    'list'               = @('--open', '--closed', '--all', '--help')
+    'complete'           = @('--todo', '--help')
+    'add-note'           = @('--todo', '--text', '--help')
+    'set-link'           = @('--key', '--url', '--help')
+    'set-app-id'         = @('--app-id', '--force', '--help')
+    'add-github'         = @('--url', '--help')
+    'add-swagger'        = @('--url', '--help')
+    'add-blizzard'       = @('--url', '--help')
+    'add-azure'          = @('--type', '--name', '--url', '--help')
+    'render'             = @('--help')
+    'install-hook'       = @('--help')
+    'install-mcp-server' = @('--no-vscode', '--help')
+    'set-global'         = @('--rpm-base-url', '--itrack-base-url', '--help')
+}
+
+$projotFlagValues = @{
+    '--key'   = @('teams', 'itrack', 'rpm', 'other')
+    '--type'  = @('subscription', 'key-vault', 'resource-group', 'aks', 'log-analytics', 'storage', 'private-dns')
+    '--open'  = @()
+    '--closed'= @()
+    '--all'   = @()
+    '--no-hook' = @()
+    '--no-vscode' = @()
+    '--force' = @()
+}
+
+Register-ArgumentCompleter -CommandName projot -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
+    $ast = $commandAst.ToString()
     $elements = $commandAst.CommandElements
-    $subcommand = if ($elements.Count -ge 2) { $elements[1].ToString() } else { $null }
 
-    $subcommands = @(
-        'init', 'new', 'add-todo', 'list', 'complete', 'add-note',
-        'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
-        'render', 'install-hook'
-    )
+    # Get the current word being completed
+    $word = $wordToComplete
 
-    # Helper: get open todo IDs from the notes file
-    function Get-ProjotOpenIds {
-        try {
-            $root = & git rev-parse --show-toplevel 2>$null
-            if (-not $root) { return @() }
-            $config = Join-Path $root '.projot\config'
-            $rpmLine = Get-Content $config -ErrorAction Stop | Where-Object { $_ -match '^rpm\s*=' } | Select-Object -First 1
-            $rpm = ($rpmLine -replace '^rpm\s*=\s*', '').Trim()
-            $notes = Join-Path $root ".projot\$rpm.md"
-            (Get-Content $notes -ErrorAction Stop) |
-                Where-Object { $_ -match '^\d+\. \[ \]' } |
-                ForEach-Object { ($_ -split '\.')[0] }
-        } catch { @() }
+    # Find which subcommand (if any) is being used
+    $subcommand = $null
+    foreach ($i in 1..($elements.Count - 1)) {
+        $elem = $elements[$i].Value
+        if ($elem -in $projotSubcommands) {
+            $subcommand = $elem
+            break
+        }
     }
 
-    # No subcommand yet — complete subcommands and global flags
-    if (-not $subcommand -or $subcommand -eq $wordToComplete) {
-        $candidates = $subcommands + @('--help', '--version')
-        return $candidates |
-            Where-Object { $_ -like "$wordToComplete*" } |
-            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+    # If we haven't found a subcommand yet and word looks like a subcommand
+    if (-not $subcommand -and -not $word.StartsWith('-')) {
+        $completions = $projotSubcommands | Where-Object { $_ -like "$word*" }
+        $completions | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+        return
     }
 
-    # Determine what flag we're completing a value for
-    $prevToken = if ($elements.Count -ge 2) { $elements[$elements.Count - 2].ToString() } else { $null }
-
-    if ($prevToken -eq '--todo') {
-        $ids = Get-ProjotOpenIds
-        return $ids |
-            Where-Object { $_ -like "$wordToComplete*" } |
-            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Todo ID $_") }
+    # If no subcommand, show top-level options
+    if (-not $subcommand) {
+        $topLevel = @('--help', '--version') + $projotSubcommands
+        $completions = $topLevel | Where-Object { $_ -like "$word*" }
+        $completions | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+        return
     }
 
-    if ($prevToken -eq '--key') {
-        return @('teams', 'itrack', 'rpm', 'other') |
-            Where-Object { $_ -like "$wordToComplete*" } |
-            ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+    # Word starts with -: complete flags for this subcommand
+    if ($word.StartsWith('-')) {
+        if ($projotFlags.ContainsKey($subcommand)) {
+            $flags = $projotFlags[$subcommand]
+            $completions = $flags | Where-Object { $_ -like "$word*" }
+            $completions | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+        }
+        return
     }
 
-    # Flag completion per subcommand
-    $flags = switch ($subcommand) {
-        'init'         { @('--app-id', '--github', '--swagger', '--blizzard', '--help') }
-        'new'          { @('--rpm', '--name', '--itrack', '--teams', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help') }
-        'add-todo'     { @('--help') }
-        'list'         { @('--open', '--closed', '--all', '--help') }
-        'complete'     { @('--todo', '--help') }
-        'add-note'     { @('--todo', '--text', '--help') }
-        'set-link'     { @('--key', '--url', '--help') }
-        'set-app-id'   { @('--app-id', '--force', '--help') }
-        'add-github'   { @('--url', '--help') }
-        'add-swagger'  { @('--url', '--help') }
-        'add-blizzard' { @('--url', '--help') }
-        'render'       { @('--help') }
-        'install-hook' { @('--help') }
-        default        { @() }
+    # Determine if we're completing a flag value
+    $previousElement = $null
+    if ($elements.Count -ge 2) {
+        $previousElement = $elements[-2].Value
     }
 
-    $flags |
-        Where-Object { $_ -like "$wordToComplete*" } |
-        ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+    if ($projotFlagValues.ContainsKey($previousElement)) {
+        $values = $projotFlagValues[$previousElement]
+        if ($values.Count -gt 0) {
+            $completions = $values | Where-Object { $_ -like "$word*" }
+            $completions | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+        }
+    }
 }

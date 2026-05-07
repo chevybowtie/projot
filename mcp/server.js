@@ -2,9 +2,10 @@
 
 import { execSync } from "child_process";
 import { createInterface } from "readline";
-import { cwd, platform } from "process";
+import { cwd } from "process";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { platform } from "os";
 
 // MCP protocol: read stdin, write stdout
 const rl = createInterface({ input: process.stdin });
@@ -35,6 +36,25 @@ function getConfigValue(key) {
     return match ? match[1].trim() : null;
   } catch {
     throw new Error("Could not read .projot/config");
+  }
+}
+
+function getGlobalConfigValue(key) {
+  try {
+    let base;
+    if (process.platform === "win32") {
+      // Windows: prefer APPDATA, fallback to USERPROFILE
+      base = process.env.APPDATA || join(process.env.USERPROFILE, ".config");
+    } else {
+      // Unix/Linux/macOS: prefer XDG_CONFIG_HOME, fallback to ~/.config
+      base = process.env.XDG_CONFIG_HOME || join(process.env.HOME, ".config");
+    }
+    const configPath = join(base, "projot", "config");
+    const config = readFileSync(configPath, "utf8");
+    const match = config.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, "m"));
+    return match ? match[1].trim() : null;
+  } catch {
+    return null;
   }
 }
 
@@ -224,6 +244,11 @@ function handleRequest(request) {
             required: ["url"],
           },
         },
+        {
+          name: "open_rpm",
+          description: "Open the RPM project page in the default browser",
+          inputSchema: { type: "object", properties: {} },
+        },
       ],
     };
   }
@@ -261,9 +286,16 @@ function handleRequest(request) {
       }
 
       if (name === "open_itrack") {
-        const itrackUrl = getConfigValue("link.itrack");
+        let itrackUrl = getConfigValue("link.itrack");
         if (!itrackUrl) {
-          return { error: "No iTrack URL configured in .projot/config" };
+          const baseUrl = getConfigValue("itrack_base_url") || getGlobalConfigValue("itrack_base_url");
+          const number = getConfigValue("itrack");
+          if (baseUrl && number) {
+            itrackUrl = baseUrl + number;
+          }
+        }
+        if (!itrackUrl) {
+          return { error: "No iTrack URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'" };
         }
 
         const openCmd = {
@@ -360,6 +392,29 @@ function handleRequest(request) {
           return { error: `Unsupported platform: ${platform()}` };
         execCommand(`${openCmd} "${url}"`);
         return { result: `Opening Teams: ${url}` };
+      }
+
+      if (name === "open_rpm") {
+        let rpmUrl = getConfigValue("link.rpm");
+        if (!rpmUrl) {
+          const baseUrl = getConfigValue("rpm_base_url") || getGlobalConfigValue("rpm_base_url");
+          const number = getConfigValue("rpm");
+          if (baseUrl && number) {
+            rpmUrl = baseUrl + number;
+          }
+        }
+        if (!rpmUrl) {
+          return { error: "No RPM URL configured. Set link.rpm or run 'projot set-global --rpm-base-url <url>'" };
+        }
+        const openCmd = {
+          darwin: "open",
+          linux: "xdg-open",
+          win32: "start",
+        }[platform()];
+        if (!openCmd)
+          return { error: `Unsupported platform: ${platform()}` };
+        execCommand(`${openCmd} "${rpmUrl}"`);
+        return { result: `Opening RPM: ${rpmUrl}` };
       }
 
       if (name === "set_teams_link") {
