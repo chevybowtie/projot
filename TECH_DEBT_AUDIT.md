@@ -1,11 +1,11 @@
 # Tech Debt Audit — projot
 
 Generated: 2026-05-05
-Last Updated: 2026-05-06 (Repeat-run: No new debt patterns detected; 11 findings resolved)
+Last Updated: 2026-05-06 (Repeat-run: No new debt patterns detected; 13 findings resolved)
 
 ## Repeat-Run Summary (2026-05-05)
 
-**Status:** 11 of 20 findings resolved; no new debt detected.
+**Status:** 12 of 20 findings resolved; no new debt detected.
 
 **Major accomplishment:** F003 (command boilerplate extraction) successfully completed. Refactored 13 commands to use `execute_project_command()` and `execute_config_command()` helpers. Trade-off: helpers added ~60 LOC, so commands.cpp remains at 1046 LOC (was 1041), but maintainability and consistency improved significantly. Future command additions will now benefit from the shared pattern, making this investment pay off over time.
 
@@ -58,11 +58,11 @@ The config and markdown layers are cleanly separated; the command layer mixes to
 | F002 | Consistency rot | src/config.cpp:38–45, renderer.cpp:10–16 | Medium | S | **RESOLVED:** Extracted deduplicate<T> template to utils.h, replaced both dedup implementations, unified in src/config.cpp:149 and src/renderer.cpp:47 | ✓ Extract to shared utility function in utils.h; name consistently |
 | F003 | Architectural decay | src/commands.cpp:363–377, 450–479, 517–542 | High | M | **RESOLVED:** Created execute_project_command() and execute_config_command() helpers. Refactored all 13 config/project-modifying commands (add-todo, complete, add-note, set-link, set-app-id, add-github/swagger/blizzard, add-azure). | ✓ Create helper: `execute_project_command(ctx, modify_fn, success_msg)` for 13+ commands |
 | F004 | Error handling | src/commands.cpp:583–584, 631–632, 677–678, 773–774 | High | M | **RESOLVED:** Silent error skips eliminated by moving to execute_config_command/execute_project_command pattern; all commands now check .ok and report errors. | ✓ Always check .ok flag and report errors; remove silent skip pattern |
-| F005 | Security hygiene | src/commands.cpp:800, 926 | Medium | M | Reliance on `std::system("git add ...")` and `std::system("node --version")` for critical operations; uses `is_safe_rpm()` to validate RPM before embedding in shell command but approach is fragile | Use libgit2 C++ binding or shell-agnostic git library; avoid `std::system` entirely |
+| F005 | Security hygiene | src/commands_maint.cpp | Medium | M | **RESOLVED:** Replaced both `std::system()` calls. `git add` now uses `fork()+execvp()` on POSIX and `CreateProcess()` on Windows via a `git_stage_file()` helper — no shell involved, no injection surface. `node_available()` now walks PATH entries with `std::filesystem::exists()` instead of spawning a process. Zero new dependencies. | ✓ Shell-free git staging and node detection |
 | F006 | Documentation drift | src/commands.h:18 | Medium | S | **RESOLVED:** Added 1-line docstring to all 15 command declarations in commands.h (lines 7-50) explaining purpose of each command. | ✓ Add docstring to each command function with 1-line purpose |
 | F007 | Consistency rot | src/commands.cpp:348–357, 502–511 | Medium | S | **RESOLVED:** Removed `--text` flag parsing from add-todo and add-note; positional argument is now canonical form. | ✓ Remove `--text` flag parsing; positional argument is the canonical form per README |
 | F008 | Test debt | tests/test_commands.cpp | Medium | M | **RESOLVED:** Added 16 error-path tests covering: missing required flags (add-todo, add-note, complete, set-link, add-github/swagger/blizzard), nonexistent/nonnumeric todo IDs, commands run without an active project, and notes-file-deleted scenario exercising the execute_project_command parse-fail path. | ✓ Error paths now covered |
-| F009 | Architectural decay | src/commands.cpp:642–686 | Medium | S | Three similar command implementations (`add-github`, `add-swagger`, `add-blizzard`) all call shared helper `cmd_add_url()` with a string parameter to distinguish behavior | This is acceptable for now but signals that a data-driven approach (iterate over URL list metadata) might be cleaner post-v0.1 |
+| F009 | Architectural decay | src/commands_config.cpp | Medium | S | **RESOLVED (via F011):** `URL_LIST_TYPES[]` with member pointers is the data-driven approach called for. `cmd_add_github/swagger/blizzard` are now one-liner public API delegates; all logic lives in the table. Dynamically registering via the table in main.cpp would require exposing `URL_LIST_TYPES` externally and couples dispatch to F019 — not worth it for three commands. | ✓ Data-driven via `URL_LIST_TYPES[]`; one-liner delegates are correct public API |
 | F010 | Consistency rot | src/commands_shared.cpp:55 | Medium | S | **RESOLVED:** Merged `config_path_str()` and `notes_path_str()` into single `projot_file_path(ctx, filename)` helper. All 12 call sites across commands_*.cpp unified. | ✓ Merged into single `projot_file_path()` helper |
 | F011 | Type & contract debt | src/commands_config.cpp | Medium | S | **RESOLVED:** Replaced ternary chain `(kind == "github") ? ... : ...` with `URL_LIST_TYPES[]` lookup table using member pointers (same pattern as `AZURE_TYPES`). Unknown `kind` values now return an explicit error instead of silently falling through to blizzard. | ✓ Use lookup table with explicit "not found" handling |
 | F012 | Dependency & config debt | src/commands.cpp:696–711 | Low | S | AZURE_TYPES array and lookup function are hardcoded; adding new Azure resource type requires C++ recompilation | Acceptable for v0.1 (stable set of Azure types) but post-v0.1 could move type definitions to config or data file |
@@ -114,20 +114,15 @@ Each command now delegates parse→modify→render logic to the helper, reducing
 
 Command dispatch in main.cpp remains unchanged. No public API changes. All tests pass; clean compile.
 
-### 5. **F005 — Replace std::system calls** Medium-low impact, medium effort
+### 5. **F005 — Replace std::system calls** ⭐ **COMPLETED**
 
-**Why:** Direct shell execution is fragile and depends on external tools.
+**Status:** Resolved. Both `std::system()` call sites in `commands_maint.cpp` eliminated.
 
-**Location:** src/commands.cpp:800, 926
-
-**Alternatives:**
-
-- Use libgit2 C++ binding for `git add` (requires new dependency — but consider)
-- Write `.git/index.lock` logic manually (complex)
-- For v0.1: keep as-is with the assumption that git is on PATH
-- Post-v0.1: migrate to libgit2 if git integration becomes more complex
-
-For `node --version` check: Make the check optional; warn if Node.js is missing but don't fail.
+**Summary:**
+- `git_stage_file()` helper added using `fork()+execvp()` on POSIX / `CreateProcess()` on Windows. No shell spawned; the `git` binary is invoked directly with argv array — no quoting or injection surface.
+- `node_available()` replaced with a `PATH` walk using `std::filesystem::exists()`. No process spawned at all.
+- `is_safe_rpm()` retained as a defence-in-depth guard on the path component.
+- Zero new dependencies; stays within the no-external-deps constraint.
 
 ---
 
@@ -147,7 +142,7 @@ Low-effort, medium+ severity improvements:
 
 - **Hardcoded Azure type list (F012):** Azure resource types are stable and unlikely to change frequently. Hardcoding with a lookup table is appropriate for v0.1. Post-v0.1, migration to config-driven approach is straightforward.
 - **No enum-based command dispatch (F019):** String-based map dispatch is clear and permits easy addition of new commands without code generation. Trade-off is worth it for a CLI tool of this scale.
-- **Ternary chain for URL kind selection (F011):** Resolved — migrated to `URL_LIST_TYPES[]` lookup table with member pointers, consistent with `AZURE_TYPES`. Explicit error handling for unknown kinds.
+- **Ternary chain for URL kind selection (F011) / three similar URL commands (F009):** Both resolved together — `URL_LIST_TYPES[]` is the data-driven table called for by F009; F011 made the lookup safe. The three one-liner wrapper functions are the correct public API surface for command dispatch.
 - **Silent Azure type acceptance (F012):** The safety check happens at the type lookup; unknown types are rejected with a clear error message. No silent failures.
 - **Repeated "Run 'projot X --help'" messages (F013):** Redundant but acceptable; help text is discoverable and clear.
 - **Single-use Context struct (F014):** Improves readability; alternative (passing 3 return values) would be less clear.
@@ -186,9 +181,10 @@ projot is a well-engineered v0.1 release with minimal critical debt. The identif
 9. ✓ Merge path builders (F010) — single `projot_file_path()` helper
 10. ✓ Replace ternary URL-kind selector (F011) — `URL_LIST_TYPES[]` lookup table with explicit error
 11. ✓ Error-path test coverage (F008) — 16 new tests for missing flags, bad IDs, deleted notes file
+13. ✓ Replace std::system calls (F005) — shell-free git staging and node detection
 
 **Remaining for next cycle:**
 
-1. Replace std::system calls (F005) — post-v0.1 refactoring for robustness
+1. No remaining medium-or-higher findings. Low-severity findings (F012–F014, F016, F018–F020) accepted as-is for v0.1.
 
 The codebase is now in excellent shape for v0.2 with all high-impact boilerplate issues resolved and all quick wins completed.

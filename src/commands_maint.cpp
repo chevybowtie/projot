@@ -9,10 +9,19 @@
 #include <fstream>
 #include <filesystem>
 #include <optional>
+#include <sstream>
 #include <cstdlib>
 
 #ifdef __APPLE__
 #  include <mach-o/dyld.h>
+#endif
+
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <unistd.h>
+#  include <sys/wait.h>
+#  include <fcntl.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -25,6 +34,41 @@ static bool is_safe_rpm(const std::string& s) {
             return false;
     }
     return true;
+}
+
+// Stage a single file in the git index without invoking a shell.
+// rel_path is relative to repo_root (e.g. ".projot/foo.md").
+// Returns true on success; staging failure is non-fatal (best-effort).
+static bool git_stage_file(const fs::path& repo_root, const std::string& rel_path) {
+#ifdef _WIN32
+    std::string cmd = "git -C \"" + repo_root.string() + "\" add \"" + rel_path + "\"";
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
+                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+        return false;
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exit_code = 1;
+    GetExitCodeProcess(pi.hProcess, &exit_code);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return exit_code == 0;
+#else
+    std::string repo = repo_root.string();
+    const char* argv[] = {"git", "-C", repo.c_str(), "add", rel_path.c_str(), nullptr};
+    pid_t pid = fork();
+    if (pid < 0) return false;
+    if (pid == 0) {
+        int fd = open("/dev/null", O_WRONLY);
+        if (fd >= 0) { dup2(fd, STDERR_FILENO); close(fd); }
+        execvp("git", const_cast<char**>(argv));
+        _exit(1);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+#endif
 }
 
 // ── MCP helpers ───────────────────────────────────────────────────────────────
@@ -84,11 +128,9 @@ int cmd_render(const Args& args) {
     auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
-    // Stage the rendered file. RPM is validated before embedding in the command.
+    // Stage the rendered file. No shell involved; git_stage_file uses fork+execvp.
     if (is_safe_rpm(ctx.config.rpm)) {
-        std::string cmd = "git -C \"" + ctx.repo_root.string() +
-                          "\" add .projot/" + ctx.config.rpm + ".md 2>/dev/null";
-        int rc = std::system(cmd.c_str()); (void)rc;
+        git_stage_file(ctx.repo_root, ".projot/" + ctx.config.rpm + ".md");
     }
 
     return 0;
@@ -212,9 +254,26 @@ static bool install_claude_mcp(const fs::path& repo_root,
     return true;
 }
 
-// Check if Node.js is available on PATH
+// Check if Node.js is available on PATH without spawning a shell.
 static bool node_available() {
-    return std::system("node --version > /dev/null 2>&1") == 0;
+    const char* path_env = std::getenv("PATH");
+    if (!path_env) return false;
+    std::istringstream ss(path_env);
+    std::string dir;
+#ifdef _WIN32
+    const char sep = ';';
+    const std::string node_name = "node.exe";
+#else
+    const char sep = ':';
+    const std::string node_name = "node";
+#endif
+    while (std::getline(ss, dir, sep)) {
+        if (dir.empty()) continue;
+        std::error_code ec;
+        fs::path candidate = fs::path(dir) / node_name;
+        if (fs::exists(candidate, ec) && !ec) return true;
+    }
+    return false;
 }
 
 int cmd_install_mcp_server(const Args& args) {
