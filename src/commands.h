@@ -19,3 +19,4 @@ int cmd_add_azure(const Args& args);
 int cmd_render(const Args& args);
 int cmd_install_hook(const Args& args);
 int cmd_install_mcp_server(const Args& args);
+int cmd_set_global(const Args& args);

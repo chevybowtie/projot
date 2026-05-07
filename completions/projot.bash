@@ -17,7 +17,7 @@ _projot() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     words=("${COMP_WORDS[@]}")
 
-    local subcommands="init new add-todo list complete add-note set-link set-app-id add-github add-swagger add-blizzard render install-hook"
+    local subcommands="init new add-todo list complete add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook install-mcp-server set-global"
 
     # First word after projot — complete subcommands
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -57,8 +57,17 @@ _projot() {
             add-github|add-swagger|add-blizzard)
                 COMPREPLY=( $(compgen -W "--url --help" -- "${cur}") )
                 ;;
+            add-azure)
+                COMPREPLY=( $(compgen -W "--type --name --url --help" -- "${cur}") )
+                ;;
             render|install-hook)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
+                ;;
+            install-mcp-server)
+                COMPREPLY=( $(compgen -W "--no-vscode --help" -- "${cur}") )
+                ;;
+            set-global)
+                COMPREPLY=( $(compgen -W "--rpm-base-url --itrack-base-url --help" -- "${cur}") )
                 ;;
         esac
         return

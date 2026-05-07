@@ -67,6 +67,18 @@ static Context load_context() {
         std::cerr << "warning: config_version missing; treating as version 0.\n";
     }
 
+    // Merge global config (provides defaults for base URL fields)
+    auto global_path = global_config_path();
+    if (global_path) {
+        Config global_cfg;
+        if (parse_config(global_path->string(), global_cfg).ok) {
+            if (ctx.config.rpm_base_url.empty())
+                ctx.config.rpm_base_url = global_cfg.rpm_base_url;
+            if (ctx.config.itrack_base_url.empty())
+                ctx.config.itrack_base_url = global_cfg.itrack_base_url;
+        }
+    }
+
     return ctx;
 }
 
@@ -1037,5 +1049,53 @@ int cmd_install_mcp_server(const Args& args) {
     }
 
     std::cout << "MCP server is ready. Reload your editor to enable tab completion and tools.\n";
+    return 0;
+}
+
+// ── set-global ────────────────────────────────────────────────────────────────
+
+int cmd_set_global(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-global [options]\n\n"
+            "Set global defaults for base URLs. These are used by projot across all projects.\n"
+            "Values can be overridden at the repo level in .projot/config if needed.\n\n"
+            "Options:\n"
+            "  --rpm-base-url <url>    Base URL for RPM links (project number is appended)\n"
+            "  --itrack-base-url <url> Base URL for iTrack links (ticket number is appended)\n\n"
+            "At least one of the above options is required.\n\n"
+            "Examples:\n"
+            "  projot set-global --rpm-base-url https://rpm.example.com/\n"
+            "  projot set-global --itrack-base-url https://itrack.example.com/record/\n"
+            "  projot set-global --rpm-base-url https://rpm.example.com/ --itrack-base-url https://itrack.example.com/record/\n";
+        return 0;
+    }
+
+    if (!args.has("rpm-base-url") && !args.has("itrack-base-url")) {
+        std::cerr << "error: --rpm-base-url or --itrack-base-url required.\n";
+        return 1;
+    }
+
+    auto path = global_config_path();
+    if (!path) {
+        std::cerr << "error: cannot determine global config path ($HOME not set).\n";
+        return 1;
+    }
+
+    Config cfg;
+    parse_config(path->string(), cfg); // silently ok if file missing
+
+    if (args.has("rpm-base-url"))
+        cfg.rpm_base_url = args.get("rpm-base-url");
+    if (args.has("itrack-base-url"))
+        cfg.itrack_base_url = args.get("itrack-base-url");
+
+    auto result = write_global_config(path->string(), cfg);
+    if (!result.ok) {
+        std::cerr << "error: " << result.error << "\n";
+        return 1;
+    }
+
+    std::cout << "Updated global config: " << path->string() << "\n";
     return 0;
 }

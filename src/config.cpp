@@ -103,6 +103,10 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.name = value;
         } else if (key == "itrack") {
             out.itrack = value;
+        } else if (key == "rpm_base_url") {
+            out.rpm_base_url = value;
+        } else if (key == "itrack_base_url") {
+            out.itrack_base_url = value;
         } else if (key == "date_format") {
             out.date_format = value;
         } else if (key == "created") {
@@ -239,6 +243,29 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
         if (!cfg.azure_private_dns.empty())
             write_list("azure_private_dns", cfg.azure_private_dns);
     }
+
+    return {true, ""};
+}
+
+ParseResult write_global_config(const std::string& path, const Config& cfg) {
+    // Ensure parent directory exists
+    std::filesystem::path p(path);
+    if (p.has_parent_path()) {
+        std::error_code ec;
+        std::filesystem::create_directories(p.parent_path(), ec);
+        if (ec) return {false, "Cannot create directory: " + p.parent_path().string()};
+    }
+
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file.is_open()) {
+        return {false, "Cannot write global config: " + path};
+    }
+
+    file << "# projot global config\n";
+    if (!cfg.rpm_base_url.empty())
+        file << "rpm_base_url = " << cfg.rpm_base_url << "\n";
+    if (!cfg.itrack_base_url.empty())
+        file << "itrack_base_url = " << cfg.itrack_base_url << "\n";
 
     return {true, ""};
 }

@@ -36,8 +36,11 @@ _projot() {
                 'add-github:add a GitHub URL'
                 'add-swagger:add a Swagger URL'
                 'add-blizzard:add a Blizzard URL'
+                'add-azure:add an Azure resource'
                 'render:re-render the notes file and stage it'
                 'install-hook:install the pre-commit git hook'
+                'install-mcp-server:configure MCP server'
+                'set-global:set global defaults'
             )
             _describe 'subcommand' subcommands
             ;;
@@ -107,8 +110,26 @@ _projot() {
                         '--url[URL]:url' \
                         '--help[show help]'
                     ;;
+                add-azure)
+                    _arguments \
+                        '--type[resource type]:type:(subscription key-vault resource-group aks log-analytics storage private-dns)' \
+                        '--name[resource name]:name' \
+                        '--url[URL]:url' \
+                        '--help[show help]'
+                    ;;
                 render|install-hook)
                     _arguments '--help[show help]'
+                    ;;
+                install-mcp-server)
+                    _arguments \
+                        '--no-vscode[skip VS Code configuration]' \
+                        '--help[show help]'
+                    ;;
+                set-global)
+                    _arguments \
+                        '--rpm-base-url[base URL for RPM links]:url' \
+                        '--itrack-base-url[base URL for iTrack links]:url' \
+                        '--help[show help]'
                     ;;
             esac
             ;;

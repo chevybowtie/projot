@@ -16,7 +16,8 @@ end
 
 function __projot_no_subcommand
     not __fish_seen_subcommand_from init new add-todo list complete add-note \
-        set-link set-app-id add-github add-swagger add-blizzard render install-hook
+        set-link set-app-id add-github add-swagger add-blizzard add-azure render \
+        install-hook install-mcp-server set-global
 end
 
 # Top-level flags
@@ -34,13 +35,17 @@ complete -c projot -n __projot_no_subcommand -a set-link      -d 'Set or update 
 complete -c projot -n __projot_no_subcommand -a set-app-id    -d 'Set the application ID'
 complete -c projot -n __projot_no_subcommand -a add-github    -d 'Add a GitHub URL'
 complete -c projot -n __projot_no_subcommand -a add-swagger   -d 'Add a Swagger URL'
-complete -c projot -n __projot_no_subcommand -a add-blizzard  -d 'Add a Blizzard URL'
-complete -c projot -n __projot_no_subcommand -a render        -d 'Re-render notes file and stage it'
-complete -c projot -n __projot_no_subcommand -a install-hook  -d 'Install the pre-commit git hook'
+complete -c projot -n __projot_no_subcommand -a add-blizzard      -d 'Add a Blizzard URL'
+complete -c projot -n __projot_no_subcommand -a add-azure        -d 'Add an Azure resource'
+complete -c projot -n __projot_no_subcommand -a render           -d 'Re-render notes file and stage it'
+complete -c projot -n __projot_no_subcommand -a install-hook     -d 'Install the pre-commit git hook'
+complete -c projot -n __projot_no_subcommand -a install-mcp-server -d 'Configure MCP server'
+complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global defaults'
 
 # --help on every subcommand
 for sub in init new add-todo list complete add-note set-link set-app-id \
-           add-github add-swagger add-blizzard render install-hook
+           add-github add-swagger add-blizzard add-azure render install-hook \
+           install-mcp-server set-global
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l help -d 'Show help'
 end
 
@@ -89,3 +94,16 @@ complete -c projot -n '__fish_seen_subcommand_from set-app-id' -l force  -d 'Ove
 for sub in add-github add-swagger add-blizzard
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l url -d 'URL' -r
 end
+
+# add-azure
+complete -c projot -n '__fish_seen_subcommand_from add-azure' -l type -d 'Resource type' -r \
+    -a 'subscription\tSubscription key-vault\tKeyVault resource-group\tResourceGroup aks\tAKS log-analytics\tLogAnalytics storage\tStorage private-dns\tPrivateDNS'
+complete -c projot -n '__fish_seen_subcommand_from add-azure' -l name -d 'Resource name' -r
+complete -c projot -n '__fish_seen_subcommand_from add-azure' -l url -d 'URL' -r
+
+# install-mcp-server
+complete -c projot -n '__fish_seen_subcommand_from install-mcp-server' -l no-vscode -d 'Skip VS Code configuration'
+
+# set-global
+complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r
+complete -c projot -n '__fish_seen_subcommand_from set-global' -l itrack-base-url -d 'Base URL for iTrack links' -r
