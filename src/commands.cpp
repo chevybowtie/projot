@@ -293,8 +293,9 @@ int cmd_new(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
 
     if (!ctx.config.rpm.empty()) {
-        std::cerr << "error: a project (RPM " << ctx.config.rpm
-                  << ") is already configured.\n";
+        std::cerr << "error: project RPM " << ctx.config.rpm
+                  << " is already active. Run 'projot close' to archive it "
+                  << "before starting a new one.\n";
         return 1;
     }
 
@@ -340,6 +341,74 @@ int cmd_new(const Args& args) {
         }
     }
 
+    return 0;
+}
+
+// ── close ─────────────────────────────────────────────────────────────────────
+
+int cmd_close(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot close\n\n"
+            "Archive the current project and reset for the next one.\n\n"
+            "Moves the project notes file to .projot/archive/ and clears all\n"
+            "project-level configuration (rpm, itrack, todos, etc).\n"
+            "Repo-level settings (app_id, GitHub, Swagger, Blizzard) are preserved.\n\n"
+            "No flags required.\n\n"
+            "Example:\n"
+            "  projot close\n";
+        return 0;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    // Create archive directory
+    fs::path archive_dir = ctx.repo_root / ".projot" / "archive";
+    std::error_code ec;
+    fs::create_directories(archive_dir, ec);
+    if (ec) {
+        std::cerr << "error: cannot create archive directory: " << ec.message() << "\n";
+        return 1;
+    }
+
+    // Move project notes to archive
+    fs::path old_notes = ctx.repo_root / ".projot" / (ctx.config.rpm + ".md");
+    fs::path archived_notes = archive_dir / (ctx.config.rpm + ".md");
+    fs::rename(old_notes, archived_notes, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        std::cerr << "error: cannot archive notes file: " << ec.message() << "\n";
+        return 1;
+    }
+
+    // Print summary of closed project
+    std::cout << "Archived project: " << ctx.config.name
+              << "  |  RPM: " << ctx.config.rpm
+              << "  |  Created: " << ctx.config.created << "\n";
+
+    // Clear project-level fields, preserve repo-level fields
+    ctx.config.rpm = "";
+    ctx.config.name = "";
+    ctx.config.itrack = "";
+    ctx.config.created = "";
+    ctx.config.date_format = "";
+    ctx.config.links.clear();
+    ctx.config.labels.clear();
+    ctx.config.link_urls.clear();
+    ctx.config.azure_subscription.clear();
+    ctx.config.azure_key_vault.clear();
+    ctx.config.azure_resource_group.clear();
+    ctx.config.azure_aks.clear();
+    ctx.config.azure_log_analytics.clear();
+    ctx.config.azure_storage.clear();
+    ctx.config.azure_private_dns.clear();
+
+    // Write cleared config
+    auto save = write_config(config_path_str(ctx), ctx.config);
+    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+
+    std::cout << "Closed. Run 'projot new' to start the next project.\n";
     return 0;
 }
 

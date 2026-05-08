@@ -6,6 +6,7 @@
 
 int cmd_init(const Args& args);
 int cmd_new(const Args& args);
+int cmd_close(const Args& args);
 int cmd_add_todo(const Args& args);
 int cmd_list(const Args& args);
 int cmd_complete(const Args& args);
