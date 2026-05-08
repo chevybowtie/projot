@@ -9,7 +9,12 @@
       "Bash(ctest --test-dir /home/paul/Documents/projects/projot/build --output-on-failure)",
       "Bash(./build/projot_tests)",
       "Bash(ctest --test-dir build)",
-      "Bash(./build/projot set-global *)"
+      "Bash(./build/projot set-global *)",
+      "Bash(./projot_tests)",
+      "Read(//tmp/projot_smoke_test/**)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot add-todo *)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot list *)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot close *)"
     ]
   }
 }

@@ -191,6 +191,82 @@ TEST_CASE("new_inherits_repo_fields") {
     CHECK(proj.github_urls[0] == "https://github.com/org/r");
 }
 
+// ── close ─────────────────────────────────────────────────────────────────────
+
+TEST_CASE("close_clears_project_fields") {
+    TempRepo repo("close_clears_project_fields");
+    repo.init("MyApp");
+    repo.new_project("12345", "Test Proj", "67890");
+    int ret = cmd_close(make_args("close"));
+    CHECK(ret == 0);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    // Project fields cleared
+    CHECK(cfg.rpm == "");
+    CHECK(cfg.name == "");
+    CHECK(cfg.itrack == "");
+    CHECK(cfg.created == "");
+    CHECK(cfg.links.empty());
+    // Repo-level fields preserved
+    CHECK(cfg.app_id == "MyApp");
+}
+
+TEST_CASE("close_archives_notes_file") {
+    TempRepo repo("close_archives_notes_file");
+    repo.init();
+    repo.new_project("54321", "Archive Test", "11111");
+    // Verify original exists
+    CHECK(fs::exists(repo.path / ".projot" / "54321.md"));
+    int ret = cmd_close(make_args("close"));
+    CHECK(ret == 0);
+    // Verify archived exists, original gone
+    CHECK(fs::exists(repo.path / ".projot" / "archive" / "54321.md"));
+    CHECK(!fs::exists(repo.path / ".projot" / "54321.md"));
+}
+
+TEST_CASE("close_clears_azure_resources") {
+    TempRepo repo("close_clears_azure_resources");
+    repo.init();
+    repo.new_project("azure1", "Azure Test", "22222");
+    // Add an Azure resource
+    Args az_a;
+    az_a.subcommand = "add-azure";
+    az_a.flags["type"].push_back("subscription");
+    az_a.flags["url"].push_back("https://portal.azure.com/sub");
+    cmd_add_azure(az_a);
+    // Verify it's there
+    Config cfg_before;
+    parse_config((repo.path / ".projot" / "config").string(), cfg_before);
+    REQUIRE(!cfg_before.azure_subscription.empty());
+    // Close and verify cleared
+    cmd_close(make_args("close"));
+    Config cfg_after;
+    parse_config((repo.path / ".projot" / "config").string(), cfg_after);
+    CHECK(cfg_after.azure_subscription.empty());
+}
+
+TEST_CASE("close_requires_active_project") {
+    TempRepo repo("close_requires_active_project");
+    repo.init();
+    // No project created
+    int ret = cmd_close(make_args("close"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("new_blocked_when_project_active") {
+    TempRepo repo("new_blocked_when_project_active");
+    repo.init();
+    repo.new_project("proj1", "First Project", "11111");
+    // Try to create another project
+    int ret = repo.new_project("proj2", "Second Project", "22222");
+    CHECK(ret != 0);
+    // Verify first project is still active
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.rpm == "proj1");
+    CHECK(cfg.name == "First Project");
+}
+
 // ── add-todo ──────────────────────────────────────────────────────────────────
 
 TEST_CASE("add_todo_appends") {
