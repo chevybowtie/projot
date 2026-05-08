@@ -10,6 +10,9 @@ int cmd_init(const Args& args);
 // Start a new RPM project in this repository.
 int cmd_new(const Args& args);
 
+// Archive the current project and reset for the next one.
+int cmd_close(const Args& args);
+
 // Append a new todo to the project notes file.
 int cmd_add_todo(const Args& args);
 

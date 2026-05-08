@@ -15,7 +15,8 @@ static void print_usage() {
         "Usage: projot <subcommand> [options]\n\n"
         "Setup commands:\n"
         "  init          Initialize projot for this repository\n"
-        "  new           Start a new RPM project in this repository\n\n"
+        "  new           Start a new RPM project in this repository\n"
+        "  close         Archive the current project and reset for the next one\n\n"
         "Project commands:\n"
         "  add-todo      Append a new todo\n"
         "  list          Show project summary and todos\n"
@@ -41,6 +42,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"init",         {"app-id", "github", "swagger", "blizzard"}},
         {"new",          {"rpm", "name", "itrack", "teams", "rpm-url",
                           "itrack-url", "other", "no-hook"}},
+        {"close",        {}},
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
         {"complete",     {"todo"}},
@@ -77,6 +79,7 @@ int main(int argc, char* argv[]) {
     static const std::map<std::string, CmdFn> commands{
         {"init",         cmd_init},
         {"new",          cmd_new},
+        {"close",        cmd_close},
         {"add-todo",     cmd_add_todo},
         {"list",         cmd_list},
         {"complete",     cmd_complete},
