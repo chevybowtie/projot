@@ -4,7 +4,12 @@
       "Bash(cmake --build build)",
       "Bash(ctest --test-dir build --output-on-failure)",
       "Bash(./build/projot --help)",
-      "Bash(./build/projot set-global *)"
+      "Bash(./build/projot set-global *)",
+      "Bash(./projot_tests)",
+      "Read(//tmp/projot_smoke_test/**)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot add-todo *)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot list *)",
+      "Bash(/home/paul/Documents/projects/projot/build/projot close *)"
     ]
   }
 }
