@@ -15,7 +15,7 @@ function __projot_open_todo_ids
 end
 
 function __projot_no_subcommand
-    not __fish_seen_subcommand_from init new add-todo list complete add-note \
+    not __fish_seen_subcommand_from init new close add-todo list complete add-note \
         set-link set-app-id add-github add-swagger add-blizzard add-azure render \
         install-hook install-mcp-server set-global
 end
@@ -27,6 +27,7 @@ complete -c projot -n __projot_no_subcommand -l version -d 'Show version'
 # Subcommands
 complete -c projot -n __projot_no_subcommand -a init          -d 'Initialize projot for this repository'
 complete -c projot -n __projot_no_subcommand -a new           -d 'Start a new RPM project'
+complete -c projot -n __projot_no_subcommand -a close         -d 'Archive current project and reset'
 complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new todo'
 complete -c projot -n __projot_no_subcommand -a list          -d 'Show project summary and todos'
 complete -c projot -n __projot_no_subcommand -a complete      -d 'Mark a todo completed'
@@ -43,7 +44,7 @@ complete -c projot -n __projot_no_subcommand -a install-mcp-server -d 'Configure
 complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global defaults'
 
 # --help on every subcommand
-for sub in init new add-todo list complete add-note set-link set-app-id \
+for sub in init new close add-todo list complete add-note set-link set-app-id \
            add-github add-swagger add-blizzard add-azure render install-hook \
            install-mcp-server set-global
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l help -d 'Show help'
