@@ -17,7 +17,7 @@ _projot() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     words=("${COMP_WORDS[@]}")
 
-    local subcommands="init new add-todo list complete add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook install-mcp-server set-global"
+    local subcommands="init new close add-todo list complete add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook install-mcp-server set-global"
 
     # First word after projot — complete subcommands
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -35,6 +35,9 @@ _projot() {
                 ;;
             new)
                 COMPREPLY=( $(compgen -W "--rpm --name --itrack --teams --rpm-url --itrack-url --other --no-hook --help" -- "${cur}") )
+                ;;
+            close)
+                COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
             add-todo)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
