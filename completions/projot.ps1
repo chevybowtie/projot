@@ -4,7 +4,7 @@
 # Or install via projot's installer
 
 $projotSubcommands = @(
-    'init', 'new', 'add-todo', 'list', 'complete', 'add-note',
+    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'add-note',
     'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
     'add-azure', 'render', 'install-hook', 'install-mcp-server', 'set-global'
 )
@@ -12,6 +12,7 @@ $projotSubcommands = @(
 $projotFlags = @{
     'init'               = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
     'new'                = @('--rpm', '--name', '--itrack', '--teams', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help')
+    'close'              = @('--help')
     'add-todo'           = @('--help')
     'list'               = @('--open', '--closed', '--all', '--help')
     'complete'           = @('--todo', '--help')
