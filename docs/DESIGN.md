@@ -22,7 +22,7 @@ The implementation uses **only the C++ standard library** and includes **unit te
 
 - Replace the handwritten notepad with a fast, simple CLI workflow.
 - Make it easy to answer questions such as:
-  - “What’s the status of RPM <number>?”
+  - “What’s the status of RPM {number}?”
   - “What are my current todos for this project?”
 - Provide a **per-user configuration file** that is simple and human-editable.
 - Store project data in markdown files with a strict, parseable structure.
@@ -138,7 +138,7 @@ Users may optionally specify `--config <path>` in later versions.
 **Repo-level** (set by `init`, rarely change):
 
 | Field       | Required | Description                                     |
-|-------------|----------|--------------------------------------------------|
+|-------------|----------|-------------------------------------------------|
 | `app_id`    | Required | Application ID associated with this repository  |
 | `github`    | Optional | Comma-separated list of GitHub URLs             |
 | `swagger`   | Optional | Comma-separated list of Swagger/OpenAPI URLs    |
@@ -148,13 +148,13 @@ Users may optionally specify `--config <path>` in later versions.
 
 | Field            | Required | Description                                                                  |
 |------------------|----------|------------------------------------------------------------------------------|
-| `rpm`            | Required | The RPM project number                                                        |
+| `rpm`            | Required | The RPM project number                                                       |
 | `name`           | Required | Human-readable project name                                                  |
 | `itrack`         | Required | iTrack ticket number                                                         |
 | `date_format`    | Optional | Display-only date format (stored ISO always)                                 |
 | `links`          | Optional | Ordered list of single-value link keys to include                            |
 | `label.<key>`    | Optional | Human-friendly label for a link key                                          |
-| `link.<key>`     | Optional | URL value for a single-value link key (e.g. `link.teams = https://...`)     |
+| `link.<key>`     | Optional | URL value for a single-value link key (e.g. `link.teams = https://...`)      |
 
 > Repo-level fields (`app_id`, `github`, `swagger`, `blizzard`) are set once and shared across projects. They are rendered into the project markdown file by projot and should not be hand-edited there.
 
@@ -847,6 +847,7 @@ Since projot is repo-centric, the notes file and config are already inside the g
 - `install-hook` can install or reinstall the hook at any time.
 
 **`.gitignore` guidance:**
+
 - Commit `.projot/config` and `.projot/{RPM}.md` — this is the point.
 - Optionally add `.projot/*.bak` or similar if projot ever creates backup files.
 
