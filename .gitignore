@@ -28,6 +28,7 @@ Makefile
 # Dependencies (if any external ones are added)
 dependencies/
 third_party/
+node_modules/
 
 # Test outputs
 *.log
