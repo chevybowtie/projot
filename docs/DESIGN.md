@@ -106,11 +106,20 @@ projot walks up from `$CWD` until it finds a directory containing `.git`. That d
 
 ### 5.2 Config Location
 
+Two config files exist:
+
+**Repo-level config:**
 ```bash
 {repo_root}/.projot/config
 ```
 
-There is no global/user-level config. All configuration is per-repository.
+**Global config (optional):**
+```bash
+~/.config/projot/config          # Linux/macOS (XDG-compliant)
+%APPDATA%\projot\config           # Windows
+```
+
+Global config provides defaults for base URLs (`rpm_base_url`, `itrack_base_url`) that apply across all projects. Repo-level config can override these values.
 
 Users may optionally specify `--config <path>` in later versions.
 
@@ -144,6 +153,13 @@ Users may optionally specify `--config <path>` in later versions.
 | `swagger`   | Optional | Comma-separated list of Swagger/OpenAPI URLs    |
 | `blizzard`  | Optional | Comma-separated list of Blizzard URLs           |
 
+**Global-level** (set by `set-global`; may be overridden per-repo):
+
+| Field                | Required | Description                                                                                         |
+|----------------------|----------|-----------------------------------------------------------------------------------------------------|
+| `rpm_base_url`       | Optional | Base URL for RPM project links; project number is appended (e.g. `https://rpm.example.com/`)       |
+| `itrack_base_url`    | Optional | Base URL for iTrack ticket links; ticket number is appended (e.g. `https://itrack.example.com/ticket/`) |
+
 **Project-level** (set by `new`, specific to the RPM project):
 
 | Field            | Required | Description                                                                  |
@@ -158,7 +174,21 @@ Users may optionally specify `--config <path>` in later versions.
 
 > Repo-level fields (`app_id`, `github`, `swagger`, `blizzard`) are set once and shared across projects. They are rendered into the project markdown file by projot and should not be hand-edited there.
 
-### 6.3 Config Example (`.projot/config`)
+> Global-level fields can be set once per user via `projot set-global` and apply across all projects, but can be overridden at the repo level.
+
+### 6.3 Config Examples
+
+#### Global Config Example (`~/.config/projot/config`)
+
+```sh
+# projot global config
+# Base URLs for RPM and iTrack links (used across all projects)
+
+rpm_base_url = https://rpm.example.com/
+itrack_base_url = https://itrack.example.com/record/
+```
+
+#### Repo Config Example (`.projot/config`)
 
 ```sh
 # projot config
@@ -285,7 +315,7 @@ CLI uses **subcommands**:
 projot <subcommand> [options]
 ```
 
-All subcommands must be run from within a git repository. `init` and `new` are the two setup commands; all others require both to have been run.
+All subcommands must be run from within a git repository. `init` and `new` are the two setup commands; `close` archives a completed project. All other commands require `init` and `new` to have been run first.
 
 ### 9.0 Help
 
@@ -299,6 +329,7 @@ Usage: projot <subcommand> [options]
 Setup commands:
   init          Initialize projot for this repository
   new           Start a new RPM project in this repository
+  close         Archive the current project and reset for the next one
 
 Project commands:
   add-todo      Append a new todo
@@ -310,10 +341,13 @@ Project commands:
   add-github    Add a GitHub URL
   add-swagger   Add a Swagger URL
   add-blizzard  Add a Blizzard URL
+  add-azure     Add an Azure resource (subscription, key-vault, etc.)
   render        Re-render the notes file and stage it
 
 Maintenance commands:
-  install-hook  Install the pre-commit git hook
+  install-hook        Install the pre-commit git hook
+  install-mcp-server  Configure MCP server for Claude Code and VS Code
+  set-global          Set global defaults (rpm_base_url, itrack_base_url)
 
 Run 'projot <subcommand> --help' for subcommand options.
 ```
@@ -364,7 +398,7 @@ Optional:
 
 Start a new project in this repository. Writes project-level fields to `.projot/config` and creates the notes file `.projot/{RPM}.md`. Fails if a project is already configured (i.e. `rpm` is already set in config).
 
-After creating the notes file, `new` installs a `pre-commit` git hook (see section 9.3) that calls `projot render` before every commit. This ensures the committed notes file always reflects the current config and todo state.
+After creating the notes file, `new` installs a `pre-commit` git hook (see section 9.4) that calls `projot render` before every commit. This ensures the committed notes file always reflects the current config and todo state.
 
 Required:
 
@@ -381,6 +415,19 @@ Optional:
 - `--no-hook` — skip git hook installation
 
 > Repo-level fields (`github`, `swagger`, `blizzard`) already in config from `init` are automatically included in the new project file.
+
+#### `close`
+
+Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, itrack, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
+
+No flags required.
+
+Example:
+```sh
+projot close
+```
+
+Output includes a summary of the archived project and suggests running `projot new` to start the next one.
 
 ### 9.2 Project Commands
 
@@ -473,6 +520,26 @@ Required:
 
 - `--url <URL>`
 
+#### `add-azure`
+
+Add an Azure resource URL to `.projot/config`. Resources are stored by type (subscription, key-vault, resource-group, aks, log-analytics, storage, private-dns). Each resource can have an optional name for identification. Deduplicates silently. projot re-renders the `## Azure` section in the notes file.
+
+Required:
+
+- `--type <type>` — resource type: `subscription`, `key-vault`, `resource-group`, `aks`, `log-analytics`, `storage`, or `private-dns`
+- `--url <URL>` — resource URL
+
+Optional:
+
+- `--name <name>` — optional display name for the resource
+
+Example:
+
+```sh
+projot add-azure --type key-vault --name MyVault --url https://myvault.vault.azure.net/
+projot add-azure --type subscription --url https://portal.azure.com/...
+```
+
 #### `render`
 
 Re-render `.projot/{RPM}.md` from `.projot/config` and the current todo state, then `git add .projot/{RPM}.md` so the regenerated file is staged for the current commit.
@@ -481,7 +548,40 @@ This subcommand is called automatically by the pre-commit hook installed by `new
 
 No flags required. Exits 0 on success.
 
-### 9.3 Git Hook
+### 9.3 Maintenance Commands
+
+#### `install-hook`
+
+Installs or re-installs the pre-commit git hook in the current repository. Follows the same append-or-create logic as `new`. Useful if the hook was skipped with `--no-hook` or was accidentally deleted.
+
+No flags required.
+
+#### `install-mcp-server`
+
+Configures the MCP server for use with Claude Code or VS Code Copilot. Creates necessary configuration files and directories for the MCP integration. Can be run once per repository or per-user depending on the installation scope.
+
+Optional:
+
+- `--no-vscode` — skip VS Code configuration, only configure for Claude Code
+
+#### `set-global`
+
+Set global defaults for base URLs that apply across all projects. Global configuration is stored in `~/.config/projot/config` (Linux/macOS) or `%APPDATA%\projot\config` (Windows). These values provide defaults that can be overridden at the repo level.
+
+Optional (at least one required):
+
+- `--rpm-base-url <URL>` — base URL for RPM project links (project number is appended)
+- `--itrack-base-url <URL>` — base URL for iTrack ticket links (ticket number is appended)
+
+Example:
+
+```sh
+projot set-global --rpm-base-url "https://rpm.example.com/" --itrack-base-url "https://itrack.example.com/record/"
+```
+
+These base URLs are used by the MCP tools (e.g., `open_rpm`, `open_itrack`) to construct full project/ticket links automatically.
+
+### 9.4 Git Hook
 
 `new` installs a `pre-commit` hook at `{repo_root}/.git/hooks/pre-commit` to keep the notes file current on every commit.
 
@@ -520,13 +620,7 @@ Pass `--no-hook` to `new` to skip hook installation entirely. The hook can be in
 projot install-hook
 ```
 
-#### `install-hook` subcommand
-
-Installs or re-installs the pre-commit hook in the current repository. Follows the same append-or-create logic as `new`. Useful if the hook was skipped with `--no-hook` or was accidentally deleted.
-
-No flags required.
-
-### 9.4 Shell Tab-Completion
+### 9.5 Shell Tab-Completion
 
 Tab completion is delivered as **generated shell scripts** — projot itself does not need to be running to complete. Scripts are installed separately; the binary does not need to shell-out or carry embedded completion logic.
 
@@ -864,6 +958,19 @@ Since projot is repo-centric, the notes file and config are already inside the g
 
 - Post-v0.1: `projot install-completion [--shell bash|zsh|fish|powershell]` subcommand to install completion scripts from inside the binary, without needing the source tree.
 - v0.1 installs completions via `make install-completion`.
+
+### 12.8 App-Level Azure Resource Configuration
+
+Currently, Azure resources are stored per-repository. For teams managing multiple repositories under the same `app_id` (e.g., multiple API repos + UI repo for a single application), it would be more efficient to define Azure resources once at the app level in global config.
+
+**Proposed enhancement:**
+- Store app-specific Azure resources in global config, keyed by `app_id` (e.g., `MyApp.azure_key_vault`, `MyApp.azure_subscription`)
+- Add optional `--global` or `--app-level` flag to `add-azure` command
+- When loading a repo, automatically inherit Azure resources from global config matching the repo's `app_id`
+- Allows per-repo overrides at the repo-level config if needed
+- `render` would prefer repo-level, and fall back to global-config
+
+This avoids repetitive setup across multiple repos for the same application while maintaining flexibility for project-specific exceptions.
 
 ## 13. Cross-Platform Notes
 
