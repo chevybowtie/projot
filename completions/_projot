@@ -27,6 +27,7 @@ _projot() {
             subcommands=(
                 'init:initialize projot for this repository'
                 'new:start a new RPM project'
+                'close:archive current project and reset'
                 'add-todo:append a new todo'
                 'list:show project summary and todos'
                 'complete:mark a todo completed'
@@ -65,6 +66,9 @@ _projot() {
                         '--other[other URL]:url' \
                         '--no-hook[skip hook installation]' \
                         '--help[show help]'
+                    ;;
+                close)
+                    _arguments '--help[show help]'
                     ;;
                 add-todo)
                     _arguments \
