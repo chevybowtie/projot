@@ -163,3 +163,184 @@ TEST_CASE("install_hook_idempotent") {
     }
     CHECK(count == 1);
 }
+
+// ── uninstall-hook ────────────────────────────────────────────────────────────
+
+TEST_CASE("uninstall_hook_no_hook_installed") {
+    HookTempRepo repo("uninstall_hook_no_hook");
+    // Hook doesn't exist — should succeed and report nothing installed
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK_FALSE(fs::exists(repo.hook_path()));
+}
+
+TEST_CASE("uninstall_hook_removes_projot_only_file") {
+    HookTempRepo repo("uninstall_hook_removes_file");
+    // Install hook (fresh file created by projot)
+    CHECK(cmd_install_hook(make_hook_args("install-hook")) == 0);
+    CHECK(fs::exists(repo.hook_path()));
+
+    // Uninstall — file should be removed because only projot content remains
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK_FALSE(fs::exists(repo.hook_path()));
+}
+
+TEST_CASE("uninstall_hook_strips_block_from_existing_hook") {
+    HookTempRepo repo("uninstall_hook_strips_block");
+    // Write an existing hook with unrelated content
+    {
+        std::ofstream f(repo.hook_path());
+        f << "#!/bin/sh\necho 'existing hook'\n";
+    }
+#ifndef _WIN32
+    fs::permissions(repo.hook_path(), fs::perms::owner_exec, fs::perm_options::add);
+#endif
+    // Append projot block
+    CHECK(cmd_install_hook(make_hook_args("install-hook")) == 0);
+    CHECK(HookTempRepo::read_file(repo.hook_path()).find("projot render") != std::string::npos);
+
+    // Uninstall — file should survive with original content intact
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK(fs::exists(repo.hook_path()));
+    const auto content = HookTempRepo::read_file(repo.hook_path());
+    CHECK(content.find("existing hook") != std::string::npos);
+    CHECK(content.find("projot render") == std::string::npos);
+}
+
+TEST_CASE("uninstall_hook_block_not_present") {
+    HookTempRepo repo("uninstall_hook_block_not_present");
+    // Write a hook that doesn't have the projot block
+    { std::ofstream f(repo.hook_path()); f << "#!/bin/sh\necho 'other'\n"; }
+    // Should succeed and leave the file untouched
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK(fs::exists(repo.hook_path()));
+    CHECK(HookTempRepo::read_file(repo.hook_path()).find("other") != std::string::npos);
+}
+
+TEST_CASE("uninstall_hook_idempotent") {
+    HookTempRepo repo("uninstall_hook_idempotent");
+    CHECK(cmd_install_hook(make_hook_args("install-hook")) == 0);
+    // Uninstall twice — both calls should succeed
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK_FALSE(fs::exists(repo.hook_path()));
+}
+
+// ── uninstall-mcp-server ──────────────────────────────────────────────────────
+
+struct McpTempRepo {
+    fs::path path;
+    fs::path original;
+
+    explicit McpTempRepo(const std::string& name) {
+        path = fs::temp_directory_path() / ("projot_mcp_" + name);
+        std::error_code ec;
+        fs::remove_all(path, ec);
+        fs::create_directories(path / ".git" / "hooks", ec);
+        original = fs::current_path();
+        fs::current_path(path);
+    }
+    ~McpTempRepo() {
+        std::error_code ec;
+        fs::current_path(original, ec);
+        fs::remove_all(path, ec);
+    }
+    static std::string read_file(const fs::path& p) {
+        std::ifstream f(p);
+        return std::string((std::istreambuf_iterator<char>(f)), {});
+    }
+};
+
+static Args make_mcp_args(const std::string& sub,
+                           std::initializer_list<std::pair<std::string,std::string>> flags = {}) {
+    Args a;
+    a.subcommand = sub;
+    for (const auto& [k, v] : flags) a.flags[k].push_back(v);
+    return a;
+}
+
+TEST_CASE("uninstall_mcp_no_files") {
+    McpTempRepo repo("uninstall_mcp_no_files");
+    // Neither .claude/settings.json nor .vscode/mcp.json exist
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server")) == 0);
+}
+
+TEST_CASE("uninstall_mcp_removes_fresh_claude_settings") {
+    McpTempRepo repo("uninstall_mcp_removes_claude");
+    // Write exactly what install-mcp-server creates from scratch
+    fs::create_directories(repo.path / ".claude");
+    {
+        std::ofstream f(repo.path / ".claude" / "settings.json");
+        f << "{\n"
+          << "  \"mcpServers\": {\n"
+          << "    \"projot\": {\n"
+          << "      \"command\": \"node\",\n"
+          << "      \"args\": [\"./mcp/server.js\"]\n"
+          << "    }\n"
+          << "  }\n"
+          << "}\n";
+    }
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
+    CHECK_FALSE(fs::exists(repo.path / ".claude" / "settings.json"));
+}
+
+TEST_CASE("uninstall_mcp_removes_injected_claude_block") {
+    McpTempRepo repo("uninstall_mcp_injected");
+    // Simulate what install-mcp-server does when it injects into an existing file
+    fs::create_directories(repo.path / ".claude");
+    {
+        std::ofstream f(repo.path / ".claude" / "settings.json");
+        f << "{\n"
+          << "  \"someOtherKey\": true"
+          << ",\n  \"mcpServers\": {\n"
+          << "    \"projot\": {\n"
+          << "      \"command\": \"node\",\n"
+          << "      \"args\": [\"./mcp/server.js\"]\n"
+          << "    }\n"
+          << "  }"
+          << "\n}\n";
+    }
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
+    const auto content = McpTempRepo::read_file(repo.path / ".claude" / "settings.json");
+    CHECK(content.find("projot") == std::string::npos);
+    CHECK(content.find("someOtherKey") != std::string::npos);
+}
+
+TEST_CASE("uninstall_mcp_removes_vscode_file") {
+    McpTempRepo repo("uninstall_mcp_removes_vscode");
+    // Create a .vscode/mcp.json that references projot
+    fs::create_directories(repo.path / ".vscode");
+    {
+        std::ofstream f(repo.path / ".vscode" / "mcp.json");
+        f << "{\n"
+          << "  \"inputs\": [],\n"
+          << "  \"servers\": {\n"
+          << "    \"projot\": {\n"
+          << "      \"type\": \"stdio\",\n"
+          << "      \"command\": \"node\",\n"
+          << "      \"args\": [\"./mcp/server.js\"]\n"
+          << "    }\n"
+          << "  }\n"
+          << "}\n";
+    }
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server")) == 0);
+    CHECK_FALSE(fs::exists(repo.path / ".vscode" / "mcp.json"));
+}
+
+TEST_CASE("uninstall_mcp_no_vscode_flag") {
+    McpTempRepo repo("uninstall_mcp_no_vscode_flag");
+    // Create both files
+    fs::create_directories(repo.path / ".claude");
+    fs::create_directories(repo.path / ".vscode");
+    {
+        std::ofstream f(repo.path / ".claude" / "settings.json");
+        f << "{\n  \"mcpServers\": {\n    \"projot\": {\n      \"command\": \"node\",\n      \"args\": [\"./mcp/server.js\"]\n    }\n  }\n}\n";
+    }
+    {
+        std::ofstream f(repo.path / ".vscode" / "mcp.json");
+        f << "{\n  \"servers\": { \"projot\": {} }\n}\n";
+    }
+    // --no-vscode should skip .vscode/mcp.json
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
+    CHECK_FALSE(fs::exists(repo.path / ".claude" / "settings.json"));
+    CHECK(fs::exists(repo.path / ".vscode" / "mcp.json")); // untouched
+}
