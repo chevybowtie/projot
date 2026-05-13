@@ -1,11 +1,15 @@
 #include "doctest.h"
 #include "commands.h"
+#include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
 
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -53,10 +57,12 @@ struct TempRepo {
 };
 
 static Args make_args(const std::string& sub,
-                      std::initializer_list<std::pair<std::string,std::string>> flags = {}) {
+                      std::initializer_list<std::pair<std::string,std::string>> flags = {},
+                      const std::string& positional = "") {
     Args a;
     a.subcommand = sub;
     for (const auto& [k, v] : flags) a.flags[k].push_back(v);
+    if (!positional.empty()) a.positional.push_back(positional);
     return a;
 }
 
@@ -270,7 +276,7 @@ TEST_CASE("new_blocked_when_project_active") {
 TEST_CASE("add_todo_appends") {
     TempRepo repo("add_todo_appends");
     repo.init(); repo.new_project("1");
-    Args a = make_args("add-todo", {{"text", "My first todo"}});
+    Args a = make_args("add-todo", {}, "My first todo");
     CHECK(cmd_add_todo(a) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "1.md").string(), proj);
@@ -282,8 +288,8 @@ TEST_CASE("add_todo_appends") {
 TEST_CASE("add_todo_stable_id") {
     TempRepo repo("add_todo_stable_id");
     repo.init(); repo.new_project("2");
-    cmd_add_todo(make_args("add-todo", {{"text", "First"}}));
-    cmd_add_todo(make_args("add-todo", {{"text", "Second"}}));
+    cmd_add_todo(make_args("add-todo", {}, "First"));
+    cmd_add_todo(make_args("add-todo", {}, "Second"));
     Project proj;
     parse_markdown((repo.path / ".projot" / "2.md").string(), proj);
     REQUIRE(proj.todos.size() == 2);
@@ -296,8 +302,8 @@ TEST_CASE("add_todo_stable_id") {
 TEST_CASE("list_default_shows_open") {
     TempRepo repo("list_default_shows_open");
     repo.init(); repo.new_project("3");
-    cmd_add_todo(make_args("add-todo", {{"text", "Open one"}}));
-    cmd_add_todo(make_args("add-todo", {{"text", "Open two"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Open one"));
+    cmd_add_todo(make_args("add-todo", {}, "Open two"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Just check it returns 0 (output goes to stdout which we can't easily capture here)
     CHECK(cmd_list(make_args("list")) == 0);
@@ -306,7 +312,7 @@ TEST_CASE("list_default_shows_open") {
 TEST_CASE("list_closed_flag") {
     TempRepo repo("list_closed_flag");
     repo.init(); repo.new_project("4");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     CHECK(cmd_list(make_args("list", {{"closed", "true"}})) == 0);
 }
@@ -314,7 +320,7 @@ TEST_CASE("list_closed_flag") {
 TEST_CASE("list_all_flag") {
     TempRepo repo("list_all_flag");
     repo.init(); repo.new_project("5");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     CHECK(cmd_list(make_args("list", {{"all", "true"}})) == 0);
 }
 
@@ -323,7 +329,7 @@ TEST_CASE("list_all_flag") {
 TEST_CASE("complete_marks_done") {
     TempRepo repo("complete_marks_done");
     repo.init(); repo.new_project("6");
-    cmd_add_todo(make_args("add-todo", {{"text", "Todo"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Todo"));
     CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "6.md").string(), proj);
@@ -335,7 +341,7 @@ TEST_CASE("complete_marks_done") {
 TEST_CASE("complete_warns_if_already_done") {
     TempRepo repo("complete_warns_if_already_done");
     repo.init(); repo.new_project("7");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Second complete should warn but return 0
     CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
@@ -346,8 +352,8 @@ TEST_CASE("complete_warns_if_already_done") {
 TEST_CASE("add_note_appends") {
     TempRepo repo("add_note_appends");
     repo.init(); repo.new_project("8");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
-    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}, {"text", "My note"}})) == 0);
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "My note")) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "8.md").string(), proj);
     REQUIRE(!proj.todos.empty());
@@ -358,10 +364,10 @@ TEST_CASE("add_note_appends") {
 TEST_CASE("add_note_warns_if_closed") {
     TempRepo repo("add_note_warns_if_closed");
     repo.init(); repo.new_project("9");
-    cmd_add_todo(make_args("add-todo", {{"text", "T"}}));
+    cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Should warn but still return 0 and write note
-    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}, {"text", "Late"}})) == 0);
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "Late")) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "9.md").string(), proj);
     CHECK(!proj.todos[0].notes.empty());
@@ -569,12 +575,119 @@ TEST_CASE("add_azure_multiple_of_same_type") {
     CHECK(content.find("[NPRD](https://portal.azure.com/subscriptions/nprd-id)") != std::string::npos);
 }
 
+// ── error path coverage (F008) ────────────────────────────────────────────────
+
+TEST_CASE("add_todo_missing_text_fails") {
+    TempRepo repo("add_todo_missing_text_fails");
+    repo.init(); repo.new_project("e1");
+    // No positional argument — should fail
+    CHECK(cmd_add_todo(make_args("add-todo")) != 0);
+}
+
+TEST_CASE("complete_missing_todo_flag_fails") {
+    TempRepo repo("complete_missing_todo_flag_fails");
+    repo.init(); repo.new_project("e2");
+    CHECK(cmd_complete(make_args("complete")) != 0);
+}
+
+TEST_CASE("complete_nonexistent_id_fails") {
+    TempRepo repo("complete_nonexistent_id_fails");
+    repo.init(); repo.new_project("e3");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    // ID 99 does not exist
+    CHECK(cmd_complete(make_args("complete", {{"todo", "99"}})) != 0);
+}
+
+TEST_CASE("complete_nonnumeric_id_fails") {
+    TempRepo repo("complete_nonnumeric_id_fails");
+    repo.init(); repo.new_project("e4");
+    CHECK(cmd_complete(make_args("complete", {{"todo", "abc"}})) != 0);
+}
+
+TEST_CASE("add_note_missing_todo_flag_fails") {
+    TempRepo repo("add_note_missing_todo_flag_fails");
+    repo.init(); repo.new_project("e5");
+    // No --todo flag
+    CHECK(cmd_add_note(make_args("add-note", {}, "note text")) != 0);
+}
+
+TEST_CASE("add_note_missing_text_fails") {
+    TempRepo repo("add_note_missing_text_fails");
+    repo.init(); repo.new_project("e6");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    // --todo provided but no positional note text
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}})) != 0);
+}
+
+TEST_CASE("add_note_nonexistent_id_fails") {
+    TempRepo repo("add_note_nonexistent_id_fails");
+    repo.init(); repo.new_project("e7");
+    cmd_add_todo(make_args("add-todo", {}, "T"));
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "99"}}, "note")) != 0);
+}
+
+TEST_CASE("set_link_missing_flags_fails") {
+    TempRepo repo("set_link_missing_flags_fails");
+    repo.init(); repo.new_project("e8");
+    // Missing --url
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "teams"}})) != 0);
+    // Missing --key
+    CHECK(cmd_set_link(make_args("set-link", {{"url", "https://x.com"}})) != 0);
+}
+
+TEST_CASE("add_github_missing_url_fails") {
+    TempRepo repo("add_github_missing_url_fails");
+    repo.init(); repo.new_project("e9");
+    CHECK(cmd_add_github(make_args("add-github")) != 0);
+}
+
+TEST_CASE("add_swagger_missing_url_fails") {
+    TempRepo repo("add_swagger_missing_url_fails");
+    repo.init(); repo.new_project("e10");
+    CHECK(cmd_add_swagger(make_args("add-swagger")) != 0);
+}
+
+TEST_CASE("add_blizzard_missing_url_fails") {
+    TempRepo repo("add_blizzard_missing_url_fails");
+    repo.init(); repo.new_project("e11");
+    CHECK(cmd_add_blizzard(make_args("add-blizzard")) != 0);
+}
+
+TEST_CASE("add_todo_fails_without_project") {
+    TempRepo repo("add_todo_fails_without_project");
+    repo.init();
+    // new_project not called — no RPM set
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "T")) != 0);
+}
+
+TEST_CASE("add_note_fails_without_project") {
+    TempRepo repo("add_note_fails_without_project");
+    repo.init();
+    CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "note")) != 0);
+}
+
+TEST_CASE("complete_fails_without_project") {
+    TempRepo repo("complete_fails_without_project");
+    repo.init();
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) != 0);
+}
+
+TEST_CASE("add_todo_fails_if_notes_file_deleted") {
+    TempRepo repo("add_todo_fails_if_notes_file_deleted");
+    repo.init(); repo.new_project("e12");
+    // Delete the notes file after project creation
+    std::error_code ec;
+    fs::remove(repo.path / ".projot" / "e12.md", ec);
+    // execute_project_command parse_markdown should fail → return 1
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "T")) != 0);
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 TEST_CASE("render_updates_file") {
     TempRepo repo("render_updates_file");
     repo.init(); repo.new_project("18");
-    cmd_add_todo(make_args("add-todo", {{"text", "Render me"}}));
+    cmd_add_todo(make_args("add-todo", {}, "Render me"));
     // Manually corrupt the notes file
     {
         std::ofstream f((repo.path / ".projot" / "18.md").string());
@@ -595,4 +708,148 @@ TEST_CASE("version_flag") {
     char* argv[] = {arg0, arg1, nullptr};
     Args a = parse_args(2, argv);
     CHECK(a.version_requested);
+}
+
+// ── cmd_render error paths ────────────────────────────────────────────────────
+
+TEST_CASE("render_requires_project") {
+    TempRepo repo("render_requires_project");
+    repo.init(); // no new_project — rpm is empty
+    CHECK(cmd_render(make_args("render")) != 0);
+}
+
+TEST_CASE("render_write_failure") {
+#ifndef _WIN32
+    if (getuid() == 0) return;
+    TempRepo repo("render_write_failure");
+    repo.init();
+    repo.new_project();
+    fs::path notes = repo.path / ".projot" / "12345.md";
+    std::error_code ec;
+    fs::permissions(notes, fs::perms::owner_read | fs::perms::group_read, ec);
+    int ret = cmd_render(make_args("render"));
+    fs::permissions(notes, fs::perms::owner_all, ec); // restore before TempRepo cleanup
+    CHECK(ret != 0);
+#endif
+}
+
+// ── cmd_new render failure ────────────────────────────────────────────────────
+
+TEST_CASE("new_render_failure") {
+#ifndef _WIN32
+    if (getuid() == 0) return;
+    TempRepo repo("new_render_failure");
+    repo.init();
+    // Pre-create the notes file as read-only so render_to_file fails inside cmd_new.
+    fs::path notes = repo.path / ".projot" / "12345.md";
+    { std::ofstream f(notes); }
+    std::error_code ec;
+    fs::permissions(notes, fs::perms::owner_read | fs::perms::group_read, ec);
+    int ret = repo.new_project(); // write_config succeeds, then render_to_file fails
+    fs::permissions(notes, fs::perms::owner_all, ec);
+    CHECK(ret != 0);
+#endif
+}
+
+// ── set-global + global config merge ──────────────────────────────────────────
+
+// Redirects XDG_CONFIG_HOME (Linux/macOS) to an isolated temp dir for the
+// duration of a test so cmd_set_global and load_context() use a throw-away path.
+struct TempGlobalConfig {
+    fs::path dir;
+#ifndef _WIN32
+    std::string prev_xdg;
+    bool had_prev = false;
+#endif
+
+    explicit TempGlobalConfig(const std::string& name) {
+        dir = fs::temp_directory_path() / ("projot_global_" + name);
+        std::error_code ec;
+        fs::remove_all(dir, ec);
+        fs::create_directories(dir, ec);
+#ifndef _WIN32
+        const char* prev = std::getenv("XDG_CONFIG_HOME");
+        had_prev = (prev != nullptr);
+        if (had_prev) prev_xdg = prev;
+        setenv("XDG_CONFIG_HOME", dir.string().c_str(), 1);
+#endif
+    }
+
+    ~TempGlobalConfig() {
+#ifndef _WIN32
+        if (had_prev) setenv("XDG_CONFIG_HOME", prev_xdg.c_str(), 1);
+        else          unsetenv("XDG_CONFIG_HOME");
+#endif
+        std::error_code ec;
+        fs::remove_all(dir, ec);
+    }
+
+    fs::path config_path() const { return dir / "projot" / "config"; }
+};
+
+TEST_CASE("set_global_writes_rpm_base_url") {
+    TempGlobalConfig global("set_global_rpm");
+    int ret = cmd_set_global(make_args("set-global", {{"rpm-base-url", "https://rpm.example.com/"}}));
+    CHECK(ret == 0);
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.rpm_base_url == "https://rpm.example.com/");
+}
+
+TEST_CASE("set_global_writes_itrack_base_url") {
+    TempGlobalConfig global("set_global_itrack");
+    int ret = cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+    CHECK(ret == 0);
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+}
+
+TEST_CASE("set_global_preserves_existing_value") {
+    TempGlobalConfig global("set_global_preserve");
+    // Set rpm first, then itrack — both should survive the second write.
+    cmd_set_global(make_args("set-global", {{"rpm-base-url",    "https://rpm.example.com/"}}));
+    cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.rpm_base_url    == "https://rpm.example.com/");
+    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+}
+
+TEST_CASE("set_global_requires_at_least_one_flag") {
+    TempGlobalConfig global("set_global_no_flags");
+    int ret = cmd_set_global(make_args("set-global"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("load_context_merges_global_rpm_base_url") {
+    TempGlobalConfig global("merge_rpm");
+    // Write global config before TempRepo changes cwd.
+    fs::create_directories(global.config_path().parent_path());
+    { std::ofstream f(global.config_path()); f << "rpm_base_url = https://rpm.example.com/\n"; }
+
+    TempRepo repo("merge_rpm");
+    repo.init();
+    repo.new_project();
+
+    auto ctx = load_context();
+    REQUIRE(ctx.ok);
+    CHECK(ctx.config.rpm_base_url == "https://rpm.example.com/");
+}
+
+TEST_CASE("load_context_local_config_overrides_global") {
+    TempGlobalConfig global("override_rpm");
+    fs::create_directories(global.config_path().parent_path());
+    { std::ofstream f(global.config_path()); f << "rpm_base_url = https://global.example.com/\n"; }
+
+    TempRepo repo("override_rpm");
+    repo.init();
+    repo.new_project();
+    // Append a local rpm_base_url that should win over the global one.
+    { std::ofstream f(repo.path / ".projot" / "config", std::ios::app);
+      f << "rpm_base_url = https://local.example.com/\n"; }
+
+    auto ctx = load_context();
+    REQUIRE(ctx.ok);
+    CHECK(ctx.config.rpm_base_url == "https://local.example.com/");
 }

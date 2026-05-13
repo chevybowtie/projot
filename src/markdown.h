@@ -32,7 +32,7 @@ struct MarkdownParseResult {
     std::string error;
 };
 
-// Parse a .projot/{RANP}.md file into a Project.
+// Parse a .projot/{RPM}.md file into a Project.
 MarkdownParseResult parse_markdown(const std::string& path, Project& out);
 
 // Parse markdown from a string (useful for testing).

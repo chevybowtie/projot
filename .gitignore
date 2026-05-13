@@ -33,3 +33,4 @@ node_modules/
 # Test outputs
 *.log
 test_results/
+.claude/.nfs00000*

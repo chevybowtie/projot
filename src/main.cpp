@@ -30,9 +30,11 @@ static void print_usage() {
         "  add-azure     Add an Azure resource (subscription, key-vault, etc.)\n"
         "  render        Re-render the notes file and stage it\n\n"
         "Maintenance commands:\n"
-        "  install-hook        Install the pre-commit git hook\n"
-        "  install-mcp-server  Configure MCP server for Claude Code and VS Code\n"
-        "  set-global          Set global defaults (rpm_base_url, itrack_base_url)\n\n"
+        "  install-hook          Install the pre-commit git hook\n"
+        "  uninstall-hook        Remove the projot pre-commit git hook\n"
+        "  install-mcp-server    Configure MCP server for Claude Code and VS Code\n"
+        "  uninstall-mcp-server  Remove MCP server configuration\n"
+        "  set-global            Set global defaults (rpm_base_url, itrack_base_url)\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -54,8 +56,10 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"add-blizzard", {"url"}},
         {"add-azure",    {"type", "name", "url"}},
         {"render",       {}},
-        {"install-hook", {}},
-        {"install-mcp-server", {"no-vscode"}},
+        {"install-hook",          {}},
+        {"uninstall-hook",        {}},
+        {"install-mcp-server",    {"no-vscode"}},
+        {"uninstall-mcp-server",  {"no-vscode"}},
         {"set-global",   {"rpm-base-url", "itrack-base-url"}},
     };
     return m;
@@ -90,10 +94,12 @@ int main(int argc, char* argv[]) {
         {"add-swagger",  cmd_add_swagger},
         {"add-blizzard", cmd_add_blizzard},
         {"add-azure",    cmd_add_azure},
-        {"render",       cmd_render},
-        {"install-hook", cmd_install_hook},
-        {"install-mcp-server", cmd_install_mcp_server},
-        {"set-global",   cmd_set_global},
+        {"render",              cmd_render},
+        {"install-hook",        cmd_install_hook},
+        {"uninstall-hook",      cmd_uninstall_hook},
+        {"install-mcp-server",  cmd_install_mcp_server},
+        {"uninstall-mcp-server", cmd_uninstall_mcp_server},
+        {"set-global",          cmd_set_global},
     };
 
     auto cmd_it = commands.find(args.subcommand);

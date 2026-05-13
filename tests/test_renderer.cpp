@@ -3,8 +3,15 @@
 #include "markdown.h"
 #include "config.h"
 
+#include <filesystem>
+#include <fstream>
 #include <sstream>
 #include <algorithm>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
+namespace fs = std::filesystem;
 
 static Config make_base_config() {
     Config cfg;
@@ -299,4 +306,23 @@ TEST_CASE("render_azure_deduplicates") {
     const std::string needle = "portal.azure.com/aks";
     while ((pos = output.find(needle, pos)) != std::string::npos) { ++count; pos += needle.size(); }
     CHECK(count == 1);
+}
+
+// ── render_to_file error path ─────────────────────────────────────────────────
+
+TEST_CASE("render_to_file_cannot_write") {
+#ifndef _WIN32
+    if (getuid() == 0) return; // root bypasses file permissions
+    fs::path dir = fs::temp_directory_path() / "projot_render_ro";
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+    fs::create_directories(dir, ec);
+    // Make directory read+execute only so file creation inside fails.
+    fs::permissions(dir, fs::perms::owner_read | fs::perms::owner_exec, ec);
+    Config cfg = make_base_config();
+    auto result = render_to_file((dir / "notes.md").string(), cfg, {});
+    fs::permissions(dir, fs::perms::owner_all, ec); // restore before cleanup
+    fs::remove_all(dir, ec);
+    CHECK(!result.ok);
+#endif
 }
