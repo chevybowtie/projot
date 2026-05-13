@@ -106,6 +106,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0  # fetch full history for changelog generation
 
       - name: Download Linux binary
         uses: actions/download-artifact@v4.1.7
@@ -146,8 +148,23 @@ jobs:
           version="${version#v}"
           echo "version=$version" >> $GITHUB_OUTPUT
 
+      - name: Generate changelog with git-cliff
+        uses: orhun/git-cliff-action@main
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+
       - name: Build .deb and tar.gz packages
         run: bash scripts/package.sh --version "${{ steps.version.outputs.version }}" --prefix dist/staging --output-dir dist
+
+      - name: Read changelog for this release
+        id: changelog
+        run: |
+          # Extract the current version's changelog section
+          awk '/^## \[${{ steps.version.outputs.version }}\]/{flag=1; next} /^## \[/{flag=0} flag' CHANGELOG.md > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -162,4 +179,4 @@ jobs:
             completions/_projot
             completions/projot.fish
             completions/projot.ps1
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
