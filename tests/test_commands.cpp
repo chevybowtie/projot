@@ -771,12 +771,12 @@ struct TempGlobalConfig {
         fs::remove_all(dir, ec);
         fs::create_directories(dir, ec);
 #ifdef _WIN32
-        const char* prev = nullptr;
+        char* prev = nullptr;
         size_t len = 0;
         if (_dupenv_s(&prev, &len, "APPDATA") == 0 && prev) {
             had_appdata = true;
             prev_appdata = prev;
-            free(const_cast<char*>(prev));
+            free(prev);
         }
         _putenv_s("APPDATA", dir.string().c_str());
 #else
