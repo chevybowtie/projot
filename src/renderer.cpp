@@ -6,16 +6,6 @@
 #include <algorithm>
 #include <filesystem>
 
-// Deduplicate a vector while preserving order.
-static std::vector<std::string> dedup_urls(const std::vector<std::string>& v) {
-    std::vector<std::string> result;
-    for (const auto& s : v) {
-        if (std::find(result.begin(), result.end(), s) == result.end())
-            result.push_back(s);
-    }
-    return result;
-}
-
 std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     std::ostringstream out;
 
@@ -59,7 +49,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
 
     // ── GitHub ───────────────────────────────────────────────────────────────
-    const auto github = dedup_urls(cfg.github);
+    const auto github = deduplicate(cfg.github);
     if (!github.empty()) {
         out << "## GitHub\n";
         for (const auto& url : github) out << "- " << url << "\n";
@@ -67,7 +57,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
 
     // ── Swagger ──────────────────────────────────────────────────────────────
-    const auto swagger = dedup_urls(cfg.swagger);
+    const auto swagger = deduplicate(cfg.swagger);
     if (!swagger.empty()) {
         out << "## Swagger\n";
         for (const auto& url : swagger) out << "- " << url << "\n";
@@ -75,7 +65,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
 
     // ── Blizzard ─────────────────────────────────────────────────────────────
-    const auto blizzard = dedup_urls(cfg.blizzard);
+    const auto blizzard = deduplicate(cfg.blizzard);
     if (!blizzard.empty()) {
         out << "## Blizzard\n";
         for (const auto& url : blizzard) out << "- " << url << "\n";
@@ -103,7 +93,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "## Azure\n";
         out << "\n";
         for (const auto& sec : azure_sections) {
-            const auto deduped = dedup_urls(sec.entries);
+            const auto deduped = deduplicate(sec.entries);
             if (deduped.empty()) continue;
             out << "### " << sec.heading << "\n";
             for (const auto& raw : deduped) {
