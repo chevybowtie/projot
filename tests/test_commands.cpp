@@ -757,7 +757,10 @@ TEST_CASE("new_render_failure") {
 // duration of a test so cmd_set_global and load_context() use a throw-away path.
 struct TempGlobalConfig {
     fs::path dir;
-#ifndef _WIN32
+#ifdef _WIN32
+    std::string prev_appdata;
+    bool had_appdata = false;
+#else
     std::string prev_xdg;
     bool had_prev = false;
 #endif
@@ -767,7 +770,16 @@ struct TempGlobalConfig {
         std::error_code ec;
         fs::remove_all(dir, ec);
         fs::create_directories(dir, ec);
-#ifndef _WIN32
+#ifdef _WIN32
+        const char* prev = nullptr;
+        size_t len = 0;
+        if (_dupenv_s(&prev, &len, "APPDATA") == 0 && prev) {
+            had_appdata = true;
+            prev_appdata = prev;
+            free(const_cast<char*>(prev));
+        }
+        _putenv_s("APPDATA", dir.string().c_str());
+#else
         const char* prev = std::getenv("XDG_CONFIG_HOME");
         had_prev = (prev != nullptr);
         if (had_prev) prev_xdg = prev;
@@ -776,7 +788,13 @@ struct TempGlobalConfig {
     }
 
     ~TempGlobalConfig() {
-#ifndef _WIN32
+#ifdef _WIN32
+        if (had_appdata) {
+            _putenv_s("APPDATA", prev_appdata.c_str());
+        } else {
+            _putenv_s("APPDATA", "");
+        }
+#else
         if (had_prev) setenv("XDG_CONFIG_HOME", prev_xdg.c_str(), 1);
         else          unsetenv("XDG_CONFIG_HOME");
 #endif
