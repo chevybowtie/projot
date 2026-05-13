@@ -920,6 +920,93 @@ int cmd_install_hook(const Args& args) {
     return 0;
 }
 
+// ── uninstall-hook ────────────────────────────────────────────────────────────
+
+int cmd_uninstall_hook(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot uninstall-hook\n\n"
+            "Remove the projot block from the pre-commit git hook.\n\n"
+            "If the hook file contains only the projot block it is deleted entirely.\n"
+            "If other hook content is present, only the projot block is removed.\n\n"
+            "Example:\n"
+            "  projot uninstall-hook\n";
+        return 0;
+    }
+
+    auto root = find_repo_root();
+    if (!root) {
+        std::cerr << "error: not inside a git repository.\n";
+        return 1;
+    }
+
+    auto hook_path = *root / ".git" / "hooks" / "pre-commit";
+    std::error_code ec;
+
+    if (!fs::exists(hook_path, ec)) {
+        std::cout << "No pre-commit hook installed.\n";
+        return 0;
+    }
+
+    std::ifstream in(hook_path);
+    if (!in.is_open()) {
+        std::cerr << "error: cannot read " << hook_path.string() << "\n";
+        return 1;
+    }
+    std::string content((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    if (content.find("projot render") == std::string::npos) {
+        std::cout << "projot hook block not found in pre-commit hook.\n";
+        return 0;
+    }
+
+    // Remove block with preceding newline (appended-to-existing case)
+    std::string to_remove = "\n" + HOOK_BLOCK;
+    auto pos = content.find(to_remove);
+    if (pos != std::string::npos) {
+        content.erase(pos, to_remove.size());
+    } else {
+        // Remove block without preceding newline (written-fresh case)
+        pos = content.find(HOOK_BLOCK);
+        if (pos != std::string::npos)
+            content.erase(pos, HOOK_BLOCK.size());
+    }
+
+    // Check whether only a shebang line (or nothing) remains
+    std::string remainder = content;
+    if (remainder.compare(0, 2, "#!") == 0) {
+        auto nl = remainder.find('\n');
+        remainder = (nl != std::string::npos) ? remainder.substr(nl + 1) : "";
+    }
+    bool only_shebang = (remainder.find_first_not_of(" \t\n\r") == std::string::npos);
+
+    if (only_shebang) {
+        fs::remove(hook_path, ec);
+        if (ec) {
+            std::cerr << "error: cannot remove " << hook_path.string()
+                      << ": " << ec.message() << "\n";
+            return 1;
+        }
+        std::cout << "Removed pre-commit hook at " << hook_path.string() << "\n";
+    } else {
+        std::ofstream f(hook_path);
+        if (!f.is_open()) {
+            std::cerr << "error: cannot write " << hook_path.string() << "\n";
+            return 1;
+        }
+        f << content;
+        f.close();
+#ifndef _WIN32
+        fs::permissions(hook_path,
+            fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
+            fs::perm_options::add, ec);
+#endif
+        std::cout << "Removed projot block from " << hook_path.string() << "\n";
+    }
+    return 0;
+}
+
 // ── install-mcp-server ────────────────────────────────────────────────────────
 
 // Writes or updates .claude/settings.json with the projot MCP server config.
@@ -1118,6 +1205,138 @@ int cmd_install_mcp_server(const Args& args) {
     }
 
     std::cout << "MCP server is ready. Reload your editor to enable tab completion and tools.\n";
+    return 0;
+}
+
+// ── uninstall-mcp-server ──────────────────────────────────────────────────────
+
+// Removes the projot MCP entry from .claude/settings.json.
+// Returns true on success (including "nothing to do").
+// Sets message to a human-readable status string.
+static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message) {
+    fs::path settings_file = repo_root / ".claude" / "settings.json";
+    std::error_code ec;
+
+    if (!fs::exists(settings_file, ec)) {
+        message = "No .claude/settings.json found.";
+        return true;
+    }
+
+    std::ifstream f_read(settings_file);
+    if (!f_read.is_open()) {
+        message = "cannot read .claude/settings.json";
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(f_read)), {});
+    f_read.close();
+
+    if (content.find("\"projot\"") == std::string::npos) {
+        message = "projot not configured in .claude/settings.json.";
+        return true;
+    }
+
+    // Case A: file was created fresh by projot — delete it
+    const std::string fresh =
+        "{\n"
+        "  \"mcpServers\": {\n"
+        "    \"projot\": {\n"
+        "      \"command\": \"node\",\n"
+        "      \"args\": [\"./mcp/server.js\"]\n"
+        "    }\n"
+        "  }\n"
+        "}\n";
+    if (content == fresh) {
+        fs::remove(settings_file, ec);
+        if (ec) {
+            message = "cannot remove .claude/settings.json: " + ec.message();
+            return false;
+        }
+        message = "Removed .claude/settings.json";
+        return true;
+    }
+
+    // Case B: projot injected an mcpServers block — remove the injection
+    const std::string injected =
+        ",\n  \"mcpServers\": {\n"
+        "    \"projot\": {\n"
+        "      \"command\": \"node\",\n"
+        "      \"args\": [\"./mcp/server.js\"]\n"
+        "    }\n"
+        "  }";
+    auto pos = content.find(injected);
+    if (pos != std::string::npos) {
+        content.erase(pos, injected.size());
+        std::ofstream f_write(settings_file);
+        if (!f_write.is_open()) {
+            message = "cannot write .claude/settings.json";
+            return false;
+        }
+        f_write << content;
+        message = "Removed projot MCP entry from .claude/settings.json";
+        return true;
+    }
+
+    // Case C: manually edited — give instructions
+    message = "note: projot entry found in .claude/settings.json but could not be removed automatically.\n"
+              "Please remove the following entry manually:\n\n"
+              "    \"projot\": {\n"
+              "      \"command\": \"node\",\n"
+              "      \"args\": [\"./mcp/server.js\"]\n"
+              "    }\n";
+    return true;
+}
+
+int cmd_uninstall_mcp_server(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot uninstall-mcp-server [options]\n\n"
+            "Remove the projot MCP server configuration from Claude Code and VS Code.\n\n"
+            "Removes the projot entry from .claude/settings.json and deletes\n"
+            ".vscode/mcp.json if it was created by projot.\n\n"
+            "Optional:\n"
+            "  --no-vscode    Skip VS Code (.vscode/mcp.json) removal\n\n"
+            "Example:\n"
+            "  projot uninstall-mcp-server\n";
+        return 0;
+    }
+
+    auto root = find_repo_root();
+    if (!root) {
+        std::cerr << "error: not inside a git repository.\n";
+        return 1;
+    }
+
+    // Remove .claude/settings.json entry
+    std::string msg;
+    if (!uninstall_claude_mcp(*root, msg)) {
+        std::cerr << "error: " << msg << "\n";
+        return 1;
+    }
+    std::cout << msg << "\n";
+
+    // Remove .vscode/mcp.json unless --no-vscode
+    if (!args.has("no-vscode")) {
+        fs::path mcp_json = *root / ".vscode" / "mcp.json";
+        std::error_code ec;
+        if (!fs::exists(mcp_json, ec)) {
+            std::cout << "No .vscode/mcp.json found.\n";
+        } else {
+            std::ifstream f(mcp_json);
+            std::string content((std::istreambuf_iterator<char>(f)), {});
+            f.close();
+            if (content.find("\"projot\"") != std::string::npos) {
+                fs::remove(mcp_json, ec);
+                if (ec) {
+                    std::cerr << "error: cannot remove .vscode/mcp.json: " << ec.message() << "\n";
+                    return 1;
+                }
+                std::cout << "Removed .vscode/mcp.json\n";
+            } else {
+                std::cout << "projot not configured in .vscode/mcp.json.\n";
+            }
+        }
+    }
+
     return 0;
 }
 
