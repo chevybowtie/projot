@@ -4,6 +4,9 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -343,4 +346,17 @@ TEST_CASE("uninstall_mcp_no_vscode_flag") {
     CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
     CHECK_FALSE(fs::exists(repo.path / ".claude" / "settings.json"));
     CHECK(fs::exists(repo.path / ".vscode" / "mcp.json")); // untouched
+}
+
+TEST_CASE("install_hook_unwritable_dir") {
+#ifndef _WIN32
+    if (getuid() == 0) return; // root bypasses file permissions
+    HookTempRepo repo("install_hook_unwritable");
+    fs::path hooks_dir = repo.path / ".git" / "hooks";
+    std::error_code ec;
+    fs::permissions(hooks_dir, fs::perms::owner_read | fs::perms::owner_exec, ec);
+    int ret = cmd_install_hook(make_hook_args("install-hook"));
+    fs::permissions(hooks_dir, fs::perms::owner_all, ec); // restore before cleanup
+    CHECK(ret != 0);
+#endif
 }

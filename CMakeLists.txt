@@ -24,7 +24,10 @@ set(CORE_SOURCES
     src/markdown.cpp
     src/renderer.cpp
     src/cli.cpp
-    src/commands.cpp
+    src/commands_shared.cpp
+    src/commands_project.cpp
+    src/commands_config.cpp
+    src/commands_maint.cpp
 )
 
 add_library(projot_core STATIC ${CORE_SOURCES})
