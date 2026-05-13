@@ -256,12 +256,12 @@ static bool install_claude_mcp(const fs::path& repo_root,
 
 // Check if Node.js is available on PATH without spawning a shell.
 static bool node_available() {
-    const char* path_env = nullptr;
 #ifdef _WIN32
+    char* path_env = nullptr;
     size_t len = 0;
     if (_dupenv_s(&path_env, &len, "PATH") != 0 || !path_env) return false;
 #else
-    path_env = std::getenv("PATH");
+    const char* path_env = std::getenv("PATH");
     if (!path_env) return false;
 #endif
 
@@ -287,7 +287,7 @@ static bool node_available() {
     }
 
 #ifdef _WIN32
-    free(const_cast<char*>(path_env));
+    free(path_env);
 #endif
     return found;
 }
