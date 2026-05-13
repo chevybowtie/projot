@@ -331,3 +331,50 @@ int cmd_add_azure(const Args& args) {
         return ParseResult{true, ""};
     }, true, "Added Azure " + label + ": " + raw);
 }
+
+// ── set-global ────────────────────────────────────────────────────────────────
+
+int cmd_set_global(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-global [options]\n\n"
+            "Set global defaults for base URLs. These are used by projot across all projects.\n"
+            "Values can be overridden at the repo level in .projot/config if needed.\n\n"
+            "Options:\n"
+            "  --rpm-base-url <url>    Base URL for RPM links (project number is appended)\n"
+            "  --itrack-base-url <url> Base URL for iTrack links (ticket number is appended)\n\n"
+            "At least one of the above options is required.\n\n"
+            "Examples:\n"
+            "  projot set-global --rpm-base-url https://rpm.example.com/\n"
+            "  projot set-global --itrack-base-url https://itrack.example.com/record/\n";
+        return 0;
+    }
+
+    if (!args.has("rpm-base-url") && !args.has("itrack-base-url")) {
+        std::cerr << "error: --rpm-base-url or --itrack-base-url required.\n";
+        return 1;
+    }
+
+    auto path = global_config_path();
+    if (!path) {
+        std::cerr << "error: cannot determine global config path ($HOME not set).\n";
+        return 1;
+    }
+
+    Config cfg;
+    parse_config(path->string(), cfg); // silently ok if file missing
+
+    if (args.has("rpm-base-url"))
+        cfg.rpm_base_url = args.get("rpm-base-url");
+    if (args.has("itrack-base-url"))
+        cfg.itrack_base_url = args.get("itrack-base-url");
+
+    auto result = write_global_config(path->string(), cfg);
+    if (!result.ok) {
+        std::cerr << "error: " << result.error << "\n";
+        return 1;
+    }
+
+    std::cout << "Updated global config: " << path->string() << "\n";
+    return 0;
+}

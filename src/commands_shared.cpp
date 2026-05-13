@@ -49,6 +49,18 @@ Context load_context() {
         std::cerr << "warning: config_version missing; treating as version 0.\n";
     }
 
+    // Merge global config (provides defaults for base URL fields)
+    auto global_path = global_config_path();
+    if (global_path) {
+        Config global_cfg;
+        if (parse_config(global_path->string(), global_cfg).ok) {
+            if (ctx.config.rpm_base_url.empty())
+                ctx.config.rpm_base_url = global_cfg.rpm_base_url;
+            if (ctx.config.itrack_base_url.empty())
+                ctx.config.itrack_base_url = global_cfg.itrack_base_url;
+        }
+    }
+
     return ctx;
 }
 
