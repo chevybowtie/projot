@@ -1,11 +1,15 @@
 #include "doctest.h"
 #include "commands.h"
+#include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
 
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -704,4 +708,148 @@ TEST_CASE("version_flag") {
     char* argv[] = {arg0, arg1, nullptr};
     Args a = parse_args(2, argv);
     CHECK(a.version_requested);
+}
+
+// ── cmd_render error paths ────────────────────────────────────────────────────
+
+TEST_CASE("render_requires_project") {
+    TempRepo repo("render_requires_project");
+    repo.init(); // no new_project — rpm is empty
+    CHECK(cmd_render(make_args("render")) != 0);
+}
+
+TEST_CASE("render_write_failure") {
+#ifndef _WIN32
+    if (getuid() == 0) return;
+    TempRepo repo("render_write_failure");
+    repo.init();
+    repo.new_project();
+    fs::path notes = repo.path / ".projot" / "12345.md";
+    std::error_code ec;
+    fs::permissions(notes, fs::perms::owner_read | fs::perms::group_read, ec);
+    int ret = cmd_render(make_args("render"));
+    fs::permissions(notes, fs::perms::owner_all, ec); // restore before TempRepo cleanup
+    CHECK(ret != 0);
+#endif
+}
+
+// ── cmd_new render failure ────────────────────────────────────────────────────
+
+TEST_CASE("new_render_failure") {
+#ifndef _WIN32
+    if (getuid() == 0) return;
+    TempRepo repo("new_render_failure");
+    repo.init();
+    // Pre-create the notes file as read-only so render_to_file fails inside cmd_new.
+    fs::path notes = repo.path / ".projot" / "12345.md";
+    { std::ofstream f(notes); }
+    std::error_code ec;
+    fs::permissions(notes, fs::perms::owner_read | fs::perms::group_read, ec);
+    int ret = repo.new_project(); // write_config succeeds, then render_to_file fails
+    fs::permissions(notes, fs::perms::owner_all, ec);
+    CHECK(ret != 0);
+#endif
+}
+
+// ── set-global + global config merge ──────────────────────────────────────────
+
+// Redirects XDG_CONFIG_HOME (Linux/macOS) to an isolated temp dir for the
+// duration of a test so cmd_set_global and load_context() use a throw-away path.
+struct TempGlobalConfig {
+    fs::path dir;
+#ifndef _WIN32
+    std::string prev_xdg;
+    bool had_prev = false;
+#endif
+
+    explicit TempGlobalConfig(const std::string& name) {
+        dir = fs::temp_directory_path() / ("projot_global_" + name);
+        std::error_code ec;
+        fs::remove_all(dir, ec);
+        fs::create_directories(dir, ec);
+#ifndef _WIN32
+        const char* prev = std::getenv("XDG_CONFIG_HOME");
+        had_prev = (prev != nullptr);
+        if (had_prev) prev_xdg = prev;
+        setenv("XDG_CONFIG_HOME", dir.string().c_str(), 1);
+#endif
+    }
+
+    ~TempGlobalConfig() {
+#ifndef _WIN32
+        if (had_prev) setenv("XDG_CONFIG_HOME", prev_xdg.c_str(), 1);
+        else          unsetenv("XDG_CONFIG_HOME");
+#endif
+        std::error_code ec;
+        fs::remove_all(dir, ec);
+    }
+
+    fs::path config_path() const { return dir / "projot" / "config"; }
+};
+
+TEST_CASE("set_global_writes_rpm_base_url") {
+    TempGlobalConfig global("set_global_rpm");
+    int ret = cmd_set_global(make_args("set-global", {{"rpm-base-url", "https://rpm.example.com/"}}));
+    CHECK(ret == 0);
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.rpm_base_url == "https://rpm.example.com/");
+}
+
+TEST_CASE("set_global_writes_itrack_base_url") {
+    TempGlobalConfig global("set_global_itrack");
+    int ret = cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+    CHECK(ret == 0);
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+}
+
+TEST_CASE("set_global_preserves_existing_value") {
+    TempGlobalConfig global("set_global_preserve");
+    // Set rpm first, then itrack — both should survive the second write.
+    cmd_set_global(make_args("set-global", {{"rpm-base-url",    "https://rpm.example.com/"}}));
+    cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+    Config cfg;
+    REQUIRE(parse_config(global.config_path().string(), cfg).ok);
+    CHECK(cfg.rpm_base_url    == "https://rpm.example.com/");
+    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+}
+
+TEST_CASE("set_global_requires_at_least_one_flag") {
+    TempGlobalConfig global("set_global_no_flags");
+    int ret = cmd_set_global(make_args("set-global"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("load_context_merges_global_rpm_base_url") {
+    TempGlobalConfig global("merge_rpm");
+    // Write global config before TempRepo changes cwd.
+    fs::create_directories(global.config_path().parent_path());
+    { std::ofstream f(global.config_path()); f << "rpm_base_url = https://rpm.example.com/\n"; }
+
+    TempRepo repo("merge_rpm");
+    repo.init();
+    repo.new_project();
+
+    auto ctx = load_context();
+    REQUIRE(ctx.ok);
+    CHECK(ctx.config.rpm_base_url == "https://rpm.example.com/");
+}
+
+TEST_CASE("load_context_local_config_overrides_global") {
+    TempGlobalConfig global("override_rpm");
+    fs::create_directories(global.config_path().parent_path());
+    { std::ofstream f(global.config_path()); f << "rpm_base_url = https://global.example.com/\n"; }
+
+    TempRepo repo("override_rpm");
+    repo.init();
+    repo.new_project();
+    // Append a local rpm_base_url that should win over the global one.
+    { std::ofstream f(repo.path / ".projot" / "config", std::ios::app);
+      f << "rpm_base_url = https://local.example.com/\n"; }
+
+    auto ctx = load_context();
+    REQUIRE(ctx.ok);
+    CHECK(ctx.config.rpm_base_url == "https://local.example.com/");
 }
