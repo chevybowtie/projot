@@ -1,4 +1,5 @@
 #include "config.h"
+#include "utils.h"
 
 #include <fstream>
 #include <sstream>
@@ -30,16 +31,6 @@ std::string join_list(const std::vector<std::string>& items) {
     for (std::size_t i = 0; i < items.size(); ++i) {
         if (i > 0) result += ", ";
         result += items[i];
-    }
-    return result;
-}
-
-// Deduplicate a vector while preserving order.
-static std::vector<std::string> dedup(const std::vector<std::string>& v) {
-    std::vector<std::string> result;
-    for (const auto& s : v) {
-        if (std::find(result.begin(), result.end(), s) == result.end())
-            result.push_back(s);
     }
     return result;
 }
@@ -96,8 +87,7 @@ ParseResult parse_config(const std::string& path, Config& out) {
             catch (...) { out.config_version = 0; }
         } else if (key == "app_id") {
             out.app_id = value;
-        } else if (key == "rpm" || key == "ranp") {
-            // Accept legacy "ranp" key for backward compatibility with existing config files.
+        } else if (key == "rpm") {
             out.rpm = value;
         } else if (key == "name") {
             out.name = value;
@@ -160,7 +150,7 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     file << "app_id = " << cfg.app_id << "\n";
 
     auto write_list = [&](const std::string& key, const std::vector<std::string>& items) {
-        file << key << " = " << join_list(dedup(items)) << "\n";
+        file << key << " = " << join_list(deduplicate(items)) << "\n";
     };
 
     file << "\n";

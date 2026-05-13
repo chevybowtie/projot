@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(projot VERSION 0.1.7 LANGUAGES CXX)
+project(projot VERSION 0.1.8 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,7 +24,10 @@ set(CORE_SOURCES
     src/markdown.cpp
     src/renderer.cpp
     src/cli.cpp
-    src/commands.cpp
+    src/commands_shared.cpp
+    src/commands_project.cpp
+    src/commands_config.cpp
+    src/commands_maint.cpp
 )
 
 add_library(projot_core STATIC ${CORE_SOURCES})
