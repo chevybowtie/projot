@@ -256,8 +256,15 @@ static bool install_claude_mcp(const fs::path& repo_root,
 
 // Check if Node.js is available on PATH without spawning a shell.
 static bool node_available() {
-    const char* path_env = std::getenv("PATH");
+    const char* path_env = nullptr;
+#ifdef _WIN32
+    size_t len = 0;
+    if (_dupenv_s(&path_env, &len, "PATH") != 0 || !path_env) return false;
+#else
+    path_env = std::getenv("PATH");
     if (!path_env) return false;
+#endif
+
     std::istringstream ss(path_env);
     std::string dir;
 #ifdef _WIN32
@@ -267,13 +274,22 @@ static bool node_available() {
     const char sep = ':';
     const std::string node_name = "node";
 #endif
+
+    bool found = false;
     while (std::getline(ss, dir, sep)) {
         if (dir.empty()) continue;
         std::error_code ec;
         fs::path candidate = fs::path(dir) / node_name;
-        if (fs::exists(candidate, ec) && !ec) return true;
+        if (fs::exists(candidate, ec) && !ec) {
+            found = true;
+            break;
+        }
     }
-    return false;
+
+#ifdef _WIN32
+    free(const_cast<char*>(path_env));
+#endif
+    return found;
 }
 
 int cmd_install_mcp_server(const Args& args) {
