@@ -77,6 +77,7 @@ static bool git_stage_file(const fs::path& repo_root, const std::string& rel_pat
 // Returns the path to the directory containing the running binary, or nullopt.
 static std::optional<fs::path> binary_dir() {
 #if defined(_WIN32)
+    constexpr size_t kMaxWindowsPathChars = 32768; // Extended-length Windows path limit.
     std::string buf(MAX_PATH, '\0');
     for (;;) {
         DWORD len = GetModuleFileNameA(nullptr, buf.data(), static_cast<DWORD>(buf.size()));
@@ -85,9 +86,10 @@ static std::optional<fs::path> binary_dir() {
             std::error_code ec;
             fs::path exe = fs::weakly_canonical(buf.substr(0, len), ec);
             if (!ec) return exe.parent_path();
+            // Fall back to the raw module path if canonicalization fails.
             return fs::path(buf.substr(0, len)).parent_path();
         }
-        if (buf.size() >= 32768) return std::nullopt;
+        if (buf.size() >= kMaxWindowsPathChars) return std::nullopt;
         buf.resize(buf.size() * 2);
     }
 #elif defined(__linux__)
