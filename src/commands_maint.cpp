@@ -120,7 +120,9 @@ static std::optional<fs::path> find_mcp_source_dir() {
 
     for (const fs::path& raw : {
             *dir / ".." / "mcp",
-            *dir / ".." / "share" / "projot" / "mcp"}) {
+            *dir / ".." / "share" / "projot" / "mcp",
+            *dir / ".." / ".." / "mcp",
+            *dir / ".." / ".." / "share" / "projot" / "mcp"}) {
         std::error_code ec;
         fs::path candidate = fs::weakly_canonical(raw, ec);
         if (!ec && fs::exists(candidate / "server.js", ec))
