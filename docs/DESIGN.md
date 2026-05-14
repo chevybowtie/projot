@@ -558,7 +558,7 @@ No flags required.
 
 #### `install-mcp-server`
 
-Configures the MCP server for use with Claude Code or VS Code Copilot. Creates necessary configuration files and directories for the MCP integration. Can be run once per repository or per-user depending on the installation scope.
+Configures the MCP server for use with Claude Code or VS Code Copilot. Creates/updates repo-local `.claude/settings.json` and `.vscode/mcp.json` to point to the bundled installed MCP server path (for example `/usr/local/share/projot/mcp/server.js`) and does not create a repo-local `mcp/` copy.
 
 Optional:
 
