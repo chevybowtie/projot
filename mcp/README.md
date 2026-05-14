@@ -21,9 +21,42 @@ This is a Model Context Protocol (MCP) server that lets AI assistants (Claude, C
    sudo make install
    ```
 
-The MCP server itself is **already in your repo** at `mcp/server.js` — no separate installation needed.
+The MCP server is bundled with the `projot` install (for example `/usr/local/share/projot/mcp/server.js` or `~/.local/share/projot/mcp/server.js`).
 
 ### Configure Your IDE
+
+Use the built-in command from your repository root:
+
+```bash
+projot install-mcp-server
+```
+
+This writes:
+
+- `.claude/settings.json`
+- `.vscode/mcp.json`
+
+Both files are configured to call the bundled MCP server path (not `./mcp/server.js`).
+
+If you only want Claude configuration:
+
+```bash
+projot install-mcp-server --no-vscode
+```
+
+You can remove the configuration later with:
+
+```bash
+projot uninstall-mcp-server
+```
+
+#### Manual configuration (if needed)
+
+Use the same absolute server path that `projot install-mcp-server` would write. Common examples:
+
+- Linux/macOS system install: `/usr/local/share/projot/mcp/server.js`
+- Linux/macOS user install: `~/.local/share/projot/mcp/server.js`
+- Windows: `C:\Program Files\projot\share\projot\mcp\server.js`
 
 #### Claude Code
 
@@ -35,7 +68,7 @@ The MCP server itself is **already in your repo** at `mcp/server.js` — no sepa
   "mcpServers": {
     "projot": {
       "command": "node",
-      "args": ["./mcp/server.js"]
+      "args": ["/usr/local/share/projot/mcp/server.js"]
     }
   }
 }
@@ -43,15 +76,17 @@ The MCP server itself is **already in your repo** at `mcp/server.js` — no sepa
 
 #### Copilot (VS Code)
 
-1. Open `.vscode/settings.json` (or your user settings)
-2. Add the Copilot extension configuration:
+1. Open `.vscode/mcp.json`
+2. Add the MCP server configuration (`inputs` is part of the VS Code MCP file shape and can be left as an empty array):
 
 ```json
 {
-  "github.copilot.chat.extensions": {
+  "inputs": [],
+  "servers": {
     "projot": {
+      "type": "stdio",
       "command": "node",
-      "args": ["./mcp/server.js"]
+      "args": ["/usr/local/share/projot/mcp/server.js"]
     }
   }
 }
