@@ -277,6 +277,10 @@ TEST_CASE("install_then_uninstall_mcp_round_trip") {
     CHECK(cmd_install_mcp_server(make_mcp_args("install-mcp-server")) == 0);
     CHECK(fs::exists(repo.path / ".claude" / "settings.json"));
     CHECK(fs::exists(repo.path / ".vscode" / "mcp.json"));
+    const auto claude = McpTempRepo::read_file(repo.path / ".claude" / "settings.json");
+    const auto vscode = McpTempRepo::read_file(repo.path / ".vscode" / "mcp.json");
+    CHECK(claude.find("./mcp/server.js") == std::string::npos);
+    CHECK(vscode.find("./mcp/server.js") == std::string::npos);
 
     CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server")) == 0);
     CHECK_FALSE(fs::exists(repo.path / ".claude" / "settings.json"));

@@ -114,16 +114,27 @@ static std::optional<fs::path> find_mcp_source_dir() {
 }
 
 static std::string json_escape(const std::string& s) {
+    static const char* hex = "0123456789abcdef";
     std::string out;
     out.reserve(s.size());
-    for (char c : s) {
+    for (unsigned char c : s) {
         switch (c) {
             case '\\': out += "\\\\"; break;
             case '"': out += "\\\""; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
             case '\n': out += "\\n"; break;
             case '\r': out += "\\r"; break;
             case '\t': out += "\\t"; break;
-            default: out += c; break;
+            default:
+                if (c < 0x20) {
+                    out += "\\u00";
+                    out += hex[(c >> 4) & 0x0F];
+                    out += hex[c & 0x0F];
+                } else {
+                    out += static_cast<char>(c);
+                }
+                break;
         }
     }
     return out;
@@ -524,12 +535,20 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
     if (auto mcp_src = find_mcp_source_dir()) {
         server_args.push_back(json_escape((*mcp_src / "server.js").string()));
     }
-    const std::string& preferred_server_arg = server_args.back();
+    const std::string preferred_server_arg = server_args.back();
+    std::vector<std::string> fresh_entries;
+    std::vector<std::string> injected_entries;
+    fresh_entries.reserve(server_args.size());
+    injected_entries.reserve(server_args.size());
+    for (const auto& server_arg : server_args) {
+        fresh_entries.push_back(claude_settings_fresh(server_arg));
+        injected_entries.push_back(claude_settings_injected_block(server_arg));
+    }
 
     // Case A: file was created fresh by projot — delete it
     bool is_fresh = false;
-    for (const auto& server_arg : server_args) {
-        if (content == claude_settings_fresh(server_arg)) {
+    for (const auto& fresh_entry : fresh_entries) {
+        if (content == fresh_entry) {
             is_fresh = true;
             break;
         }
@@ -545,11 +564,10 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
     }
 
     // Case B: projot injected an mcpServers block — remove the injection
-    for (const auto& server_arg : server_args) {
-        const std::string injected = claude_settings_injected_block(server_arg);
-        auto pos = content.find(injected);
+    for (const auto& injected_entry : injected_entries) {
+        auto pos = content.find(injected_entry);
         if (pos != std::string::npos) {
-            content.erase(pos, injected.size());
+            content.erase(pos, injected_entry.size());
             std::ofstream f_write(settings_file);
             if (!f_write.is_open()) {
                 message = "cannot write .claude/settings.json";
