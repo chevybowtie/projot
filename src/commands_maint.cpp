@@ -11,6 +11,7 @@
 #include <optional>
 #include <sstream>
 #include <cstdlib>
+#include <vector>
 
 #ifdef __APPLE__
 #  include <mach-o/dyld.h>
@@ -112,6 +113,44 @@ static std::optional<fs::path> find_mcp_source_dir() {
     return std::nullopt;
 }
 
+static std::string json_escape(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out += c; break;
+        }
+    }
+    return out;
+}
+
+static std::string claude_settings_fresh(const std::string& server_arg) {
+    return
+        "{\n"
+        "  \"mcpServers\": {\n"
+        "    \"projot\": {\n"
+        "      \"command\": \"node\",\n"
+        "      \"args\": [\"" + server_arg + "\"]\n"
+        "    }\n"
+        "  }\n"
+        "}\n";
+}
+
+static std::string claude_settings_injected_block(const std::string& server_arg) {
+    return
+        ",\n  \"mcpServers\": {\n"
+        "    \"projot\": {\n"
+        "      \"command\": \"node\",\n"
+        "      \"args\": [\"" + server_arg + "\"]\n"
+        "    }\n"
+        "  }";
+}
+
 // ── render ────────────────────────────────────────────────────────────────────
 
 int cmd_render(const Args& args) {
@@ -179,6 +218,7 @@ int cmd_install_hook(const Args& args) {
 // Returns false on hard error (sets error string).
 // If manual action is required, sets manual_action to the instruction text and returns true.
 static bool install_claude_mcp(const fs::path& repo_root,
+                                const std::string& server_arg,
                                 std::string& error,
                                 std::string& manual_action) {
     fs::path claude_dir = repo_root / ".claude";
@@ -196,14 +236,7 @@ static bool install_claude_mcp(const fs::path& repo_root,
         std::ofstream f(settings_file);
         if (!f.is_open()) { error = "cannot write .claude/settings.json"; return false; }
 
-        f << "{\n"
-          << "  \"mcpServers\": {\n"
-          << "    \"projot\": {\n"
-          << "      \"command\": \"node\",\n"
-          << "      \"args\": [\"./mcp/server.js\"]\n"
-          << "    }\n"
-          << "  }\n"
-          << "}\n";
+        f << claude_settings_fresh(server_arg);
         return true;
     }
 
@@ -227,7 +260,7 @@ static bool install_claude_mcp(const fs::path& repo_root,
                        "Add the following entry to it manually:\n\n"
                        "    \"projot\": {\n"
                        "      \"command\": \"node\",\n"
-                       "      \"args\": [\"./mcp/server.js\"]\n"
+                       "      \"args\": [\"" + server_arg + "\"]\n"
                        "    }\n";
         return true;
     }
@@ -239,12 +272,7 @@ static bool install_claude_mcp(const fs::path& repo_root,
         return false;
     }
 
-    std::string to_inject = ",\n  \"mcpServers\": {\n"
-                           "    \"projot\": {\n"
-                           "      \"command\": \"node\",\n"
-                           "      \"args\": [\"./mcp/server.js\"]\n"
-                           "    }\n"
-                           "  }";
+    std::string to_inject = claude_settings_injected_block(server_arg);
 
     content.insert(last_brace, to_inject);
 
@@ -319,43 +347,17 @@ int cmd_install_mcp_server(const Args& args) {
                   << "         Install Node.js and try again, or see mcp/README.md for manual setup.\n";
     }
 
-    // Ensure mcp/server.js exists in the repo
-    fs::path mcp_in_repo = *root / "mcp" / "server.js";
-    if (!fs::exists(mcp_in_repo)) {
-        // Try to copy from install location
-        auto mcp_src = find_mcp_source_dir();
-        if (!mcp_src) {
-            std::cerr << "error: mcp/server.js not found and cannot locate bundled MCP files.\n"
-                      << "       ensure projot was installed correctly.\n";
-            return 1;
-        }
-
-        fs::path mcp_dest = *root / "mcp";
-        std::error_code ec;
-        fs::create_directories(mcp_dest, ec);
-        if (ec) {
-            std::cerr << "error: cannot create mcp/: " << ec.message() << "\n";
-            return 1;
-        }
-
-        for (const char* fname : {"server.js", "package.json"}) {
-            fs::path src_file = *mcp_src / fname;
-            if (!fs::exists(src_file, ec)) {
-                std::cerr << "warning: expected MCP file not found: " << src_file.string() << "\n";
-                continue;
-            }
-            fs::copy_file(src_file, mcp_dest / fname,
-                         fs::copy_options::overwrite_existing, ec);
-            if (ec) {
-                std::cerr << "error: cannot copy " << fname << ": " << ec.message() << "\n";
-                return 1;
-            }
-        }
+    auto mcp_src = find_mcp_source_dir();
+    if (!mcp_src) {
+        std::cerr << "error: cannot locate bundled MCP files.\n"
+                  << "       ensure projot was installed correctly.\n";
+        return 1;
     }
+    std::string server_arg = json_escape((*mcp_src / "server.js").string());
 
     // Configure .claude/settings.json
     std::string error, manual_action;
-    if (!install_claude_mcp(*root, error, manual_action)) {
+    if (!install_claude_mcp(*root, server_arg, error, manual_action)) {
         std::cerr << "error: " << error << "\n";
         return 1;
     }
@@ -391,7 +393,7 @@ int cmd_install_mcp_server(const Args& args) {
               << "    \"projot\": {\n"
               << "      \"type\": \"stdio\",\n"
               << "      \"command\": \"node\",\n"
-              << "      \"args\": [\"./mcp/server.js\"]\n"
+              << "      \"args\": [\"" << server_arg << "\"]\n"
               << "    }\n"
               << "  }\n"
               << "}\n";
@@ -517,17 +519,22 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
         return true;
     }
 
+    const std::string legacy_server_arg = "./mcp/server.js";
+    std::vector<std::string> server_args{legacy_server_arg};
+    if (auto mcp_src = find_mcp_source_dir()) {
+        server_args.push_back(json_escape((*mcp_src / "server.js").string()));
+    }
+    const std::string& preferred_server_arg = server_args.back();
+
     // Case A: file was created fresh by projot — delete it
-    const std::string fresh =
-        "{\n"
-        "  \"mcpServers\": {\n"
-        "    \"projot\": {\n"
-        "      \"command\": \"node\",\n"
-        "      \"args\": [\"./mcp/server.js\"]\n"
-        "    }\n"
-        "  }\n"
-        "}\n";
-    if (content == fresh) {
+    bool is_fresh = false;
+    for (const auto& server_arg : server_args) {
+        if (content == claude_settings_fresh(server_arg)) {
+            is_fresh = true;
+            break;
+        }
+    }
+    if (is_fresh) {
         fs::remove(settings_file, ec);
         if (ec) {
             message = "cannot remove .claude/settings.json: " + ec.message();
@@ -538,24 +545,20 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
     }
 
     // Case B: projot injected an mcpServers block — remove the injection
-    const std::string injected =
-        ",\n  \"mcpServers\": {\n"
-        "    \"projot\": {\n"
-        "      \"command\": \"node\",\n"
-        "      \"args\": [\"./mcp/server.js\"]\n"
-        "    }\n"
-        "  }";
-    auto pos = content.find(injected);
-    if (pos != std::string::npos) {
-        content.erase(pos, injected.size());
-        std::ofstream f_write(settings_file);
-        if (!f_write.is_open()) {
-            message = "cannot write .claude/settings.json";
-            return false;
+    for (const auto& server_arg : server_args) {
+        const std::string injected = claude_settings_injected_block(server_arg);
+        auto pos = content.find(injected);
+        if (pos != std::string::npos) {
+            content.erase(pos, injected.size());
+            std::ofstream f_write(settings_file);
+            if (!f_write.is_open()) {
+                message = "cannot write .claude/settings.json";
+                return false;
+            }
+            f_write << content;
+            message = "Removed projot MCP entry from .claude/settings.json";
+            return true;
         }
-        f_write << content;
-        message = "Removed projot MCP entry from .claude/settings.json";
-        return true;
     }
 
     // Case C: manually edited — give instructions
@@ -563,7 +566,7 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
               "Please remove the following entry manually:\n\n"
               "    \"projot\": {\n"
               "      \"command\": \"node\",\n"
-              "      \"args\": [\"./mcp/server.js\"]\n"
+              "      \"args\": [\"" + preferred_server_arg + "\"]\n"
               "    }\n";
     return true;
 }

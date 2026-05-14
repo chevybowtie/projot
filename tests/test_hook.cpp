@@ -261,6 +261,28 @@ static Args make_mcp_args(const std::string& sub,
     return a;
 }
 
+TEST_CASE("install_mcp_writes_non_repo_server_path") {
+    McpTempRepo repo("install_mcp_writes_non_repo_server_path");
+    CHECK(cmd_install_mcp_server(make_mcp_args("install-mcp-server")) == 0);
+
+    const auto claude = McpTempRepo::read_file(repo.path / ".claude" / "settings.json");
+    const auto vscode = McpTempRepo::read_file(repo.path / ".vscode" / "mcp.json");
+    CHECK(claude.find("./mcp/server.js") == std::string::npos);
+    CHECK(vscode.find("./mcp/server.js") == std::string::npos);
+    CHECK_FALSE(fs::exists(repo.path / "mcp" / "server.js"));
+}
+
+TEST_CASE("install_then_uninstall_mcp_round_trip") {
+    McpTempRepo repo("install_then_uninstall_mcp_round_trip");
+    CHECK(cmd_install_mcp_server(make_mcp_args("install-mcp-server")) == 0);
+    CHECK(fs::exists(repo.path / ".claude" / "settings.json"));
+    CHECK(fs::exists(repo.path / ".vscode" / "mcp.json"));
+
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server")) == 0);
+    CHECK_FALSE(fs::exists(repo.path / ".claude" / "settings.json"));
+    CHECK_FALSE(fs::exists(repo.path / ".vscode" / "mcp.json"));
+}
+
 TEST_CASE("uninstall_mcp_no_files") {
     McpTempRepo repo("uninstall_mcp_no_files");
     // Neither .claude/settings.json nor .vscode/mcp.json exist
