@@ -114,7 +114,7 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 1. [ ] Validate index rebuild plan
    - Created: 2025-11-23
    - Notes:
-     - Waiting on supervisor feedback
+    - 2025-11-23 - Waiting on supervisor feedback
 
 2. [x] Initial setup complete
    - Created: 2025-11-20
@@ -144,6 +144,13 @@ date_format = YYYY-MM-DD
 links = teams, itrack, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
+
+Date format tokens (display only):
+
+- Supported tokens: `YYYY` (4-digit year), `MM` (zero-padded month), `DD` (zero-padded day).
+- Examples: `YYYY-MM-DD` → 2026-05-15, `DD/MM/YYYY` → 15/05/2026, `MM-DD-YYYY` → 05-15-2026.
+- Behavior: if `date_format` is empty, projot falls back to ISO (`YYYY-MM-DD`). projot performs simple token replacement only — no locale-aware names, no time-of-day, and no timezone conversion.
+- Notes: named presets (e.g. `preset:US`) are not implemented in v0.1; rely on the token patterns above for predictable output.
 ```
 
 ---
