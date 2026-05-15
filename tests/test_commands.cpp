@@ -3,6 +3,7 @@
 #include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
+#include "utils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -352,18 +353,29 @@ TEST_CASE("complete_warns_if_already_done") {
 TEST_CASE("add_note_appends") {
     TempRepo repo("add_note_appends");
     repo.init(); repo.new_project("8");
+    // Ensure the project config has a date_format so notes are prefixed
+    {
+        std::ofstream f((repo.path / ".projot" / "config").string(), std::ios::app);
+        f << "date_format = YYYY-MM-DD\n";
+    }
     cmd_add_todo(make_args("add-todo", {}, "T"));
     CHECK(cmd_add_note(make_args("add-note", {{"todo", "1"}}, "My note")) == 0);
     Project proj;
     parse_markdown((repo.path / ".projot" / "8.md").string(), proj);
     REQUIRE(!proj.todos.empty());
     REQUIRE(proj.todos[0].notes.size() == 1);
-    CHECK(proj.todos[0].notes[0] == "My note");
+    // Expect note to be prefixed with today's date in configured format
+    CHECK(proj.todos[0].notes[0] == date_today() + " - My note");
 }
 
 TEST_CASE("add_note_warns_if_closed") {
     TempRepo repo("add_note_warns_if_closed");
     repo.init(); repo.new_project("9");
+    // Ensure the project config has a date_format so notes are prefixed
+    {
+        std::ofstream f((repo.path / ".projot" / "config").string(), std::ios::app);
+        f << "date_format = YYYY-MM-DD\n";
+    }
     cmd_add_todo(make_args("add-todo", {}, "T"));
     cmd_complete(make_args("complete", {{"todo", "1"}}));
     // Should warn but still return 0 and write note
@@ -371,6 +383,7 @@ TEST_CASE("add_note_warns_if_closed") {
     Project proj;
     parse_markdown((repo.path / ".projot" / "9.md").string(), proj);
     CHECK(!proj.todos[0].notes.empty());
+    CHECK(proj.todos[0].notes[0] == date_today() + " - Late");
 }
 
 // ── set-link ─────────────────────────────────────────────────────────────────
