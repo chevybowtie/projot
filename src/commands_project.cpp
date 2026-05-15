@@ -245,7 +245,12 @@ int cmd_add_note(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    return execute_project_command(ctx, [id, &text](Project& proj) {
+    // Determine date prefix using config.date_format (fallback to ISO)
+    std::string date_prefix = ctx.config.date_format.empty()
+                              ? date_today()
+                              : format_date(ctx.config.date_format);
+
+    return execute_project_command(ctx, [id, &text, date_prefix](Project& proj) {
         if (!find_todo(proj.todos, id)) {
             std::string msg = "todo " + std::to_string(id) + " not found.";
             if (!proj.todos.empty()) {
@@ -255,7 +260,7 @@ int cmd_add_note(const Args& args) {
             return ParseResult{false, msg};
         }
 
-        auto result = add_note(proj.todos, id, text);
+        auto result = add_note(proj.todos, id, date_prefix + " - " + text);
         if (result.warned) std::cerr << "warning: " << result.message << "\n";
 
         std::cout << "Added note to todo " << id << ".\n";
