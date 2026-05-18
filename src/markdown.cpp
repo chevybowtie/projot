@@ -5,13 +5,13 @@
 #include <sstream>
 #include <algorithm>
 
-// ── Line helpers ─────────────────────────────────────────────────────────────
+// Line helpers
 
 static bool starts_with(const std::string& s, const std::string& prefix) {
     return s.size() >= prefix.size() && s.substr(0, prefix.size()) == prefix;
 }
 
-// ── Parser state machine ─────────────────────────────────────────────────────
+// Parser state machine
 
 enum class Section {
     Header,
@@ -51,7 +51,7 @@ static bool parse_todo_line(const std::string& line, int& id, bool& completed, s
     return true;
 }
 
-// ── Core parsing logic ───────────────────────────────────────────────────────
+// Core parsing logic
 
 static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Project& out) {
     out = Project{};
@@ -65,7 +65,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
         std::string line = raw;
         if (!line.empty() && line.back() == '\r') line.pop_back();
 
-        // ── Section transitions ────────────────────────────────────────────
+        // Section transitions
         if (starts_with(line, "## Links")) {
             section = Section::Links;
             current_todo = nullptr;
@@ -105,7 +105,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
         // Skip the projot-managed comment
         if (starts_with(line, "<!-- projot-managed")) continue;
 
-        // ── Header section ─────────────────────────────────────────────────
+        // Header section
         if (section == Section::Header) {
             if (starts_with(line, "# Project: ")) {
                 out.name = trim(line.substr(11));
@@ -126,7 +126,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
             continue;
         }
 
-        // ── Links section ──────────────────────────────────────────────────
+        // Links section
         if (section == Section::Links) {
             if (starts_with(line, "- ") && line.find(": ") != std::string::npos) {
                 const auto colon = line.find(": ");
@@ -141,7 +141,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
             continue;
         }
 
-        // ── Managed URL sections ───────────────────────────────────────────
+        // Managed URL sections
         if (section == Section::GitHub) {
             if (starts_with(line, "- ")) {
                 const auto url = trim(line.substr(2));
@@ -164,7 +164,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
             continue;
         }
 
-        // ── Todos section ──────────────────────────────────────────────────
+        // Todos section
         if (section == Section::Todos) {
             // Try to parse a new todo header line: "1. [ ] text"
             int id; bool completed; std::string text;
@@ -194,7 +194,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
     return {true, ""};
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+// Public API
 
 MarkdownParseResult parse_markdown(const std::string& path, Project& out) {
     std::ifstream file(path);

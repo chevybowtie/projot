@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build and Test Commands
 
 Always use:
+
 ```bash
 cmake -B build && cmake --build build && ctest --test-dir build --output-on-failure
 ```
@@ -21,21 +22,24 @@ cmake -B build && cmake --build build && ctest --test-dir build --output-on-fail
 
 **No external dependencies.** projot forbids Boost, fmt, nlohmann/json, and other libraries. Use only `<filesystem>`, `<optional>`, `<string>`, `std::stringstream`, and standard library only. String parsing is manual; JSON is parsed with `std::string::find()` and `std::stringstream`. This is a hard constraint enforced in code review.
 
-**doctest header is checked in.** Tests use `tests/doctest.h` (363 KB, included directly). To upgrade: download the latest doctest.h from https://github.com/doctest/doctest/releases and replace the file.
+**doctest header is checked in.** Tests use `tests/doctest.h` (363 KB, included directly). To upgrade: download the latest doctest.h from <https://github.com/doctest/doctest/releases> and replace the file.
 
 ## Command Architecture
 
 All 15 commands are split across three files for clarity:
+
 - `src/commands_project.cpp` — project operations (add-todo, list, complete, add-note, set-link)
 - `src/commands_config.cpp` — configuration (init, new, set-app-id, add-github/swagger/blizzard, add-azure)
 - `src/commands_maint.cpp` — maintenance (render, install-hook, install-mcp-server)
 
 **To add a new command:**
+
 1. Implement `int cmd_<name>(const Args& args)` in the appropriate file.
 2. Declare it in `src/commands.h`.
 3. Register in `src/main.cpp` in both the `commands` map (line ~75) and `valid_flags` map (lines ~100–110).
 
 **Command pattern:** Most commands use one of two helpers:
+
 - `execute_project_command(ctx, [&](Project& proj) { ... })` — for modifying todos in-memory, parsing, and rendering.
 - `execute_config_command(ctx, [&](Context& c) { ... })` — for modifying config, saving, and optionally re-rendering.
 
@@ -73,11 +77,12 @@ This file (`CLAUDE.md`) is now the canonical source for operational guidance. Th
 
 ## Auto-generated signatures
 <!-- Updated by gen-context.js -->
+
 # Code signatures
 
 ## todos
 
-```
+```text
 src/markdown.cpp:93  # TODO: s")) {
 src/markdown.h:26  # TODO: s
 src/renderer.cpp:123  # TODO: s\n";
@@ -102,7 +107,7 @@ tests/test_hook.cpp:30  # TODO: s\n\n";
 
 ## changes (last 5 commits — 2 days ago)
 
-```
+```text
 src/repo.cpp                                  +_WIN32
 completions/projot.fish                       ~__projot_no_subcommand
 mcp/server.js                                 +getGlobalConfigValue  ~getConfigValue  ~handleRequest  ~slugifyBranchName
@@ -112,13 +117,13 @@ mcp/server.js                                 +getGlobalConfigValue  ~getConfigV
 
 ### completions/projot.bash
 
-```
+```text
 # projot bash completion
 ```
 
 ### completions/projot.fish
 
-```
+```text
 # projot fish completion
 ```
 
@@ -126,7 +131,7 @@ mcp/server.js                                 +getGlobalConfigValue  ~getConfigV
 
 ### docs/BUILD.md
 
-```
+```text
 h1 Build
 h2 .deb build
 code-fence sh
@@ -135,7 +140,7 @@ code-fence plain
 
 ### docs/DEVELOPER.md
 
-```
+```text
 h1 Developer Guide
 h2 Requirements
 h2 Building
@@ -156,7 +161,7 @@ code-fence ---
 
 ### docs/INSTALL-LINUX.md
 
-```
+```text
 h1 Installation — Linux
 h2 From a pre-built release (recommended)
 h3 Option 1: Debian package (recommended)
@@ -176,7 +181,7 @@ code-fence plain
 
 ### docs/INSTALL-WINDOWS.md
 
-```
+```text
 h1 Installation — Windows
 h2 From a pre-built release (recommended)
 h3 Option 1: Chocolatey package (recommended)
@@ -196,7 +201,7 @@ code-fence plain
 
 ### docs/RELEASE.md
 
-```
+```text
 h1 Release Process
 h2 Overview
 h2 Release Checklist
@@ -216,7 +221,7 @@ code-fence cmake
 
 ### docs/DESIGN.md
 
-```
+```text
 h1 projot — Design Specification (v0.1)
 h2 1. Overview
 h2 2. Goals (v0.1)
@@ -248,7 +253,7 @@ h1 iTrack ticket number
 
 ### mcp/server.js
 
-```
+```text
 function execCommand(cmd)
 function getConfigValue(key)
 function getGlobalConfigValue(key)
@@ -258,7 +263,7 @@ function handleRequest(request)
 
 ### mcp/README.md
 
-```
+```text
 h1 Projot MCP Server
 h2 Why Use This?
 h2 Installation
@@ -290,13 +295,13 @@ code-fence plain
 
 ### scripts/package.sh
 
-```
+```text
 # Package .deb and tar.gz from a staged install tree
 ```
 
 ### scripts/install-completion.sh
 
-```
+```text
 # scripts/install-completion.sh
 ```
 
@@ -304,7 +309,7 @@ code-fence plain
 
 ### src/commands.cpp
 
-```
+```text
 struct Context
 struct AzureTypeDef
 load_context() → static Context
@@ -334,7 +339,7 @@ cmd_new(const Args& args) → int
 
 ### src/config.cpp
 
-```
+```text
 trim(const std::string& s) → std::string
 split_list(const std::string& value) → std::vector<std::string>
 join_list(const std::vector<std::string>& items) → std::string
@@ -357,7 +362,7 @@ write_global_config(const std::string& path, const Config& cfg) → ParseResult
 
 ### src/config.h
 
-```
+```text
 struct AzureEntry
 struct Config
 struct ParseResult
@@ -365,7 +370,7 @@ struct ParseResult
 
 ### src/main.cpp
 
-```
+```text
 print_usage() → static void
 main(int argc, char* argv[]) → int
 if(args.version_requested)
@@ -376,7 +381,7 @@ for(const auto& [flag, _] : args.flags)
 
 ### src/repo.cpp
 
-```
+```text
 find_repo_root(const std::filesystem::path& start) → std::optional<std::filesystem:
 while(true)
 if(parent == current)
@@ -385,7 +390,7 @@ global_config_path() → std::optional<std::filesystem:
 
 ### src/cli.cpp
 
-```
+```text
 parse_args(int argc, char* argv[]) → Args
 if(first == "--help" || first == "-h")
 if(first == "--version" || first == "-v")
@@ -396,7 +401,7 @@ if(arg == "--help" || arg == "-h")
 
 ### src/cli.h
 
-```
+```text
 struct Args
 has(const std::string& key) → bool
 get(const std::string& key, const std::string& def = "") → std::string
@@ -406,7 +411,7 @@ boolean_flags() → inline const std::set<std::str
 
 ### src/markdown.cpp
 
-```
+```text
 starts_with(const std::string& s, const std::string& prefix) → static bool
 parse_todo_line(const std::string& line, int& id, bool& completed, std::string& text) → static bool
 parse_lines(const std::vector<std::string>& lines, Project& out) → static MarkdownParseResult
@@ -423,14 +428,14 @@ parse_markdown_string(const std::string& content, Project& out) → MarkdownPars
 
 ### src/markdown.h
 
-```
+```text
 struct Project
 struct MarkdownParseResult
 ```
 
 ### src/renderer.cpp
 
-```
+```text
 dedup_urls(const std::vector<std::string>& v) → static std::vector<std::string
 for(const auto& s : v)
 render_markdown(const Config& cfg, const std::vector<Todo>& todos) → std::string
@@ -447,13 +452,13 @@ render_to_file(const std::string& path, const Config& cfg, const std::vector<Tod
 
 ### src/renderer.h
 
-```
+```text
 struct RenderResult
 ```
 
 ### src/todo.cpp
 
-```
+```text
 next_todo_id(const std::vector<Todo>& todos) → int
 for(const auto& t : todos)
 find_todo(std::vector<Todo>& todos, int id) → Todo*
@@ -470,14 +475,14 @@ if(t->completed)
 
 ### src/todo.h
 
-```
+```text
 struct Todo
 struct TodoResult
 ```
 
 ### src/utils.h
 
-```
+```text
 date_today() → inline std::string
 ```
 
@@ -485,7 +490,7 @@ date_today() → inline std::string
 
 ### tests/test_commands.cpp
 
-```
+```text
 struct TempRepo
   cmd_init(a) → return
   cmd_new(a) → return
@@ -505,7 +510,7 @@ CHECK(content.find("[PROD](https: CHECK(content.find("[NPRD](https: } TEST_CASE(
 
 ### tests/data/notes/basic.md
 
-```
+```text
 h1 Project: Test Project
 h2 Links
 h2 Todos
@@ -513,7 +518,7 @@ h2 Todos
 
 ### tests/data/notes/managed_sections.md
 
-```
+```text
 h1 Project: Managed Sections Project
 h2 Links
 h2 GitHub
@@ -524,7 +529,7 @@ h2 Todos
 
 ### tests/data/notes/multi_todo.md
 
-```
+```text
 h1 Project: Multi Todo Project
 h2 Links
 h2 Todos
@@ -532,7 +537,7 @@ h2 Todos
 
 ### tests/data/notes/no_todos.md
 
-```
+```text
 h1 Project: Empty Project
 h2 Links
 h2 Todos
@@ -540,7 +545,7 @@ h2 Todos
 
 ### tests/doctest.h
 
-```
+```text
 struct enable_if
 struct true_type
 struct false_type
@@ -570,7 +575,7 @@ class MultiLaneAtomic
 
 ### tests/test_config.cpp
 
-```
+```text
 write_temp(const std::string& content) → static std::string
 CHECK(cfg.link_urls["teams"] == "https: } TEST_CASE("parse_repo_only")
 CHECK(cfg.github[0] == "https: CHECK(cfg.github[2] == "https: } TEST_CASE("parse_list_single")
@@ -584,7 +589,7 @@ CHECK(cfg.azure_private_dns[0] == "https: } TEST_CASE("write_azure_round_trip")
 
 ### tests/test_errors.cpp
 
-```
+```text
 struct ErrorTempRepo
 ErrorTempRepo(const std::string& name, bool with_git = true) → explicit
 make_err_args(const std::string& sub, std::initializer_list<std::pair<std::string,std::string>> flags = {}) → static Args
@@ -592,7 +597,7 @@ make_err_args(const std::string& sub, std::initializer_list<std::pair<std::strin
 
 ### tests/test_hook.cpp
 
-```
+```text
 struct HookTempRepo
   cfg(path / ".projot" / "config") → std::ofstream
   notes(path / ".projot" / "1.md") → std::ofstream
@@ -605,7 +610,7 @@ make_hook_args(const std::string& sub) → static Args
 
 ### tests/test_markdown_parser.cpp
 
-```
+```text
 CHECK(proj.link_entries[0].second == "https: } TEST_CASE("parse_github_section")
 CHECK(proj.github_urls[0] == "https: CHECK(proj.github_urls[1] == "https: } TEST_CASE("parse_swagger_section")
 CHECK(proj.swagger_urls[0] == "https: } TEST_CASE("parse_blizzard_section")
@@ -614,7 +619,7 @@ CHECK(proj.blizzard_urls[0] == "https: } TEST_CASE("parse_missing_managed_sectio
 
 ### tests/test_renderer.cpp
 
-```
+```text
 make_base_config() → static Config
 contains(const std::string& haystack, const std::string& needle) → static bool
 CHECK(contains(output, "- Teams: https: CHECK(contains(output, "- iTrack: https: } TEST_CASE("render_links_na_when_missing")
@@ -627,13 +632,13 @@ CHECK(contains(output, "- https: } TEST_CASE("render_azure_all_types")
 
 ### tests/test_repo_discovery.cpp
 
-```
+```text
 make_temp_dir(const std::string& name) → static fs::path
 cleanup(const fs::path& p) → static void
 ```
 
 ### tests/test_todo_model.cpp
 
-```
+```text
 make_todos() → static std::vector<Todo>
 ```

@@ -11,7 +11,7 @@
 
 namespace fs = std::filesystem;
 
-// ── close ─────────────────────────────────────────────────────────────────────
+// close
 
 int cmd_close(const Args& args) {
     if (args.help_requested) {
@@ -51,21 +51,7 @@ int cmd_close(const Args& args) {
               << "  |  RPM: " << ctx.config.rpm
               << "  |  Created: " << ctx.config.created << "\n";
 
-    ctx.config.rpm = "";
-    ctx.config.name = "";
-    ctx.config.itrack = "";
-    ctx.config.created = "";
-    ctx.config.date_format = "";
-    ctx.config.links.clear();
-    ctx.config.labels.clear();
-    ctx.config.link_urls.clear();
-    ctx.config.azure_subscription.clear();
-    ctx.config.azure_key_vault.clear();
-    ctx.config.azure_resource_group.clear();
-    ctx.config.azure_aks.clear();
-    ctx.config.azure_log_analytics.clear();
-    ctx.config.azure_storage.clear();
-    ctx.config.azure_private_dns.clear();
+    ctx.config.clear_project();
 
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
@@ -74,7 +60,7 @@ int cmd_close(const Args& args) {
     return 0;
 }
 
-// ── add-todo ──────────────────────────────────────────────────────────────────
+// add-todo
 
 int cmd_add_todo(const Args& args) {
     if (args.help_requested) {
@@ -109,7 +95,7 @@ int cmd_add_todo(const Args& args) {
     });
 }
 
-// ── list ─────────────────────────────────────────────────────────────────────
+// list
 
 int cmd_list(const Args& args) {
     if (args.help_requested) {
@@ -156,7 +142,7 @@ int cmd_list(const Args& args) {
     return 0;
 }
 
-// ── complete ─────────────────────────────────────────────────────────────────
+// complete
 
 int cmd_complete(const Args& args) {
     if (args.help_requested) {
@@ -209,7 +195,7 @@ int cmd_complete(const Args& args) {
     });
 }
 
-// ── add-note ─────────────────────────────────────────────────────────────────
+// add-note
 
 int cmd_add_note(const Args& args) {
     if (args.help_requested) {
@@ -268,7 +254,7 @@ int cmd_add_note(const Args& args) {
     });
 }
 
-// ── set-link ─────────────────────────────────────────────────────────────────
+// set-link
 
 int cmd_set_link(const Args& args) {
     if (args.help_requested) {

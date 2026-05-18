@@ -61,6 +61,24 @@ struct Config {
     std::vector<std::string> azure_log_analytics;
     std::vector<std::string> azure_storage;
     std::vector<std::string> azure_private_dns;
+
+    void clear_project() {
+        rpm.clear();
+        name.clear();
+        itrack.clear();
+        created.clear();
+        date_format.clear();
+        links.clear();
+        labels.clear();
+        link_urls.clear();
+        azure_subscription.clear();
+        azure_key_vault.clear();
+        azure_resource_group.clear();
+        azure_aks.clear();
+        azure_log_analytics.clear();
+        azure_storage.clear();
+        azure_private_dns.clear();
+    }
 };
 
 // Result type for operations that can fail with a message
