@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <filesystem>
 
-// ── String utilities ─────────────────────────────────────────────────────────
+// String utilities
 
 std::string trim(const std::string& s) {
     const auto front = s.find_first_not_of(" \t\r\n");
@@ -35,9 +35,9 @@ std::string join_list(const std::vector<std::string>& items) {
     return result;
 }
 
-// ── Parsing ──────────────────────────────────────────────────────────────────
+// Parsing
 
-// ── Azure entry helpers ──────────────────────────────────────────────────────
+// Azure entry helpers
 
 AzureEntry parse_azure_entry(const std::string& s) {
     const auto pipe = s.find('|');
@@ -125,7 +125,7 @@ ParseResult parse_config(const std::string& path, Config& out) {
     return {true, ""};
 }
 
-// ── Writing ──────────────────────────────────────────────────────────────────
+// Writing
 
 ParseResult write_config(const std::string& path, const Config& cfg) {
     // Ensure parent directory exists
