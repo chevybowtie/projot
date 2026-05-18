@@ -9,7 +9,7 @@
 std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     std::ostringstream out;
 
-    // ── Header ──────────────────────────────────────────────────────────────
+    // Header
     out << "# Project: " << cfg.name << "\n";
     out << "\n";
     out << "- RPM: " << cfg.rpm << "\n";
@@ -19,7 +19,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     out << "- Last Updated: " << date_today() << "\n";
     out << "\n";
 
-    // ── Links section ────────────────────────────────────────────────────────
+    // Links section────
     out << "## Links\n";
     for (const auto& key : cfg.links) {
         // Look up human-friendly label
@@ -36,7 +36,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
     out << "\n";
 
-    // ── Managed sections comment ─────────────────────────────────────────────
+    // Managed sections comment
     bool has_managed = !cfg.github.empty() || !cfg.swagger.empty() || !cfg.blizzard.empty() ||
                        !cfg.azure_subscription.empty() || !cfg.azure_key_vault.empty() ||
                        !cfg.azure_resource_group.empty() || !cfg.azure_aks.empty() ||
@@ -48,7 +48,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "\n";
     }
 
-    // ── GitHub ───────────────────────────────────────────────────────────────
+    // GitHub
     const auto github = deduplicate(cfg.github);
     if (!github.empty()) {
         out << "## GitHub\n";
@@ -56,7 +56,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "\n";
     }
 
-    // ── Swagger ──────────────────────────────────────────────────────────────
+    // Swagger
     const auto swagger = deduplicate(cfg.swagger);
     if (!swagger.empty()) {
         out << "## Swagger\n";
@@ -64,7 +64,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "\n";
     }
 
-    // ── Blizzard ─────────────────────────────────────────────────────────────
+    // Blizzard
     const auto blizzard = deduplicate(cfg.blizzard);
     if (!blizzard.empty()) {
         out << "## Blizzard\n";
@@ -72,7 +72,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         out << "\n";
     }
 
-    // ── Azure ─────────────────────────────────────────────────────────────────
+    // Azure
     struct AzureSection { const char* heading; const std::vector<std::string>& entries; };
     const AzureSection azure_sections[] = {
         {"Subscriptions",      cfg.azure_subscription},
@@ -109,7 +109,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
         }
     }
 
-    // ── Todos ─────────────────────────────────────────────────────────────────
+    // Todos
     out << "## Todos\n";
     out << "\n";
 
