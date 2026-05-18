@@ -12,7 +12,7 @@
 
 namespace fs = std::filesystem;
 
-// ── init ──────────────────────────────────────────────────────────────────────
+// init
 
 int cmd_init(const Args& args) {
     if (args.help_requested) {
@@ -63,7 +63,7 @@ int cmd_init(const Args& args) {
     return 0;
 }
 
-// ── new ───────────────────────────────────────────────────────────────────────
+// new
 
 int cmd_new(const Args& args) {
     if (args.help_requested) {
@@ -145,7 +145,7 @@ int cmd_new(const Args& args) {
     return 0;
 }
 
-// ── set-app-id ───────────────────────────────────────────────────────────────
+// set-app-id
 
 int cmd_set_app_id(const Args& args) {
     if (args.help_requested) {
@@ -182,7 +182,7 @@ int cmd_set_app_id(const Args& args) {
     }, true, "Set app_id = " + new_app_id);
 }
 
-// ── add-github / add-swagger / add-blizzard ───────────────────────────────────
+// add-github / add-swagger / add-blizzard
 
 struct UrlListDef {
     const char* key;
@@ -248,7 +248,7 @@ int cmd_add_github(const Args& args)   { return cmd_add_url(args, "github");   }
 int cmd_add_swagger(const Args& args)  { return cmd_add_url(args, "swagger");  }
 int cmd_add_blizzard(const Args& args) { return cmd_add_url(args, "blizzard"); }
 
-// ── add-azure ─────────────────────────────────────────────────────────────────
+// add-azure
 
 struct AzureTypeDef {
     const char* key;
@@ -332,7 +332,7 @@ int cmd_add_azure(const Args& args) {
     }, true, "Added Azure " + label + ": " + raw);
 }
 
-// ── set-global ────────────────────────────────────────────────────────────────
+// set-global
 
 int cmd_set_global(const Args& args) {
     if (args.help_requested) {
