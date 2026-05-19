@@ -26,11 +26,11 @@ cmake -B build && cmake --build build && ctest --test-dir build --output-on-fail
 
 ## Command Architecture
 
-All 15 commands are split across three files for clarity:
+All 19 commands are split across three files for clarity:
 
 - `src/commands_project.cpp` — project operations (add-todo, list, complete, add-note, set-link)
-- `src/commands_config.cpp` — configuration (init, new, set-app-id, add-github/swagger/blizzard, add-azure)
-- `src/commands_maint.cpp` — maintenance (render, install-hook, install-mcp-server)
+- `src/commands_config.cpp` — configuration (init, new, close, set-app-id, add-github/swagger/blizzard, add-azure)
+- `src/commands_maint.cpp` — maintenance (render, install-hook, uninstall-hook, install-mcp-server, uninstall-mcp-server, set-global)
 
 **To add a new command:**
 
