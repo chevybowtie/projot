@@ -72,7 +72,7 @@ static bool git_stage_file(const fs::path& repo_root, const std::string& rel_pat
 #endif
 }
 
-// ── MCP helpers ───────────────────────────────────────────────────────────────
+// MCP helpers
 
 // Returns the path to the directory containing the running binary, or nullopt.
 static std::optional<fs::path> binary_dir() {
@@ -180,7 +180,7 @@ static std::string claude_settings_injected_block(const std::string& server_arg)
         "  }";
 }
 
-// ── render ────────────────────────────────────────────────────────────────────
+// render
 
 int cmd_render(const Args& args) {
     (void)args;
@@ -204,7 +204,7 @@ int cmd_render(const Args& args) {
     return 0;
 }
 
-// ── install-hook ──────────────────────────────────────────────────────────────
+// install-hook
 
 int cmd_install_hook(const Args& args) {
     if (args.help_requested) {
@@ -240,7 +240,7 @@ int cmd_install_hook(const Args& args) {
     return 0;
 }
 
-// ── install-mcp-server ────────────────────────────────────────────────────────
+// install-mcp-server
 
 // Writes or updates .claude/settings.json with the projot MCP server config.
 // Returns true on success or idempotent "already done" cases.
@@ -437,7 +437,7 @@ int cmd_install_mcp_server(const Args& args) {
     return 0;
 }
 
-// ── uninstall-hook ────────────────────────────────────────────────────────────
+// uninstall-hook
 
 int cmd_uninstall_hook(const Args& args) {
     if (args.help_requested) {
@@ -524,7 +524,7 @@ int cmd_uninstall_hook(const Args& args) {
     return 0;
 }
 
-// ── uninstall-mcp-server ──────────────────────────────────────────────────────
+// uninstall-mcp-server
 
 static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message) {
     fs::path settings_file = repo_root / ".claude" / "settings.json";
