@@ -8,6 +8,6 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "echo 'Testing MCP server...' && echo '{\"method\": \"initialize\"}' | node server.js"
+    "test": "node test.js"
   }
 }
