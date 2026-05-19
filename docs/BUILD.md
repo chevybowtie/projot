@@ -5,7 +5,7 @@
 Build a local Debian package using the same flow as the GitHub release workflow.
 
 ```sh
-cd /home/paul/Documents/projects/projot
+cd ~/Documents/projects/projot
 version=$(sed -n 's/^project(projot VERSION \([0-9.]\+\).*/\1/p' CMakeLists.txt)
 
 cmake -B build -DCMAKE_BUILD_TYPE=Release
