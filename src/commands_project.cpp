@@ -169,10 +169,6 @@ int cmd_complete(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
-    if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
-
     return execute_project_command(ctx, [id](Project& proj) {
         if (!find_todo(proj.todos, id)) {
             std::string msg = "todo " + std::to_string(id) + " not found.";
