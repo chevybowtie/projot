@@ -122,5 +122,6 @@ These base URLs are automatically used by all projects in the MCP tools (e.g., `
 - Run from Git Bash or PowerShell in the repo directory: `cd C:\path\to\repo` then `projot list`
 
 **MCP server not found**
-- The MCP server (`projot.ps1` script) is installed at `%APPDATA%\projot\projot.ps1` if you used Chocolatey
-- For manual installs, you need to configure it manually in your IDE's settings — see [mcp/README.md](../mcp/README.md)
+- The MCP server (`server.js`) is installed at `<install-prefix>\share\projot\mcp\server.js`
+- Run `projot install-mcp-server` from inside a projot-managed repo to register it automatically
+- For manual configuration, see [mcp/README.md](../mcp/README.md)

@@ -161,6 +161,7 @@ Date format tokens (display only):
 |---|---|
 | `init` | Initialize projot for this repo (repo-level setup) |
 | `new` | Start a new RPM project in this repo |
+| `close` | Close the current project (clears project-level config) |
 | `add-todo` | Append a todo (`projot add-todo "message"`) |
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
 | `complete` | Mark a todo completed (`--todo <ID>`) |
@@ -170,6 +171,13 @@ Date format tokens (display only):
 | `add-github` | Add a GitHub URL to config |
 | `add-swagger` | Add a Swagger URL to config |
 | `add-blizzard` | Add a Blizzard URL to config |
+| `add-azure` | Add an Azure resource URL (`--type <type> --url <url> [--name <label>]`) |
+| `render` | Re-render the notes file from config |
+| `set-global` | Set global defaults (`--rpm-base-url`, `--itrack-base-url`) |
+| `install-hook` | Install the pre-commit git hook |
+| `uninstall-hook` | Remove the pre-commit git hook |
+| `install-mcp-server` | Configure the MCP server in your IDE settings |
+| `uninstall-mcp-server` | Remove the MCP server from your IDE settings |
 
 ---
 
