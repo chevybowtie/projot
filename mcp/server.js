@@ -7,16 +7,37 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { platform } from "os";
 
-// MCP protocol: read stdin, write stdout
+// MCP protocol: JSON-RPC 2.0 over stdin/stdout
 const rl = createInterface({ input: process.stdin });
 
 rl.on("line", (line) => {
   try {
     const request = JSON.parse(line);
+
+    // Notifications have no id — do not respond
+    if (!("id" in request)) return;
+
     const response = handleRequest(request);
-    console.log(JSON.stringify(response));
+
+    if ("error" in response) {
+      console.log(JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        error: { code: -32000, message: response.error },
+      }));
+    } else {
+      console.log(JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result: response.result,
+      }));
+    }
   } catch (err) {
-    console.error(JSON.stringify({ error: err.message }));
+    console.log(JSON.stringify({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: err.message },
+    }));
   }
 });
 
@@ -73,8 +94,7 @@ function handleRequest(request) {
 
   // Tool discovery
   if (method === "tools/list") {
-    return {
-      tools: [
+    return { result: { tools: [
         {
           name: "get_open_todos",
           description: "List all open TODOs in the current project",
@@ -249,40 +269,43 @@ function handleRequest(request) {
           description: "Open the RPM project page in the default browser",
           inputSchema: { type: "object", properties: {} },
         },
-      ],
-    };
+      ] } };
   }
 
   // Tool execution
   if (method === "tools/call") {
     const { name, arguments: args } = params;
 
+    const ok  = (text) => ({ result: { content: [{ type: "text", text: String(text) }], isError: false } });
+    const err = (text) => ({ result: { content: [{ type: "text", text: String(text) }], isError: true  } });
+    const openUrl = (url) => {
+      const openCmd = { darwin: "open", linux: "xdg-open", win32: "start" }[platform()];
+      if (!openCmd) return err(`Unsupported platform: ${platform()}`);
+      execCommand(`${openCmd} "${url}"`);
+      return null; // caller returns ok()
+    };
+
     try {
       if (name === "get_open_todos") {
-        const output = execCommand("projot list --open");
-        return { result: output };
+        return ok(execCommand("projot list --open"));
       }
 
       if (name === "complete_todo") {
         const { todo_id } = args;
         execCommand(`projot complete --todo ${todo_id}`);
-        return { result: `TODO #${todo_id} marked as completed` };
+        return ok(`TODO #${todo_id} marked as completed`);
       }
 
       if (name === "add_todo") {
         const { text } = args;
         execCommand(`projot add-todo --text "${text.replace(/"/g, '\\"')}"`);
-        return { result: `TODO added: "${text}"` };
+        return ok(`TODO added: "${text}"`);
       }
 
       if (name === "add_note_to_todo") {
         const { todo_id, text } = args;
-        execCommand(
-          `projot add-note --todo ${todo_id} --text "${text.replace(/"/g, '\\"')}"`
-        );
-        return {
-          result: `Note added to TODO #${todo_id}`,
-        };
+        execCommand(`projot add-note --todo ${todo_id} --text "${text.replace(/"/g, '\\"')}"`);
+        return ok(`Note added to TODO #${todo_id}`);
       }
 
       if (name === "open_itrack") {
@@ -290,108 +313,10 @@ function handleRequest(request) {
         if (!itrackUrl) {
           const baseUrl = getConfigValue("itrack_base_url") || getGlobalConfigValue("itrack_base_url");
           const number = getConfigValue("itrack");
-          if (baseUrl && number) {
-            itrackUrl = baseUrl + number;
-          }
+          if (baseUrl && number) itrackUrl = baseUrl + number;
         }
-        if (!itrackUrl) {
-          return { error: "No iTrack URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'" };
-        }
-
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-
-        if (!openCmd) {
-          return { error: `Unsupported platform: ${platform()}` };
-        }
-
-        execCommand(`${openCmd} "${itrackUrl}"`);
-        return { result: `Opening iTrack: ${itrackUrl}` };
-      }
-
-      if (name === "setup_new_project") {
-        const { project_number, description, itrack_number, branch_name } =
-          args;
-
-        const suggestedBranch =
-          branch_name ||
-          `feat/${project_number}-${slugifyBranchName(description)}`;
-
-        try {
-          execCommand(`git checkout -b ${suggestedBranch}`);
-          const teamsUrl = getConfigValue("link.teams");
-          const projotCmd = `projot new --ranp ${project_number} --name "${description.replace(/"/g, '\\"')}" --itrack ${itrack_number}${teamsUrl ? ` --teams "${teamsUrl}"` : ""}`;
-          execCommand(projotCmd);
-
-          return {
-            result: `Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`,
-          };
-        } catch (err) {
-          return { error: err.message };
-        }
-      }
-
-      if (name === "open_github") {
-        const url = getConfigValue("github") || getConfigValue("link.github");
-        if (!url)
-          return { error: "No GitHub URL configured in .projot/config" };
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-        if (!openCmd)
-          return { error: `Unsupported platform: ${platform()}` };
-        execCommand(`${openCmd} "${url}"`);
-        return { result: `Opening GitHub: ${url}` };
-      }
-
-      if (name === "open_swagger") {
-        const url = getConfigValue("swagger") || getConfigValue("link.swagger");
-        if (!url)
-          return { error: "No Swagger URL configured in .projot/config" };
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-        if (!openCmd)
-          return { error: `Unsupported platform: ${platform()}` };
-        execCommand(`${openCmd} "${url}"`);
-        return { result: `Opening Swagger: ${url}` };
-      }
-
-      if (name === "open_blizzard") {
-        const url =
-          getConfigValue("blizzard") || getConfigValue("link.blizzard");
-        if (!url)
-          return { error: "No Blizzard URL configured in .projot/config" };
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-        if (!openCmd)
-          return { error: `Unsupported platform: ${platform()}` };
-        execCommand(`${openCmd} "${url}"`);
-        return { result: `Opening Blizzard: ${url}` };
-      }
-
-      if (name === "open_teams") {
-        const url = getConfigValue("link.teams");
-        if (!url) return { error: "No Teams URL configured in .projot/config" };
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-        if (!openCmd)
-          return { error: `Unsupported platform: ${platform()}` };
-        execCommand(`${openCmd} "${url}"`);
-        return { result: `Opening Teams: ${url}` };
+        if (!itrackUrl) return err("No iTrack URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'");
+        return openUrl(itrackUrl) || ok(`Opening iTrack: ${itrackUrl}`);
       }
 
       if (name === "open_rpm") {
@@ -399,64 +324,78 @@ function handleRequest(request) {
         if (!rpmUrl) {
           const baseUrl = getConfigValue("rpm_base_url") || getGlobalConfigValue("rpm_base_url");
           const number = getConfigValue("rpm");
-          if (baseUrl && number) {
-            rpmUrl = baseUrl + number;
-          }
+          if (baseUrl && number) rpmUrl = baseUrl + number;
         }
-        if (!rpmUrl) {
-          return { error: "No RPM URL configured. Set link.rpm or run 'projot set-global --rpm-base-url <url>'" };
-        }
-        const openCmd = {
-          darwin: "open",
-          linux: "xdg-open",
-          win32: "start",
-        }[platform()];
-        if (!openCmd)
-          return { error: `Unsupported platform: ${platform()}` };
-        execCommand(`${openCmd} "${rpmUrl}"`);
-        return { result: `Opening RPM: ${rpmUrl}` };
+        if (!rpmUrl) return err("No RPM URL configured. Set link.rpm or run 'projot set-global --rpm-base-url <url>'");
+        return openUrl(rpmUrl) || ok(`Opening RPM: ${rpmUrl}`);
+      }
+
+      if (name === "open_github") {
+        const url = getConfigValue("github") || getConfigValue("link.github");
+        if (!url) return err("No GitHub URL configured in .projot/config");
+        return openUrl(url) || ok(`Opening GitHub: ${url}`);
+      }
+
+      if (name === "open_swagger") {
+        const url = getConfigValue("swagger") || getConfigValue("link.swagger");
+        if (!url) return err("No Swagger URL configured in .projot/config");
+        return openUrl(url) || ok(`Opening Swagger: ${url}`);
+      }
+
+      if (name === "open_blizzard") {
+        const url = getConfigValue("blizzard") || getConfigValue("link.blizzard");
+        if (!url) return err("No Blizzard URL configured in .projot/config");
+        return openUrl(url) || ok(`Opening Blizzard: ${url}`);
+      }
+
+      if (name === "open_teams") {
+        const url = getConfigValue("link.teams");
+        if (!url) return err("No Teams URL configured in .projot/config");
+        return openUrl(url) || ok(`Opening Teams: ${url}`);
+      }
+
+      if (name === "setup_new_project") {
+        const { project_number, description, itrack_number, branch_name } = args;
+        const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
+        execCommand(`git checkout -b ${suggestedBranch}`);
+        const teamsUrl = getConfigValue("link.teams");
+        execCommand(`projot new --ranp ${project_number} --name "${description.replace(/"/g, '\\"')}" --itrack ${itrack_number}${teamsUrl ? ` --teams "${teamsUrl}"` : ""}`);
+        return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`);
       }
 
       if (name === "set_teams_link") {
-        const { url } = args;
-        execCommand(`projot set-link --key teams --url "${url}"`);
-        return { result: `Teams URL updated: ${url}` };
+        execCommand(`projot set-link --key teams --url "${args.url}"`);
+        return ok(`Teams URL updated: ${args.url}`);
       }
 
       if (name === "set_github_link") {
-        const { url } = args;
-        execCommand(`projot add-github --url "${url}"`);
-        return { result: `GitHub URL updated: ${url}` };
+        execCommand(`projot add-github --url "${args.url}"`);
+        return ok(`GitHub URL updated: ${args.url}`);
       }
 
       if (name === "set_swagger_link") {
-        const { url } = args;
-        execCommand(`projot add-swagger --url "${url}"`);
-        return { result: `Swagger URL updated: ${url}` };
+        execCommand(`projot add-swagger --url "${args.url}"`);
+        return ok(`Swagger URL updated: ${args.url}`);
       }
 
       if (name === "set_blizzard_link") {
-        const { url } = args;
-        execCommand(`projot add-blizzard --url "${url}"`);
-        return { result: `Blizzard URL updated: ${url}` };
+        execCommand(`projot add-blizzard --url "${args.url}"`);
+        return ok(`Blizzard URL updated: ${args.url}`);
       }
 
-      return { error: `Unknown tool: ${name}` };
-    } catch (err) {
-      return { error: err.message };
+      return err(`Unknown tool: ${name}`);
+    } catch (e) {
+      return err(e.message);
     }
   }
 
   // MCP initialization
   if (method === "initialize") {
-    return {
+    return { result: {
       protocolVersion: "2024-11-05",
       capabilities: {},
-      serverInfo: {
-        name: "projot-mcp",
-        version: "1.0.0",
-      },
-    };
+      serverInfo: { name: "projot-mcp", version: "1.0.0" },
+    } };
   }
 
   return { error: `Unknown method: ${method}` };
