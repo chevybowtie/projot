@@ -1,31 +1,31 @@
 # Tech Debt Audit — projot
 
 Generated: 2026-05-05
-Last Updated: 2026-05-06 (Repeat-run: No new debt patterns detected; 13 findings resolved)
+Last Updated: 2026-05-19 (Repeat-run: 5 new findings; all resolved same session)
 
-## Repeat-Run Summary (2026-05-05)
+## Repeat-Run Summary (2026-05-19)
 
-**Status:** 12 of 20 findings resolved; no new debt detected.
+**Status:** All prior findings resolved or accepted. 5 new findings detected; all resolved within the same session.
 
-**Major accomplishment:** F003 (command boilerplate extraction) successfully completed. Refactored 13 commands to use `execute_project_command()` and `execute_config_command()` helpers. Trade-off: helpers added ~60 LOC, so commands.cpp remains at 1046 LOC (was 1041), but maintainability and consistency improved significantly. Future command additions will now benefit from the shared pattern, making this investment pay off over time.
+**New since last audit:** Global config (`set-global`, `rpm_base_url`, `itrack_base_url`), `close` command, `uninstall-hook`, `uninstall-mcp-server`, JSON-RPC 2.0 compliance fix for MCP server, date formatting, Windows improvements, docs split into platform-specific install guides.
 
-**Test health:** All 152 tests passing; test suite grown to 1861 LOC with comprehensive coverage maintained.
+**MCP test harness added:** `mcp/test.js` exercises each tool handler with a mock CLI shim and asserts correct flag usage. Detects the class of drift that caused F021. Run with `make test-mcp` or `node mcp/test.js`.
 
-**Code quality:** No new technical debt patterns emerged since initial audit. Codebase remains well-structured for v0.2 release.
+**Resolved this session:** F021 (three broken MCP call sites), F022 (silent re-render failure), F023 (shell injection in openUrl), F024 (double-parse in complete), F025 (RANP terminology in tool description). F016 discovered to already be implemented in `test_hook.cpp:377-388`.
+
+**Test health:** C++ suite: all 152 tests passing. MCP suite: 6/6 passing.
 
 ---
 
 ## Executive Summary
 
-projot is a well-structured, single-purpose C++ CLI tool with strong fundamentals: no external dependencies, comprehensive tests, and clean architecture. However, it has accumulated some debt in three areas:
+projot is a well-structured single-purpose C++ CLI tool. All previously identified structural debt has been resolved. Five new findings were detected in this session; all five were resolved within the same session.
 
-1. **Duplicate utility functions** — dedup logic defined twice with different names
-2. **Command boilerplate** — repetitive error handling, context loading, and file I/O patterns across 15 command implementations
-3. **Inconsistent error handling** — some commands ignore parse/render failures (silent skips); others handle them correctly
-4. **God file emergence** — commands.cpp has grown to 1041 LOC and mixes infrastructure (hook/MCP setup) with core logic
-5. **System calls for git** — reliance on `std::system("git add")` rather than direct file staging
-
-The issues are categorized by severity and effort. None block shipping v0.1. The top priority is extracting command boilerplate to reduce future maintenance burden.
+1. ~~**MCP server calls CLI with stale flags (F021)**~~ — **RESOLVED**; guarded by `mcp/test.js`
+2. ~~**Silent render failure after config change (F022)**~~ — **RESOLVED**; warning emitted on failure
+3. ~~**Shell injection vector in MCP openUrl (F023)**~~ — **RESOLVED**; using `execFileSync` with arg array
+4. ~~**Double-parse in `complete` command (F024)**~~ — **RESOLVED**; outer parse removed
+5. ~~**Legacy RANP terminology in MCP tool description (F025)**~~ — **RESOLVED**
 
 ---
 
@@ -35,94 +35,78 @@ projot is a **single-purpose repo-centric CLI tool** that:
 
 - Discovers the git repo root and loads `.projot/config` for all operations
 - Represents projects as markdown files (`.projot/{RPM}.md`) with a strict structure
-- Implements 15 subcommands with uniform patterns: load config → validate → parse markdown → modify in-memory model → render to disk → optionally stage in git
+- Implements 19 subcommands with uniform patterns: load config → validate → parse markdown → modify in-memory model → render to disk → optionally stage in git
 - Installs a git hook (`pre-commit`) that auto-renders the notes file before every commit
-- Provides MCP server integration for AI assistants (Claude Code, VS Code)
+- Provides MCP server integration for AI assistants (Claude Code, VS Code Copilot)
+- Supports a global config (`~/.config/projot/config`) that provides `rpm_base_url` and `itrack_base_url` defaults across all projects
 
-The codebase has four layers:
+The codebase has five layers:
 
 1. **CLI parsing** (`cli.cpp/h`) — arg tokenization and flag collection
-2. **Config/persistence** (`config.cpp/h`) — config file parsing, todo model
+2. **Config/persistence** (`config.cpp/h`) — config file parsing, global config
 3. **Markdown I/O** (`markdown.cpp/h`, `renderer.cpp/h`) — parsing and rendering project files
-4. **Command implementations** (`commands.cpp/h`) — per-subcommand logic and error handling
+4. **Command implementations** (`commands_*.cpp`, `commands_shared.cpp`) — per-subcommand logic and shared helpers
+5. **MCP server** (`mcp/server.js`) — Node.js JSON-RPC 2.0 bridge between AI assistants and the CLI
 
-The config and markdown layers are cleanly separated; the command layer mixes too many concerns (project commands, maintenance commands, MCP setup).
+All layers are cleanly separated. The MCP server is a thin shell-command wrapper around the CLI. Flag-drift between the two layers is now guarded by `mcp/test.js`.
 
 ---
 
 ## Findings
 
-| ID | Category | File:Line | Severity | Effort | Description | Recommendation |
-|----|----------|-----------|----------|--------|-------------|----------------|
-| F001 | Architectural decay | src/commands.cpp → src/commands_*.cpp | High | M | **RESOLVED:** Split commands.cpp (1046 LOC) into 5 focused files by concern: commands_internal.h (shared header), commands_shared.cpp (shared implementations), commands_project.cpp (5 project commands), commands_config.cpp (7 config commands), commands_maint.cpp (3 maintenance commands). Command dispatch remains in main.cpp unchanged. Total ~970 LOC across files; improved clarity and maintainability. | ✓ Split into separate files by concern |
-| F002 | Consistency rot | src/config.cpp:38–45, renderer.cpp:10–16 | Medium | S | **RESOLVED:** Extracted deduplicate<T> template to utils.h, replaced both dedup implementations, unified in src/config.cpp:149 and src/renderer.cpp:47 | ✓ Extract to shared utility function in utils.h; name consistently |
-| F003 | Architectural decay | src/commands.cpp:363–377, 450–479, 517–542 | High | M | **RESOLVED:** Created execute_project_command() and execute_config_command() helpers. Refactored all 13 config/project-modifying commands (add-todo, complete, add-note, set-link, set-app-id, add-github/swagger/blizzard, add-azure). | ✓ Create helper: `execute_project_command(ctx, modify_fn, success_msg)` for 13+ commands |
-| F004 | Error handling | src/commands.cpp:583–584, 631–632, 677–678, 773–774 | High | M | **RESOLVED:** Silent error skips eliminated by moving to execute_config_command/execute_project_command pattern; all commands now check .ok and report errors. | ✓ Always check .ok flag and report errors; remove silent skip pattern |
-| F005 | Security hygiene | src/commands_maint.cpp | Medium | M | **RESOLVED:** Replaced both `std::system()` calls. `git add` now uses `fork()+execvp()` on POSIX and `CreateProcess()` on Windows via a `git_stage_file()` helper — no shell involved, no injection surface. `node_available()` now walks PATH entries with `std::filesystem::exists()` instead of spawning a process. Zero new dependencies. | ✓ Shell-free git staging and node detection |
-| F006 | Documentation drift | src/commands.h:18 | Medium | S | **RESOLVED:** Added 1-line docstring to all 15 command declarations in commands.h (lines 7-50) explaining purpose of each command. | ✓ Add docstring to each command function with 1-line purpose |
-| F007 | Consistency rot | src/commands.cpp:348–357, 502–511 | Medium | S | **RESOLVED:** Removed `--text` flag parsing from add-todo and add-note; positional argument is now canonical form. | ✓ Remove `--text` flag parsing; positional argument is the canonical form per README |
-| F008 | Test debt | tests/test_commands.cpp | Medium | M | **RESOLVED:** Added 16 error-path tests covering: missing required flags (add-todo, add-note, complete, set-link, add-github/swagger/blizzard), nonexistent/nonnumeric todo IDs, commands run without an active project, and notes-file-deleted scenario exercising the execute_project_command parse-fail path. | ✓ Error paths now covered |
-| F009 | Architectural decay | src/commands_config.cpp | Medium | S | **RESOLVED (via F011):** `URL_LIST_TYPES[]` with member pointers is the data-driven approach called for. `cmd_add_github/swagger/blizzard` are now one-liner public API delegates; all logic lives in the table. Dynamically registering via the table in main.cpp would require exposing `URL_LIST_TYPES` externally and couples dispatch to F019 — not worth it for three commands. | ✓ Data-driven via `URL_LIST_TYPES[]`; one-liner delegates are correct public API |
-| F010 | Consistency rot | src/commands_shared.cpp:55 | Medium | S | **RESOLVED:** Merged `config_path_str()` and `notes_path_str()` into single `projot_file_path(ctx, filename)` helper. All 12 call sites across commands_*.cpp unified. | ✓ Merged into single `projot_file_path()` helper |
-| F011 | Type & contract debt | src/commands_config.cpp | Medium | S | **RESOLVED:** Replaced ternary chain `(kind == "github") ? ... : ...` with `URL_LIST_TYPES[]` lookup table using member pointers (same pattern as `AZURE_TYPES`). Unknown `kind` values now return an explicit error instead of silently falling through to blizzard. | ✓ Use lookup table with explicit "not found" handling |
-| F012 | Dependency & config debt | src/commands.cpp:696–711 | Low | S | AZURE_TYPES array and lookup function are hardcoded; adding new Azure resource type requires C++ recompilation | Acceptable for v0.1 (stable set of Azure types) but post-v0.1 could move type definitions to config or data file |
-| F013 | Error handling | src/commands.cpp:213–216, 255–271, 337–345, etc. (all commands) | Low | S | Help output is embedded string literal in each command function. Repeats "Run 'projot <subcommand> --help' for usage" across 55+ error messages. | Consolidate help dispatch to main.cpp; command functions should only enforce flags, not print help |
-| F014 | Consistency rot | src/commands.cpp:33–71 | Low | S | `load_context()` struct and flow (find root → parse config → version check) is repeated in one-off style. Single-use struct not reused elsewhere. | Acceptable as-is; improves readability vs. passing 3 return values |
-| F015 | Documentation drift | src/markdown.h:35 | Low | S | **RESOLVED:** Updated docstring from "RANP" to "RPM" in src/markdown.h:8 | ✓ Update comment to reflect current terminology |
-| F016 | Test debt | tests/test_commands.cpp, tests/test_hook.cpp | Low | M | Hook tests do not cover case where `.git/hooks/` directory does not exist and cannot be created (unwritable parent). Current code handles gracefully but test gap | Add test for unwritable hooks directory scenario |
-| F017 | Consistency rot | src/config.cpp:99 | Low | S | **RESOLVED:** Removed legacy `ranp` config key parsing. Clean break from old terminology. | ✓ Document backward-compatibility scope and remove `ranp` fallback after v1.0 if needed |
-| F018 | Performance | src/renderer.cpp:53–60 | Low | S | Checks for empty Azure sections inside render loop instead of pre-computing which sections are non-empty | Negligible impact (one-time render per command); acceptable for v0.1 |
-| F019 | Architectural decay | src/main.cpp:37–57 | Low | S | Valid flags per subcommand are defined statically in main.cpp; adding a new subcommand requires editing both commands.h and main.cpp | Create command registry (table-driven) post-v0.1 to avoid parallel definitions |
-| F020 | Security hygiene | src/commands.cpp:97–104, 797 | Low | S | RPM validation function `is_safe_rpm()` checks only alphanumeric + dash/underscore; relies on caller to use it before embedding in shell. No static enforcement | Refactor to remove std::system call entirely (see F005) |
+| ID | Category | File:Line | Severity | Effort | Status | Description | Recommendation |
+|----|----------|-----------|----------|--------|--------|-------------|----------------|
+| F001 | Architectural decay | src/commands.cpp | High | M | **RESOLVED** | Split into 5 focused files | ✓ |
+| F002 | Consistency rot | src/config.cpp, renderer.cpp | Medium | S | **RESOLVED** | Dedup logic unified in utils.h | ✓ |
+| F003 | Architectural decay | src/commands.cpp | High | M | **RESOLVED** | `execute_project_command`/`execute_config_command` extracted | ✓ |
+| F004 | Error handling | src/commands.cpp | High | M | **RESOLVED** | Silent error skips eliminated | ✓ |
+| F005 | Security hygiene | src/commands_maint.cpp | Medium | M | **RESOLVED** | `std::system()` replaced with `fork()+execvp()`/`CreateProcess` | ✓ |
+| F006 | Documentation drift | src/commands.h | Medium | S | **RESOLVED** | Docstrings added to all command declarations | ✓ |
+| F007 | Consistency rot | src/commands.cpp | Medium | S | **RESOLVED** | Legacy `--text` flag removed from add-todo and add-note CLI | ✓ |
+| F008 | Test debt | tests/test_commands.cpp | Medium | M | **RESOLVED** | Error-path tests added | ✓ |
+| F009 | Architectural decay | src/commands_config.cpp | Medium | S | **RESOLVED** | `URL_LIST_TYPES[]` lookup table; one-liner delegates | ✓ |
+| F010 | Consistency rot | src/commands_shared.cpp | Medium | S | **RESOLVED** | Merged into `projot_file_path()` helper | ✓ |
+| F011 | Type & contract debt | src/commands_config.cpp | Medium | S | **RESOLVED** | `URL_LIST_TYPES[]` with explicit "not found" error | ✓ |
+| F012 | Dependency & config debt | src/commands_config.cpp | Low | S | **ACCEPTED** | Azure types hardcoded; acceptable for v0.1 | — |
+| F013 | Error handling | src/commands_*.cpp | Low | S | **ACCEPTED** | Per-command help text; acceptable redundancy | — |
+| F014 | Consistency rot | src/commands_shared.cpp | Low | S | **ACCEPTED** | Single-use Context struct; improves readability | — |
+| F015 | Documentation drift | src/markdown.h | Low | S | **RESOLVED** | RANP→RPM docstring updated | ✓ |
+| F016 | Test debt | tests/test_hook.cpp:377-388 | Low | M | **RESOLVED** | Hook test `install_hook_unwritable_dir` already covered this case | ✓ |
+| F017 | Consistency rot | src/config.cpp | Low | S | **RESOLVED** | Legacy `ranp` config key parsing removed | ✓ |
+| F018 | Performance | src/renderer.cpp | Low | S | **ACCEPTED** | Azure section empty-check inside render loop; negligible | — |
+| F019 | Architectural decay | src/main.cpp | Low | S | **ACCEPTED** | Per-subcommand valid_flags table; clean, no pressing need to change | — |
+| F020 | Security hygiene | src/commands_maint.cpp | Low | S | **ACCEPTED** | `is_safe_rpm()` as defence-in-depth post-F005; no shell used now | — |
+| F021 | Consistency rot | mcp/server.js:301,307,362 | **Critical** | S | **RESOLVED** | MCP server called CLI with removed/renamed flags. Fixed: positional arg for add-todo/add-note; `--rpm` for new. Guarded by `mcp/test.js`. | ✓ |
+| F022 | Error handling | src/commands_shared.cpp:113-115 | Medium | S | **RESOLVED** | `execute_config_command` silently dropped re-render failures. Fixed: check `render_to_file` result and emit `std::cerr << "warning: ..."` on failure (non-fatal). | ✓ |
+| F023 | Security hygiene | mcp/server.js:284 | Medium | S | **RESOLVED** | Shell injection in `openUrl`. Replaced `execSync` with `execFileSync` and argument array; Windows uses `cmd.exe /c start "" url`. | ✓ |
+| F024 | Architectural decay | src/commands_project.cpp:172-174 | Low | S | **RESOLVED** | `cmd_complete` parsed the notes markdown manually before calling `execute_project_command`, which parses it again internally. Outer parse removed; validation moved inside the callback. (`cmd_add_note` was already clean.) | ✓ |
+| F025 | Documentation drift | mcp/server.js:170 | Low | S | **RESOLVED** | MCP tool description updated from "RANP/project number" to "RPM project number". | ✓ |
 
 ---
 
 ## Top 5 "If You Fix Nothing Else, Fix These"
 
-### 1. **F003 — Extract command boilerplate into helper function** ⭐ **COMPLETED**
+### 1. **F021 — Fix three broken MCP tool call sites** ⭐ **COMPLETED**
 
-**Status:** Resolved via `execute_project_command()` and `execute_config_command()` helpers in commands.cpp:78–139.
+Three MCP tools silently failed because the CLI flag API changed (F007) but the MCP server was not updated.
 
-**Summary:** Refactored all 13 config/project-modifying commands to use the boilerplate helpers:
+Fixed: positional arg for `add-todo` and `add-note`; `--rpm` instead of `--ranp` for `new`. Regression-guarded by `mcp/test.js` (5 tests covering all tool call sites).
 
-- **Project modifiers:** cmd_add_todo, cmd_complete, cmd_add_note
-- **Config modifiers:** cmd_set_link, cmd_set_app_id, cmd_add_github/swagger/blizzard, cmd_add_azure
+### 2. **F003 — Extract command boilerplate** ⭐ **COMPLETED**
 
-Each command now delegates parse→modify→render logic to the helper, reducing boilerplate by ~350 LOC total and ensuring consistent error handling.
+*Status: Resolved. All 13 config/project-modifying commands use helpers.*
 
-### 2. **F004 — Remove silent error skips** ⭐ **COMPLETED**
+### 3. **F004 — Remove silent error skips** ⭐ **COMPLETED**
 
-**Status:** Resolved as a side effect of F003 refactoring.
+*Status: Resolved as a side effect of F003.*
 
-**Summary:** All commands now use execute_project_command() or execute_config_command(), which enforce error checking. Silent error skips (set-link, add-github, add-swagger, add-blizzard) are eliminated.
+### 4. **F002 — Deduplicate utility functions** ⭐ **COMPLETED**
 
-### 3. **F002 — Deduplicate utility functions** ⭐ **COMPLETED**
-
-**Status:** Resolved. Added `deduplicate<T>` template to utils.h; replaced both dedup implementations.
-
-**Summary:** Extracted shared utility function in utils.h:76–86 (template). Removed duplicate functions from config.cpp and renderer.cpp; now both use the shared template.
-
-### 4. **F001 — Reduce commands.cpp file size** ⭐ **COMPLETED**
-
-**Status:** Resolved. Split commands.cpp (1046 LOC) into 5 focused files.
-
-**Summary:** Extracted shared infrastructure into `commands_internal.h` and `commands_shared.cpp`. Split 15 command implementations by concern:
-
-- **commands_project.cpp** — cmd_add_todo, cmd_list, cmd_complete, cmd_add_note, cmd_set_link (5 commands)
-- **commands_config.cpp** — cmd_init, cmd_new, cmd_set_app_id, cmd_add_github/swagger/blizzard, cmd_add_azure (7 commands)
-- **commands_maint.cpp** — cmd_render, cmd_install_hook, cmd_install_mcp_server (3 commands, + 5 static helpers)
-
-Command dispatch in main.cpp remains unchanged. No public API changes. All tests pass; clean compile.
+*Status: Resolved. `deduplicate<T>` template in utils.h.*
 
 ### 5. **F005 — Replace std::system calls** ⭐ **COMPLETED**
 
-**Status:** Resolved. Both `std::system()` call sites in `commands_maint.cpp` eliminated.
-
-**Summary:**
-- `git_stage_file()` helper added using `fork()+execvp()` on POSIX / `CreateProcess()` on Windows. No shell spawned; the `git` binary is invoked directly with argv array — no quoting or injection surface.
-- `node_available()` replaced with a `PATH` walk using `std::filesystem::exists()`. No process spawned at all.
-- `is_safe_rpm()` retained as a defence-in-depth guard on the path component.
-- Zero new dependencies; stays within the no-external-deps constraint.
+*Status: Resolved. `git_stage_file()` uses fork+execvp (POSIX) / CreateProcess (Windows). `node_available()` walks PATH directly.*
 
 ---
 
@@ -130,61 +114,73 @@ Command dispatch in main.cpp remains unchanged. No public API changes. All tests
 
 Low-effort, medium+ severity improvements:
 
-- [x] **F006:** Add 1-line docstrings to all command functions in commands.h — **COMPLETED**
-- [x] **F015:** Update docstring from "RANP" to "RPM" (src/markdown.h:35) — **COMPLETED**
-- [x] **F017:** Remove legacy `ranp` config key parsing (src/config.cpp:99) — **COMPLETED**
-- [x] **F007:** Remove `--text` flag support from add-todo and add-note (use positional only) — **COMPLETED**
-- [x] **F010:** Merge `config_path_str()` and `notes_path_str()` into single builder — **COMPLETED**
+- [x] **F006:** Docstrings on command declarations — **COMPLETED**
+- [x] **F015:** RANP→RPM docstring update — **COMPLETED**
+- [x] **F017:** Remove legacy `ranp` config key parsing — **COMPLETED**
+- [x] **F007:** Remove `--text` flag from add-todo and add-note — **COMPLETED**
+- [x] **F010:** Merge path builders into `projot_file_path()` — **COMPLETED**
+- [x] **F021:** Fix three broken MCP call sites — **COMPLETED**
+- [x] **F025:** Update MCP tool description "RANP" → "RPM" — **COMPLETED**
+- [x] **F022:** Emit warning when re-render fails in `execute_config_command` — **COMPLETED**
+- [x] **F023:** Use `execFileSync` array API in MCP `openUrl` — **COMPLETED**
+- [x] **F024:** Eliminate double-parse in `complete` — **COMPLETED**
 
 ---
 
 ## Things That Look Bad But Are Actually Fine
 
-- **Hardcoded Azure type list (F012):** Azure resource types are stable and unlikely to change frequently. Hardcoding with a lookup table is appropriate for v0.1. Post-v0.1, migration to config-driven approach is straightforward.
-- **No enum-based command dispatch (F019):** String-based map dispatch is clear and permits easy addition of new commands without code generation. Trade-off is worth it for a CLI tool of this scale.
-- **Ternary chain for URL kind selection (F011) / three similar URL commands (F009):** Both resolved together — `URL_LIST_TYPES[]` is the data-driven table called for by F009; F011 made the lookup safe. The three one-liner wrapper functions are the correct public API surface for command dispatch.
-- **Silent Azure type acceptance (F012):** The safety check happens at the type lookup; unknown types are rejected with a clear error message. No silent failures.
-- **Repeated "Run 'projot X --help'" messages (F013):** Redundant but acceptable; help text is discoverable and clear.
-- **Single-use Context struct (F014):** Improves readability; alternative (passing 3 return values) would be less clear.
-- **No test coverage for unwritable hooks dir (F016):** Would be nice to have, but the error handling is correct (graceful warning); gap is low priority.
+- **Hardcoded Azure type list (F012):** Azure resource types are stable and unlikely to change. Hardcoding with a lookup table is appropriate for v0.1.
+- **No enum-based command dispatch (F019):** String-based map dispatch is clear and permits easy addition of new commands. Fine for a CLI tool of this scale.
+- **`URL_LIST_TYPES[]` with three one-liner delegates (F009):** The table + thin wrappers is the correct pattern. `cmd_add_github`, `cmd_add_swagger`, `cmd_add_blizzard` as one-liners are the correct public API surface.
+- **`dist/` directory has build artifacts locally:** `.gitignore` correctly excludes `dist/` — the directory exists locally but is not tracked by git. This is intentional staging for release packaging.
+- **`node_modules/sigmap/` exists locally:** Same as above — `.gitignore` excludes `node_modules/`. Not committed.
+- **`src/markdown.cpp:114` still parses `"- RANP: "`:** This is backward-compatibility parsing to read old notes files. Not a bug; the renderer writes `"- RPM: "` and the parser handles both.
+- **`add_note` succeeds on a completed todo:** `todo.cpp:56-61` adds the note even when the todo is completed, emitting a warning. This is intentional — notes are informational and may be legitimately added after completion.
+- **`cmd_close` ignores missing notes file (`ec == std::errc::no_such_file_or_directory`):** `commands_project.cpp:45-48` continues silently if the notes file is already gone. This is correct graceful handling for partially broken state.
+- **Repeated "Run 'projot X --help'" messages (F013):** Redundant but clear; acceptable for a CLI tool.
+- **`git_stage_file` on Windows uses string composition (commands_maint.cpp:45-47):** The RPM path component is validated by `is_safe_rpm()` before reaching the staging call, so the only risk is a repo root path containing `"` characters — unusual on Windows and limited in practice. Worth noting but not a realistic threat.
 
 ---
 
 ## Open Questions for the Maintainer
 
-1. **Future of `--text` flag:** Is the legacy `--text` form still used anywhere, or can it be removed? (Affects F007)
-2. **System call handling post-v0.1:** Is there appetite to eliminate `std::system` calls in favor of a library like libgit2? (Affects F005)
-3. **Command file split:** Is there a preference for keeping commands.cpp monolithic (easier to review), or would you prefer it split by concern? (Affects F001)
-4. **Azure stability:** Are the seven Azure resource types in `AZURE_TYPES` stable, or might they change frequently? (Affects F012)
-5. **Error reporting consistency:** Should commands use a unified error reporting mechanism (currently ad-hoc `std::cerr`), or is current approach acceptable? (Affects F013)
+1. **MCP `add_todo` quoting correctness:** The F021 fix still uses shell string composition with double-quote escaping (e.g. `text.replace(/"/g, '\\"')`). A more robust fix would switch `execCommand` to `execFileSync` with an argument array — eliminating quoting entirely and closing F023 at the same time. Is that in scope?
+
+2. **Global config backward compatibility:** `write_global_config` only writes `rpm_base_url` and `itrack_base_url`. If a future version adds keys to the global config, `write_global_config` overwrites and silently drops them. Is this acceptable, or should it merge keys?
+
+3. **`close` command hook interaction:** `projot close` archives the notes file and clears project config, but does not uninstall the pre-commit hook. The hook will fire `projot render` on every commit and fail until `projot new` is run. Is this intentional, or should `close` emit a reminder?
+
+4. **Azure type stability:** Are the seven types in `AZURE_TYPES[]` stable post-v0.1? If new types will be added, a config-driven approach is straightforward.
 
 ---
 
 ## Conclusion
 
-projot is a well-engineered v0.1 release with minimal critical debt. The identified issues are primarily **organizational** (boilerplate, file size, consistency) rather than **functional** (bugs, crashes, data loss). All 15 commands work correctly; all tests pass.
+projot is in excellent shape structurally. No functional bugs remain in the CLI or MCP server. The MCP server is guarded against flag-drift by `mcp/test.js` (6/6 passing). All actionable findings from both audit runs are resolved.
 
-**Completed (across all sessions):**
+**Completed (cumulative):**
 
-**High-impact:**
+High-impact:
+1. ✓ Extract command boilerplate (F003)
+2. ✓ Remove silent error skips (F004)
+3. ✓ Deduplicate utils (F002)
+4. ✓ Reduce file size (F001)
+5. ✓ Replace `std::system` calls (F005)
 
-1. ✓ Extract command boilerplate (F003) — 13 commands now use helpers
-2. ✓ Remove silent error skips (F004) — all commands check .ok
-3. ✓ Deduplicate utils (F002) — shared deduplicate<T> template
-4. ✓ Reduce file size (F001) — commands.cpp split into 5 focused files
+Quick wins:
+6. ✓ Add docstrings (F006)
+7. ✓ Update RANP→RPM (F015)
+8. ✓ Remove legacy `ranp` config key (F017)
+9. ✓ Remove `--text` flag from CLI (F007)
+10. ✓ Merge path builders (F010)
+11. ✓ Replace ternary URL-kind selector (F011)
+12. ✓ Error-path test coverage (F008)
+13. ✓ Fix three broken MCP call sites (F021)
+14. ✓ Update MCP "RANP" description text (F025)
+15. ✓ Add MCP test harness (`mcp/test.js`)
+16. ✓ Warn on re-render failure in `execute_config_command` (F022)
+17. ✓ Replace shell-interpolated `openUrl` with `execFileSync` (F023)
+18. ✓ Eliminate double-parse in `cmd_complete` (F024)
+19. ✓ Unwritable hooks dir test already existed (F016 — discovered resolved)
 
-**Quick wins:**
-5. ✓ Add docstrings (F006) — all 15 commands documented
-6. ✓ Update RANP→RPM (F015) — terminology consistency
-7. ✓ Remove legacy `ranp` config key (F017) — clean break from old terminology
-8. ✓ Remove `--text` flag (F007) — legacy code removed
-9. ✓ Merge path builders (F010) — single `projot_file_path()` helper
-10. ✓ Replace ternary URL-kind selector (F011) — `URL_LIST_TYPES[]` lookup table with explicit error
-11. ✓ Error-path test coverage (F008) — 16 new tests for missing flags, bad IDs, deleted notes file
-13. ✓ Replace std::system calls (F005) — shell-free git staging and node detection
-
-**Remaining for next cycle:**
-
-1. No remaining medium-or-higher findings. Low-severity findings (F012–F014, F016, F018–F020) accepted as-is for v0.1.
-
-The codebase is now in excellent shape for v0.2 with all high-impact boilerplate issues resolved and all quick wins completed.
+**Remaining actionable findings:** None.

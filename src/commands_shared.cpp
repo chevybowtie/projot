@@ -111,8 +111,11 @@ int execute_config_command(Context& ctx,
 
     if (re_render && !ctx.config.rpm.empty()) {
         Project proj;
-        if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok)
-            render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
+        if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok) {
+            auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
+            if (!render.ok)
+                std::cerr << "warning: notes file not updated: " << render.error << "\n";
+        }
     }
 
     if (!success_msg.empty()) std::cout << success_msg << "\n";

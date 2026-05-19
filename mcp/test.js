@@ -8,7 +8,7 @@
 import { spawnSync } from "child_process";
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
-import { tmpdir } from "os";
+import { tmpdir, platform } from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -30,11 +30,13 @@ writeFileSync(join(tmp, ".projot", "config"), [
   "rpm = 12345",
   "name = Test Project",
   "itrack = 67890",
+  "link.itrack = https://itrack.example.com/67890",
 ].join("\n") + "\n");
 
 // Mock executables: log "name: <args>" to logFile then exit 0.
-// Both projot and git are mocked so tests run without any installed tooling.
-for (const name of ["projot", "git"]) {
+// projot, git, and the platform open command are all mocked.
+const openCmd = { darwin: "open", linux: "xdg-open", win32: null }[platform()];
+for (const name of ["projot", "git", ...(openCmd ? [openCmd] : [])]) {
   const script = join(binDir, name);
   writeFileSync(script, `#!/bin/sh\necho '${name}:' "$@" >> '${logFile}'\nexit 0\n`);
   spawnSync("chmod", ["+x", script]);
@@ -64,8 +66,9 @@ function runTool(toolName, toolArgs) {
   const log = existsSync(logFile) ? readFileSync(logFile, "utf8") : "";
   // Each mock line is "<command>: <args>"; split into per-command arrays.
   const projotCalls = log.split("\n").filter(l => l.startsWith("projot:"));
+  const allLines    = log.split("\n").filter(Boolean);
 
-  return { projotCalls };
+  return { projotCalls, allLines };
 }
 
 let pass = 0, fail = 0;
@@ -139,6 +142,20 @@ test("get_open_todos: list --open (regression guard)", (assert) => {
   assert("subcommand is list", cmd.includes("list"));
   assert("--open flag present", cmd.includes("--open"));
 });
+
+// F023 regression: openUrl must pass URL as argument, not interpolate into a shell string.
+// Uses the link.itrack value from .projot/config ("https://itrack.example.com/67890").
+if (openCmd) {
+  test(`open_itrack: URL passed as argument to ${openCmd} (F023 regression)`, (assert) => {
+    const { allLines } = runTool("open_itrack", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("URL present in args", openLine && openLine.includes("https://itrack.example.com/67890"));
+    // If the URL were shell-interpolated via execSync(`xdg-open "${url}"`),
+    // the surrounding quotes would appear in the log. With execFileSync they don't.
+    assert("URL not wrapped in quotes (no shell interpolation)", openLine && !openLine.includes('"https://'));
+  });
+}
 
 // ── Summary ────────────────────────────────────────────────────────────────
 

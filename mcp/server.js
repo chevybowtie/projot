@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import { createInterface } from "readline";
 import { cwd } from "process";
 import { readFileSync } from "fs";
@@ -279,9 +279,11 @@ function handleRequest(request) {
     const ok  = (text) => ({ result: { content: [{ type: "text", text: String(text) }], isError: false } });
     const err = (text) => ({ result: { content: [{ type: "text", text: String(text) }], isError: true  } });
     const openUrl = (url) => {
-      const openCmd = { darwin: "open", linux: "xdg-open", win32: "start" }[platform()];
-      if (!openCmd) return err(`Unsupported platform: ${platform()}`);
-      execCommand(`${openCmd} "${url}"`);
+      const p = platform();
+      if (p === "darwin")       execFileSync("open",    [url]);
+      else if (p === "linux")   execFileSync("xdg-open", [url]);
+      else if (p === "win32")   execFileSync("cmd.exe", ["/c", "start", "", url]);
+      else return err(`Unsupported platform: ${p}`);
       return null; // caller returns ok()
     };
 
