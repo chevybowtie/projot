@@ -167,7 +167,7 @@ function handleRequest(request) {
             properties: {
               project_number: {
                 type: "string",
-                description: "The RANP/project number (e.g., 12345)",
+                description: "The RPM project number (e.g., 12345)",
               },
               description: {
                 type: "string",
@@ -298,13 +298,13 @@ function handleRequest(request) {
 
       if (name === "add_todo") {
         const { text } = args;
-        execCommand(`projot add-todo --text "${text.replace(/"/g, '\\"')}"`);
+        execCommand(`projot add-todo "${text.replace(/"/g, '\\"')}"`);
         return ok(`TODO added: "${text}"`);
       }
 
       if (name === "add_note_to_todo") {
         const { todo_id, text } = args;
-        execCommand(`projot add-note --todo ${todo_id} --text "${text.replace(/"/g, '\\"')}"`);
+        execCommand(`projot add-note --todo ${todo_id} "${text.replace(/"/g, '\\"')}"`);
         return ok(`Note added to TODO #${todo_id}`);
       }
 
@@ -359,7 +359,7 @@ function handleRequest(request) {
         const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
         execCommand(`git checkout -b ${suggestedBranch}`);
         const teamsUrl = getConfigValue("link.teams");
-        execCommand(`projot new --ranp ${project_number} --name "${description.replace(/"/g, '\\"')}" --itrack ${itrack_number}${teamsUrl ? ` --teams "${teamsUrl}"` : ""}`);
+        execCommand(`projot new --rpm ${project_number} --name "${description.replace(/"/g, '\\"')}" --itrack ${itrack_number}${teamsUrl ? ` --teams "${teamsUrl}"` : ""}`);
         return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`);
       }
 
