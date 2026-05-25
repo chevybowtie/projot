@@ -23,6 +23,7 @@
 #  include <unistd.h>
 #  include <sys/wait.h>
 #  include <fcntl.h>
+#  include <time.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -180,6 +181,70 @@ static std::string claude_settings_injected_block(const std::string& server_arg)
         "  }";
 }
 
+static bool node_available(); // forward declaration
+
+// Teams Kanban sync — invoked best-effort after render; never blocks commits.
+
+static void invoke_teams_sync(const Context& ctx) {
+    auto mcp_dir = find_mcp_source_dir();
+    if (!mcp_dir) {
+        std::cerr << "warning: teams-sync.js not found; skipping Teams sync\n";
+        return;
+    }
+    fs::path sync_script = *mcp_dir / "teams-sync.js";
+    std::error_code ec;
+    if (!fs::exists(sync_script, ec)) {
+        std::cerr << "warning: teams-sync.js not found in "
+                  << mcp_dir->string() << "; skipping Teams sync\n";
+        return;
+    }
+    if (!node_available()) {
+        std::cerr << "warning: Node.js not found on PATH; skipping Teams sync\n";
+        return;
+    }
+
+    std::string config_path = projot_file_path(ctx, "config");
+    std::string notes_path  = projot_file_path(ctx, ctx.config.rpm + ".md");
+    std::string script      = sync_script.string();
+    std::string webhook     = ctx.config.teams_webhook;
+
+#ifdef _WIN32
+    std::string cmd = "node \"" + script + "\" \"" + config_path + "\" \""
+                      + notes_path + "\" \"" + webhook + "\"";
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi{};
+    CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
+                   FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+    if (pi.hProcess) {
+        WaitForSingleObject(pi.hProcess, 10000); // 10-second timeout
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+#else
+    const char* argv[] = {
+        "node", script.c_str(), config_path.c_str(),
+        notes_path.c_str(), webhook.c_str(), nullptr
+    };
+    pid_t pid = fork();
+    if (pid < 0) return;
+    if (pid == 0) {
+        int fd = open("/dev/null", O_WRONLY);
+        if (fd >= 0) { dup2(fd, STDOUT_FILENO); close(fd); }
+        execvp("node", const_cast<char**>(argv));
+        _exit(0);
+    }
+    // Wait with a 10-second timeout so commits don't hang indefinitely
+    for (int i = 0; i < 100; ++i) {
+        int status;
+        pid_t r = waitpid(pid, &status, WNOHANG);
+        if (r != 0) break;
+        struct timespec ts{0, 100000000}; // 100 ms
+        nanosleep(&ts, nullptr);
+    }
+#endif
+}
+
 // render
 
 int cmd_render(const Args& args) {
@@ -187,7 +252,7 @@ int cmd_render(const Args& args) {
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
-    if (!require_project(ctx)) return 1;
+    if (ctx.config.rpm.empty()) return 0;  // no active project; hook is a no-op between projects
 
     Project proj;
     auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
@@ -199,6 +264,10 @@ int cmd_render(const Args& args) {
     // Stage the rendered file. No shell involved; git_stage_file uses fork+execvp.
     if (is_safe_rpm(ctx.config.rpm)) {
         git_stage_file(ctx.repo_root, ".projot/" + ctx.config.rpm + ".md");
+    }
+
+    if (!ctx.config.teams_webhook.empty()) {
+        invoke_teams_sync(ctx);
     }
 
     return 0;

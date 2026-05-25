@@ -31,6 +31,11 @@ writeFileSync(join(tmp, ".projot", "config"), [
   "name = Test Project",
   "itrack = 67890",
   "link.itrack = https://itrack.example.com/67890",
+  "link.teams = https://teams.example.com/channel",
+  "link.rpm = https://rpm.example.com/12345",
+  "github = https://github.com/example/repo",
+  "swagger = https://swagger.example.com",
+  "blizzard = https://blizzard.example.com",
 ].join("\n") + "\n");
 
 // Mock executables: log "name: <args>" to logFile then exit 0.
@@ -156,6 +161,92 @@ if (openCmd) {
     assert("URL not wrapped in quotes (no shell interpolation)", openLine && !openLine.includes('"https://'));
   });
 }
+
+// set_*_link handlers: verify correct CLI subcommand and flags.
+test("set_teams_link: projot set-link with correct key and url", (assert) => {
+  const { projotCalls } = runTool("set_teams_link", { url: "https://teams.new.com/channel" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is set-link", cmd.includes("set-link"));
+  assert("--key teams present", cmd.includes("--key") && cmd.includes("teams"));
+  assert("--url present", cmd.includes("--url"));
+  assert("url in call", cmd.includes("https://teams.new.com/channel"));
+});
+
+test("set_github_link: projot add-github called with url", (assert) => {
+  const { projotCalls } = runTool("set_github_link", { url: "https://github.com/example/new" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is add-github", cmd.includes("add-github"));
+  assert("--url present", cmd.includes("--url"));
+  assert("url in call", cmd.includes("https://github.com/example/new"));
+});
+
+test("set_swagger_link: projot add-swagger called with url", (assert) => {
+  const { projotCalls } = runTool("set_swagger_link", { url: "https://swagger.new.com" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is add-swagger", cmd.includes("add-swagger"));
+  assert("--url present", cmd.includes("--url"));
+  assert("url in call", cmd.includes("https://swagger.new.com"));
+});
+
+test("set_blizzard_link: projot add-blizzard called with url", (assert) => {
+  const { projotCalls } = runTool("set_blizzard_link", { url: "https://blizzard.new.com" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is add-blizzard", cmd.includes("add-blizzard"));
+  assert("--url present", cmd.includes("--url"));
+  assert("url in call", cmd.includes("https://blizzard.new.com"));
+});
+
+// open_* handlers: verify URL is passed as an argument (not shell-interpolated).
+if (openCmd) {
+  test(`open_github: URL passed as argument to ${openCmd}`, (assert) => {
+    const { allLines } = runTool("open_github", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("GitHub URL in args", openLine && openLine.includes("https://github.com/example/repo"));
+  });
+
+  test(`open_swagger: URL passed as argument to ${openCmd}`, (assert) => {
+    const { allLines } = runTool("open_swagger", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("Swagger URL in args", openLine && openLine.includes("https://swagger.example.com"));
+  });
+
+  test(`open_blizzard: URL passed as argument to ${openCmd}`, (assert) => {
+    const { allLines } = runTool("open_blizzard", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("Blizzard URL in args", openLine && openLine.includes("https://blizzard.example.com"));
+  });
+
+  test(`open_teams: URL passed as argument to ${openCmd}`, (assert) => {
+    const { allLines } = runTool("open_teams", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("Teams URL in args", openLine && openLine.includes("https://teams.example.com/channel"));
+  });
+
+  test(`open_rpm: URL passed as argument to ${openCmd}`, (assert) => {
+    const { allLines } = runTool("open_rpm", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
+    assert("RPM URL in args", openLine && openLine.includes("https://rpm.example.com/12345"));
+  });
+}
+
+test("set_status: projot status called with todo id and status string", (assert) => {
+  const { projotCalls } = runTool("set_status", { todo_id: 3, status: "in-progress" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is status", cmd.includes("status"));
+  assert("--todo present", cmd.includes("--todo"));
+  assert("todo_id in call", cmd.includes("3"));
+  assert("status in call", cmd.includes("in-progress"));
+});
 
 // ── Summary ────────────────────────────────────────────────────────────────
 

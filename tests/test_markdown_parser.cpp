@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "markdown.h"
+#include "todo.h"
 
 // ── Header parsing ────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ TEST_CASE("parse_todo_open") {
     REQUIRE(proj.todos.size() >= 1);
     const auto& t = proj.todos[0];
     CHECK(t.id == 1);
-    CHECK_FALSE(t.completed);
+    CHECK(t.status == TodoStatus::Todo);
     CHECK(t.text == "First open todo");
 }
 
@@ -77,7 +78,7 @@ TEST_CASE("parse_todo_closed") {
     REQUIRE(proj.todos.size() >= 2);
     const auto& t = proj.todos[1];
     CHECK(t.id == 2);
-    CHECK(t.completed);
+    CHECK(t.status == TodoStatus::Done);
 }
 
 TEST_CASE("parse_todo_created_date") {
@@ -170,4 +171,39 @@ TEST_CASE("parse_no_todos_section") {
     Project proj;
     parse_markdown_string(content, proj);
     CHECK(proj.todos.empty());
+}
+
+TEST_CASE("parse_all_four_markers") {
+    const std::string content =
+        "# Project: Markers\n"
+        "- RPM: 1\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "## Links\n\n"
+        "## Todos\n\n"
+        "1. [ ] Todo item\n   - Created: 2025-01-01\n   - Notes:\n\n"
+        "2. [>] In progress\n   - Created: 2025-01-02\n   - Notes:\n\n"
+        "3. [~] Blocked item\n   - Created: 2025-01-03\n   - Notes:\n\n"
+        "4. [x] Done item\n   - Created: 2025-01-04\n   - Notes:\n\n";
+    Project proj;
+    parse_markdown_string(content, proj);
+    REQUIRE(proj.todos.size() == 4);
+    CHECK(proj.todos[0].status == TodoStatus::Todo);
+    CHECK(proj.todos[1].status == TodoStatus::InProgress);
+    CHECK(proj.todos[2].status == TodoStatus::Blocked);
+    CHECK(proj.todos[3].status == TodoStatus::Done);
+}
+
+TEST_CASE("parse_backward_compat_open_closed_only") {
+    const std::string content =
+        "# Project: OldFormat\n"
+        "- RPM: 2\n- iTrack: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "## Links\n\n"
+        "## Todos\n\n"
+        "1. [ ] Still open\n   - Created: 2025-01-01\n   - Notes:\n\n"
+        "2. [x] Already done\n   - Created: 2025-01-01\n   - Completed: 2025-01-05\n   - Notes:\n\n";
+    Project proj;
+    parse_markdown_string(content, proj);
+    REQUIRE(proj.todos.size() == 2);
+    CHECK(proj.todos[0].status == TodoStatus::Todo);
+    CHECK(proj.todos[1].status == TodoStatus::Done);
+    CHECK(proj.todos[1].completed_date == "2025-01-05");
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync, execFileSync } from "child_process";
+import { execFileSync } from "child_process";
 import { createInterface } from "readline";
 import { cwd } from "process";
 import { readFileSync } from "fs";
@@ -41,9 +41,9 @@ rl.on("line", (line) => {
   }
 });
 
-function execCommand(cmd) {
+function execArgs(cmd, args) {
   try {
-    return execSync(cmd, { encoding: "utf8", cwd: cwd() });
+    return execFileSync(cmd, args, { encoding: "utf8", cwd: cwd() });
   } catch (err) {
     throw new Error(`Command failed: ${err.message}`);
   }
@@ -105,7 +105,7 @@ function handleRequest(request) {
         },
         {
           name: "complete_todo",
-          description: "Mark a TODO as completed",
+          description: "Mark a TODO as done (sets status to 'done')",
           inputSchema: {
             type: "object",
             properties: {
@@ -269,6 +269,25 @@ function handleRequest(request) {
           description: "Open the RPM project page in the default browser",
           inputSchema: { type: "object", properties: {} },
         },
+        {
+          name: "set_status",
+          description: "Set the status of a todo: todo, in-progress, blocked, or done",
+          inputSchema: {
+            type: "object",
+            properties: {
+              todo_id: {
+                type: "number",
+                description: "The numeric ID of the TODO",
+              },
+              status: {
+                type: "string",
+                enum: ["todo", "in-progress", "blocked", "done"],
+                description: "New status for the TODO",
+              },
+            },
+            required: ["todo_id", "status"],
+          },
+        },
       ] } };
   }
 
@@ -289,24 +308,24 @@ function handleRequest(request) {
 
     try {
       if (name === "get_open_todos") {
-        return ok(execCommand("projot list --open"));
+        return ok(execArgs("projot", ["list", "--open"]));
       }
 
       if (name === "complete_todo") {
         const { todo_id } = args;
-        execCommand(`projot complete --todo ${todo_id}`);
+        execArgs("projot", ["complete", "--todo", String(todo_id)]);
         return ok(`TODO #${todo_id} marked as completed`);
       }
 
       if (name === "add_todo") {
         const { text } = args;
-        execCommand(`projot add-todo "${text.replace(/"/g, '\\"')}"`);
+        execArgs("projot", ["add-todo", text]);
         return ok(`TODO added: "${text}"`);
       }
 
       if (name === "add_note_to_todo") {
         const { todo_id, text } = args;
-        execCommand(`projot add-note --todo ${todo_id} "${text.replace(/"/g, '\\"')}"`);
+        execArgs("projot", ["add-note", "--todo", String(todo_id), text]);
         return ok(`Note added to TODO #${todo_id}`);
       }
 
@@ -359,30 +378,38 @@ function handleRequest(request) {
       if (name === "setup_new_project") {
         const { project_number, description, itrack_number, branch_name } = args;
         const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
-        execCommand(`git checkout -b ${suggestedBranch}`);
+        execArgs("git", ["checkout", "-b", suggestedBranch]);
         const teamsUrl = getConfigValue("link.teams");
-        execCommand(`projot new --rpm ${project_number} --name "${description.replace(/"/g, '\\"')}" --itrack ${itrack_number}${teamsUrl ? ` --teams "${teamsUrl}"` : ""}`);
+        const newArgs = ["new", "--rpm", project_number, "--name", description, "--itrack", itrack_number];
+        if (teamsUrl) newArgs.push("--teams", teamsUrl);
+        execArgs("projot", newArgs);
         return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`);
       }
 
       if (name === "set_teams_link") {
-        execCommand(`projot set-link --key teams --url "${args.url}"`);
+        execArgs("projot", ["set-link", "--key", "teams", "--url", args.url]);
         return ok(`Teams URL updated: ${args.url}`);
       }
 
       if (name === "set_github_link") {
-        execCommand(`projot add-github --url "${args.url}"`);
+        execArgs("projot", ["add-github", "--url", args.url]);
         return ok(`GitHub URL updated: ${args.url}`);
       }
 
       if (name === "set_swagger_link") {
-        execCommand(`projot add-swagger --url "${args.url}"`);
+        execArgs("projot", ["add-swagger", "--url", args.url]);
         return ok(`Swagger URL updated: ${args.url}`);
       }
 
       if (name === "set_blizzard_link") {
-        execCommand(`projot add-blizzard --url "${args.url}"`);
+        execArgs("projot", ["add-blizzard", "--url", args.url]);
         return ok(`Blizzard URL updated: ${args.url}`);
+      }
+
+      if (name === "set_status") {
+        const { todo_id, status } = args;
+        execArgs("projot", ["status", "--todo", String(todo_id), status]);
+        return ok(`TODO #${todo_id} status set to: ${status}`);
       }
 
       return err(`Unknown tool: ${name}`);
