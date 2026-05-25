@@ -36,18 +36,6 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
     out << "\n";
 
-    // Managed sections comment
-    bool has_managed = !cfg.github.empty() || !cfg.swagger.empty() || !cfg.blizzard.empty() ||
-                       !cfg.azure_subscription.empty() || !cfg.azure_key_vault.empty() ||
-                       !cfg.azure_resource_group.empty() || !cfg.azure_aks.empty() ||
-                       !cfg.azure_log_analytics.empty() || !cfg.azure_storage.empty() ||
-                       !cfg.azure_private_dns.empty();
-    if (has_managed) {
-        out << "<!-- projot-managed: do not hand-edit sections below; "
-               "use add-github/add-swagger/add-blizzard/add-azure -->\n";
-        out << "\n";
-    }
-
     // GitHub
     const auto github = deduplicate(cfg.github);
     if (!github.empty()) {
@@ -110,14 +98,41 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     }
 
     // Todos
+    // Build a managed comment that hints which projot commands can edit the
+    // content shown above (helps users and tests discover relevant commands).
+    std::vector<std::string> managed_cmds;
+    if (!github.empty()) managed_cmds.push_back("add-github");
+    if (!swagger.empty()) managed_cmds.push_back("add-swagger");
+    if (!blizzard.empty()) managed_cmds.push_back("add-blizzard");
+    // Any Azure section present -> mention add-azure
+    bool has_azure = any_azure;
+    if (has_azure) managed_cmds.push_back("add-azure");
+
+    out << "<!-- projot-managed: content above is generated from .projot/config";
+    if (!managed_cmds.empty()) {
+        out << " — edit using projot commands: ";
+        for (size_t i = 0; i < managed_cmds.size(); ++i) {
+            if (i) out << ", ";
+            out << managed_cmds[i];
+        }
+    } else {
+        out << " — edit using projot commands";
+    }
+    out << "; edits here will be overwritten on next render -->\n";
     out << "## Todos\n";
     out << "\n";
 
     for (const auto& todo : todos) {
-        const char* box = todo.completed ? "[x]" : "[ ]";
+        const char* box;
+        switch (todo.status) {
+            case TodoStatus::InProgress: box = "[>]"; break;
+            case TodoStatus::Blocked:    box = "[~]"; break;
+            case TodoStatus::Done:       box = "[x]"; break;
+            default:                     box = "[ ]"; break;
+        }
         out << todo.id << ". " << box << " " << todo.text << "\n";
         out << "   - Created: " << todo.created_date << "\n";
-        if (todo.completed && !todo.completed_date.empty()) {
+        if (todo.status == TodoStatus::Done && !todo.completed_date.empty()) {
             out << "   - Completed: " << todo.completed_date << "\n";
         }
         out << "   - Notes:\n";

@@ -41,11 +41,19 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: |
+          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          suffix=$(echo "$version" | sed 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+          suffix="${suffix#-}"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DPROJOT_VERSION_SUFFIX="${suffix}"
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $suffix = if ($version -match '-(.+)$') { $Matches[1] } else { "" }
+          cmake -B build -DCMAKE_BUILD_TYPE=Release "-DPROJOT_VERSION_SUFFIX=$suffix"
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
@@ -135,7 +143,10 @@ jobs:
 
       - name: Build for packaging
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          suffix=$(echo "$version" | sed 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+          suffix="${suffix#-}"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DPROJOT_VERSION_SUFFIX="${suffix}"
           cmake --build build
 
       - name: Install to staging directory

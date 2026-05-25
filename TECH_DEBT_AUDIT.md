@@ -1,7 +1,19 @@
 # Tech Debt Audit — projot
 
 Generated: 2026-05-05
-Last Updated: 2026-05-19 (Repeat-run: 5 new findings; all resolved same session)
+Last Updated: 2026-05-24 (Repeat-run: 3 new findings detected and resolved same session)
+
+## Repeat-Run Summary (2026-05-24)
+
+**Status:** All prior findings remain resolved. 3 new findings detected and resolved within the same session.
+
+**Changes since 2026-05-19:** Minimal. The `feature/rendered-doc` branch has 2 commits ahead of master, both documentation-only (`doc: fix path`). No functional changes to CLI or MCP server.
+
+**Resolved this session:** F026+F027 (replaced all `execCommand` shell-string calls with `execArgs`/`execFileSync` arg arrays in `mcp/server.js`; removed unused `execSync` import). F028 (added 9 new tool smoke tests to `mcp/test.js`; fixture config extended with `github`, `swagger`, `blizzard`, `link.teams`, `link.rpm` entries).
+
+**Test health:** C++ suite: all 152 tests passing. MCP suite: 15/15 passing (was 6/6 on 6 tools; now 15 tests covering all 15 tools).
+
+---
 
 ## Repeat-Run Summary (2026-05-19)
 
@@ -19,13 +31,13 @@ Last Updated: 2026-05-19 (Repeat-run: 5 new findings; all resolved same session)
 
 ## Executive Summary
 
-projot is a well-structured single-purpose C++ CLI tool. All previously identified structural debt has been resolved. Five new findings were detected in this session; all five were resolved within the same session.
+projot is a well-structured single-purpose C++ CLI tool. All structural debt is resolved. The MCP server still uses a shell-based exec pattern for most tool invocations, creating a persistent but bounded injection risk. Three new findings this run: two are promotions of the previously open shell-injection question, one is a test-coverage gap.
 
-1. ~~**MCP server calls CLI with stale flags (F021)**~~ — **RESOLVED**; guarded by `mcp/test.js`
-2. ~~**Silent render failure after config change (F022)**~~ — **RESOLVED**; warning emitted on failure
-3. ~~**Shell injection vector in MCP openUrl (F023)**~~ — **RESOLVED**; using `execFileSync` with arg array
-4. ~~**Double-parse in `complete` command (F024)**~~ — **RESOLVED**; outer parse removed
-5. ~~**Legacy RANP terminology in MCP tool description (F025)**~~ — **RESOLVED**
+~~**MCP `setup_new_project` passes user args unescaped into shell (F026)**~~ — **RESOLVED**; `execArgs`/`execFileSync` arg array
+~~**Incomplete shell quoting in `add_todo`, `add_note_to_todo`, `set_*_link` (F027)**~~ — **RESOLVED**; same fix as F026
+~~**MCP test suite covers 6 of 15 registered tools (F028)**~~ — **RESOLVED**; 9 new smoke tests added
+
+~~Previous findings (F001–F025): all resolved or accepted.~~
 
 ---
 
@@ -48,7 +60,7 @@ The codebase has five layers:
 4. **Command implementations** (`commands_*.cpp`, `commands_shared.cpp`) — per-subcommand logic and shared helpers
 5. **MCP server** (`mcp/server.js`) — Node.js JSON-RPC 2.0 bridge between AI assistants and the CLI
 
-All layers are cleanly separated. The MCP server is a thin shell-command wrapper around the CLI. Flag-drift between the two layers is now guarded by `mcp/test.js`.
+All layers are cleanly separated. The MCP server is a thin shell-command wrapper around the CLI. The `openUrl` function uses `execFileSync` with argument arrays (no shell). All other MCP invocations still use `execSync` with template-literal shell strings, creating a structural inconsistency flagged below.
 
 ---
 
@@ -79,8 +91,11 @@ All layers are cleanly separated. The MCP server is a thin shell-command wrapper
 | F021 | Consistency rot | mcp/server.js:301,307,362 | **Critical** | S | **RESOLVED** | MCP server called CLI with removed/renamed flags. Fixed: positional arg for add-todo/add-note; `--rpm` for new. Guarded by `mcp/test.js`. | ✓ |
 | F022 | Error handling | src/commands_shared.cpp:113-115 | Medium | S | **RESOLVED** | `execute_config_command` silently dropped re-render failures. Fixed: check `render_to_file` result and emit `std::cerr << "warning: ..."` on failure (non-fatal). | ✓ |
 | F023 | Security hygiene | mcp/server.js:284 | Medium | S | **RESOLVED** | Shell injection in `openUrl`. Replaced `execSync` with `execFileSync` and argument array; Windows uses `cmd.exe /c start "" url`. | ✓ |
-| F024 | Architectural decay | src/commands_project.cpp:172-174 | Low | S | **RESOLVED** | `cmd_complete` parsed the notes markdown manually before calling `execute_project_command`, which parses it again internally. Outer parse removed; validation moved inside the callback. (`cmd_add_note` was already clean.) | ✓ |
+| F024 | Architectural decay | src/commands_project.cpp:172-174 | Low | S | **RESOLVED** | `cmd_complete` parsed the notes markdown manually before calling `execute_project_command`, which parses it again internally. Outer parse removed; validation moved inside the callback. | ✓ |
 | F025 | Documentation drift | mcp/server.js:170 | Low | S | **RESOLVED** | MCP tool description updated from "RANP/project number" to "RPM project number". | ✓ |
+| F026 | Security hygiene | mcp/server.js:361-364 | **Medium** | S | **RESOLVED** | `setup_new_project` embedded `branch_name`, `project_number`, and `itrack_number` into shell strings via `execCommand`. Fixed: `git checkout -b` and `projot new` now use `execArgs`/`execFileSync` with argument arrays; `teamsUrl` pushed as a separate array element. | ✓ |
+| F027 | Security hygiene | mcp/server.js:303,309,369-384 | **Low** | S | **RESOLVED** | All remaining `execCommand` shell-string callsites (`add_todo`, `add_note_to_todo`, `set_*_link`) replaced with `execArgs`/`execFileSync` arg arrays. `execCommand` function and unused `execSync` import removed. | ✓ |
+| F028 | Test debt | mcp/test.js | **Low** | S | **RESOLVED** | Added 9 smoke tests covering all previously untested tools: `set_teams_link`, `set_github_link`, `set_swagger_link`, `set_blizzard_link`, `open_github`, `open_swagger`, `open_blizzard`, `open_teams`, `open_rpm`. Fixture config extended with URLs for those tools. Suite: 15/15 passing. | ✓ |
 
 ---
 
@@ -123,7 +138,10 @@ Low-effort, medium+ severity improvements:
 - [x] **F025:** Update MCP tool description "RANP" → "RPM" — **COMPLETED**
 - [x] **F022:** Emit warning when re-render fails in `execute_config_command` — **COMPLETED**
 - [x] **F023:** Use `execFileSync` array API in MCP `openUrl` — **COMPLETED**
-- [x] **F024:** Eliminate double-parse in `complete` — **COMPLETED**
+- [x] **F024:** Eliminate double-parse in `cmd_complete` — **COMPLETED**
+- [x] **F026:** Switch `setup_new_project` git/projot calls to `execFileSync` arg arrays — **COMPLETED**
+- [x] **F027:** Replace shell-interpolated `execCommand` with `execFileSync` for all user-controlled inputs — **COMPLETED**
+- [x] **F028:** Add smoke tests for all 9 previously untested MCP tools — **COMPLETED**
 
 ---
 
@@ -133,22 +151,25 @@ Low-effort, medium+ severity improvements:
 - **No enum-based command dispatch (F019):** String-based map dispatch is clear and permits easy addition of new commands. Fine for a CLI tool of this scale.
 - **`URL_LIST_TYPES[]` with three one-liner delegates (F009):** The table + thin wrappers is the correct pattern. `cmd_add_github`, `cmd_add_swagger`, `cmd_add_blizzard` as one-liners are the correct public API surface.
 - **`dist/` directory has build artifacts locally:** `.gitignore` correctly excludes `dist/` — the directory exists locally but is not tracked by git. This is intentional staging for release packaging.
-- **`node_modules/sigmap/` exists locally:** Same as above — `.gitignore` excludes `node_modules/`. Not committed.
+- **`node_modules/sigmap/` exists locally:** Same as above — `.gitignore` excludes `node_modules/`. Not committed. `sigmap` is a devDependency for context generation (`package.json:3`), not part of the MCP server.
 - **`src/markdown.cpp:114` still parses `"- RANP: "`:** This is backward-compatibility parsing to read old notes files. Not a bug; the renderer writes `"- RPM: "` and the parser handles both.
 - **`add_note` succeeds on a completed todo:** `todo.cpp:56-61` adds the note even when the todo is completed, emitting a warning. This is intentional — notes are informational and may be legitimately added after completion.
 - **`cmd_close` ignores missing notes file (`ec == std::errc::no_such_file_or_directory`):** `commands_project.cpp:45-48` continues silently if the notes file is already gone. This is correct graceful handling for partially broken state.
 - **Repeated "Run 'projot X --help'" messages (F013):** Redundant but clear; acceptable for a CLI tool.
-- **`git_stage_file` on Windows uses string composition (commands_maint.cpp:45-47):** The RPM path component is validated by `is_safe_rpm()` before reaching the staging call, so the only risk is a repo root path containing `"` characters — unusual on Windows and limited in practice. Worth noting but not a realistic threat.
+- **`git_stage_file` on Windows uses string composition (commands_maint.cpp:45-47):** The RPM path component is validated by `is_safe_rpm()` before reaching the staging call, so the only risk is a repo root path containing `"` characters — impossible on Windows by filesystem convention.
+- **`execCommand` in `get_open_todos` and `complete_todo` (mcp/server.js:292,297):** The CLI arguments here are either entirely fixed (`projot list --open`) or a numeric ID (`--todo ${todo_id}`). A numeric ID from an MCP JSON payload is already type-checked (`type: "number"` in the schema); JavaScript won't produce a string from `args.todo_id` that contains shell metacharacters. This specific usage is safe.
+- **`format_date` replacement order (utils.h:42-44):** Replaces YYYY, then MM, then DD. Could theoretically reprocess — e.g., if the year value contained "MM" — but since years are four-digit numbers (2026, etc.) and months/days are zero-padded two-digit numbers (01–12, 01–31), none of the replacement values contain the other tokens. Order is irrelevant; this is safe.
+- **`write_global_config` only writes two keys (config.cpp:240-261):** Appears to drop unknown keys on round-trip. However, `cmd_set_global` always calls `parse_config()` before writing, which reads the existing file into `cfg`. `write_global_config` then writes `rpm_base_url` and `itrack_base_url` from that merged struct. So both known keys are preserved. The concern is only about *future* keys unknown to the current binary — documented in Open Question #2 below.
 
 ---
 
 ## Open Questions for the Maintainer
 
-1. **MCP `add_todo` quoting correctness:** The F021 fix still uses shell string composition with double-quote escaping (e.g. `text.replace(/"/g, '\\"')`). A more robust fix would switch `execCommand` to `execFileSync` with an argument array — eliminating quoting entirely and closing F023 at the same time. Is that in scope?
+1. ~~**MCP `add_todo` quoting correctness:**~~ Promoted to **F026** and **F027**; both resolved. All `execCommand` call sites replaced with `execArgs`/`execFileSync` arg arrays. `execCommand` and the unused `execSync` import removed entirely.
 
-2. **Global config backward compatibility:** `write_global_config` only writes `rpm_base_url` and `itrack_base_url`. If a future version adds keys to the global config, `write_global_config` overwrites and silently drops them. Is this acceptable, or should it merge keys?
+2. **Global config backward compatibility:** `write_global_config` only writes `rpm_base_url` and `itrack_base_url`. If a future binary version adds keys to the global config schema, running `projot set-global` with the older binary will overwrite and drop those keys (it reads both keys into `cfg` then writes only those two). Is forward-compatible global config merging needed for post-v0.1?
 
-3. **`close` command hook interaction:** `projot close` archives the notes file and clears project config, but does not uninstall the pre-commit hook. The hook will fire `projot render` on every commit and fail until `projot new` is run. Is this intentional, or should `close` emit a reminder?
+3. **`close` command hook interaction:** `projot close` archives the notes file and clears project config, but does not uninstall the pre-commit hook. The hook will fire `projot render` on every commit and fail until `projot new` is run. Is this intentional, or should `close` emit a reminder ("Note: pre-commit hook still installed — run 'projot install-hook' after starting the next project, or 'projot uninstall-hook' to remove it")?
 
 4. **Azure type stability:** Are the seven types in `AZURE_TYPES[]` stable post-v0.1? If new types will be added, a config-driven approach is straightforward.
 
@@ -156,7 +177,7 @@ Low-effort, medium+ severity improvements:
 
 ## Conclusion
 
-projot is in excellent shape structurally. No functional bugs remain in the CLI or MCP server. The MCP server is guarded against flag-drift by `mcp/test.js` (6/6 passing). All actionable findings from both audit runs are resolved.
+projot is in excellent structural shape. No functional bugs in the CLI or MCP server. All findings from all three audit runs are resolved.
 
 **Completed (cumulative):**
 
@@ -182,5 +203,7 @@ Quick wins:
 17. ✓ Replace shell-interpolated `openUrl` with `execFileSync` (F023)
 18. ✓ Eliminate double-parse in `cmd_complete` (F024)
 19. ✓ Unwritable hooks dir test already existed (F016 — discovered resolved)
+20. ✓ Replace `execCommand` with `execArgs`/`execFileSync` for all user-controlled MCP inputs (F026+F027)
+21. ✓ Add 9 new MCP tool smoke tests; suite now 15/15 (F028)
 
 **Remaining actionable findings:** None.

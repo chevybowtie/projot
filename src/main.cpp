@@ -21,6 +21,7 @@ static void print_usage() {
         "  add-todo      Append a new todo\n"
         "  list          Show project summary and todos\n"
         "  complete      Mark a todo completed\n"
+        "  status        Set a todo's status (todo, in-progress, blocked, done)\n"
         "  add-note      Add a note to a todo\n"
         "  set-link      Set or update a single-value link URL\n"
         "  set-app-id    Set the application ID\n"
@@ -34,7 +35,8 @@ static void print_usage() {
         "  uninstall-hook        Remove the projot pre-commit git hook\n"
         "  install-mcp-server    Configure MCP server for Claude Code and VS Code\n"
         "  uninstall-mcp-server  Remove MCP server configuration\n"
-        "  set-global            Set global defaults (rpm_base_url, itrack_base_url)\n\n"
+        "  set-global            Set global defaults (rpm_base_url, itrack_base_url)\n"
+        "  set-teams-webhook     Set the Teams incoming webhook URL for Kanban sync\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -42,12 +44,13 @@ static void print_usage() {
 static const std::map<std::string, std::set<std::string>>& valid_flags() {
     static const std::map<std::string, std::set<std::string>> m{
         {"init",         {"app-id", "github", "swagger", "blizzard"}},
-        {"new",          {"rpm", "name", "itrack", "teams", "rpm-url",
-                          "itrack-url", "other", "no-hook"}},
+        {"new",          {"rpm", "name", "itrack", "teams", "teams-webhook",
+                          "rpm-url", "itrack-url", "other", "no-hook"}},
         {"close",        {}},
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
         {"complete",     {"todo"}},
+        {"status",       {"todo"}},
         {"add-note",     {"todo"}},
         {"set-link",     {"key", "url"}},
         {"set-app-id",   {"app-id", "force"}},
@@ -60,7 +63,8 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-hook",        {}},
         {"install-mcp-server",    {"no-vscode"}},
         {"uninstall-mcp-server",  {"no-vscode"}},
-        {"set-global",   {"rpm-base-url", "itrack-base-url"}},
+        {"set-global",          {"rpm-base-url", "itrack-base-url"}},
+        {"set-teams-webhook",   {}},
     };
     return m;
 }
@@ -87,6 +91,7 @@ int main(int argc, char* argv[]) {
         {"add-todo",     cmd_add_todo},
         {"list",         cmd_list},
         {"complete",     cmd_complete},
+        {"status",       cmd_status},
         {"add-note",     cmd_add_note},
         {"set-link",     cmd_set_link},
         {"set-app-id",   cmd_set_app_id},
@@ -100,6 +105,7 @@ int main(int argc, char* argv[]) {
         {"install-mcp-server",  cmd_install_mcp_server},
         {"uninstall-mcp-server", cmd_uninstall_mcp_server},
         {"set-global",          cmd_set_global},
+        {"set-teams-webhook",   cmd_set_teams_webhook},
     };
 
     auto cmd_it = commands.find(args.subcommand);
@@ -129,7 +135,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         // Reject unexpected positional arguments for commands that don't use them.
-        static const std::set<std::string> positional_commands{"add-todo", "add-note"};
+        static const std::set<std::string> positional_commands{"add-todo", "add-note", "status", "set-teams-webhook"};
         if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
             std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";

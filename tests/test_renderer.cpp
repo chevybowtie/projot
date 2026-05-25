@@ -111,10 +111,18 @@ TEST_CASE("render_omits_empty_blizzard") {
 }
 
 TEST_CASE("render_managed_comment") {
+    // Comment is always present, even without managed sections, and always just before ## Todos.
     auto cfg = make_base_config();
-    cfg.github = {"https://github.com/org/repo"};
+    cfg.github.clear();
+    cfg.swagger.clear();
+    cfg.blizzard.clear();
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "<!-- projot-managed"));
+    auto comment_pos = output.find("<!-- projot-managed");
+    auto todos_pos   = output.find("## Todos");
+    CHECK(comment_pos < todos_pos);
+    // No blank line between comment and ## Todos heading.
+    CHECK(contains(output, "<!-- projot-managed: content above is generated from .projot/config"));
 }
 
 TEST_CASE("render_section_order") {
@@ -138,15 +146,29 @@ TEST_CASE("render_section_order") {
 
 TEST_CASE("render_todo_open") {
     auto cfg = make_base_config();
-    std::vector<Todo> todos = {{1, "My open todo", false, "2025-01-01", "", {}}};
+    std::vector<Todo> todos = {{1, "My open todo", TodoStatus::Todo, "2025-01-01", "", {}}};
     auto output = render_markdown(cfg, todos);
     CHECK(contains(output, "1. [ ] My open todo"));
     CHECK(contains(output, "   - Created: 2025-01-01"));
 }
 
+TEST_CASE("render_todo_in_progress") {
+    auto cfg = make_base_config();
+    std::vector<Todo> todos = {{1, "Active work", TodoStatus::InProgress, "2025-01-01", "", {}}};
+    auto output = render_markdown(cfg, todos);
+    CHECK(contains(output, "1. [>] Active work"));
+}
+
+TEST_CASE("render_todo_blocked") {
+    auto cfg = make_base_config();
+    std::vector<Todo> todos = {{1, "Waiting item", TodoStatus::Blocked, "2025-01-01", "", {}}};
+    auto output = render_markdown(cfg, todos);
+    CHECK(contains(output, "1. [~] Waiting item"));
+}
+
 TEST_CASE("render_todo_closed") {
     auto cfg = make_base_config();
-    std::vector<Todo> todos = {{1, "Done todo", true, "2025-01-01", "2025-01-05", {}}};
+    std::vector<Todo> todos = {{1, "Done todo", TodoStatus::Done, "2025-01-01", "2025-01-05", {}}};
     auto output = render_markdown(cfg, todos);
     CHECK(contains(output, "1. [x] Done todo"));
     CHECK(contains(output, "   - Completed: 2025-01-05"));
@@ -154,7 +176,7 @@ TEST_CASE("render_todo_closed") {
 
 TEST_CASE("render_todo_notes") {
     auto cfg = make_base_config();
-    std::vector<Todo> todos = {{1, "Noted todo", false, "2025-01-01", "", {"Note one", "Note two"}}};
+    std::vector<Todo> todos = {{1, "Noted todo", TodoStatus::Todo, "2025-01-01", "", {"Note one", "Note two"}}};
     auto output = render_markdown(cfg, todos);
     CHECK(contains(output, "     - Note one"));
     CHECK(contains(output, "     - Note two"));
@@ -162,7 +184,7 @@ TEST_CASE("render_todo_notes") {
 
 TEST_CASE("render_todo_no_notes_block") {
     auto cfg = make_base_config();
-    std::vector<Todo> todos = {{1, "No notes", false, "2025-01-01", "", {}}};
+    std::vector<Todo> todos = {{1, "No notes", TodoStatus::Todo, "2025-01-01", "", {}}};
     auto output = render_markdown(cfg, todos);
     CHECK(contains(output, "   - Notes:"));
 }
@@ -203,8 +225,10 @@ TEST_CASE("render_round_trip") {
     auto cfg = make_base_config();
     cfg.github = {"https://github.com/org/repo"};
     std::vector<Todo> todos = {
-        {1, "Open todo", false, "2025-01-01", "", {"note one"}},
-        {2, "Closed todo", true, "2025-01-01", "2025-01-02", {}}
+        {1, "Open todo",     TodoStatus::Todo,       "2025-01-01", "",           {"note one"}},
+        {2, "In progress",   TodoStatus::InProgress, "2025-01-01", "",           {}},
+        {3, "Blocked todo",  TodoStatus::Blocked,    "2025-01-01", "",           {}},
+        {4, "Closed todo",   TodoStatus::Done,       "2025-01-01", "2025-01-02", {}}
     };
     const auto output = render_markdown(cfg, todos);
     Project proj;
@@ -212,13 +236,14 @@ TEST_CASE("render_round_trip") {
     REQUIRE(result.ok);
     CHECK(proj.name == cfg.name);
     CHECK(proj.rpm == cfg.rpm);
-    REQUIRE(proj.todos.size() == 2);
-    CHECK(proj.todos[0].id == 1);
+    REQUIRE(proj.todos.size() == 4);
+    CHECK(proj.todos[0].status == TodoStatus::Todo);
     CHECK(proj.todos[0].text == "Open todo");
-    CHECK_FALSE(proj.todos[0].completed);
     CHECK(proj.todos[0].notes[0] == "note one");
-    CHECK(proj.todos[1].completed);
-    CHECK(proj.todos[1].completed_date == "2025-01-02");
+    CHECK(proj.todos[1].status == TodoStatus::InProgress);
+    CHECK(proj.todos[2].status == TodoStatus::Blocked);
+    CHECK(proj.todos[3].status == TodoStatus::Done);
+    CHECK(proj.todos[3].completed_date == "2025-01-02");
 }
 
 TEST_CASE("render_app_id_from_config") {
