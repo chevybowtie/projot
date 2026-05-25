@@ -105,7 +105,7 @@ function handleRequest(request) {
         },
         {
           name: "complete_todo",
-          description: "Mark a TODO as completed",
+          description: "Mark a TODO as done (sets status to 'done')",
           inputSchema: {
             type: "object",
             properties: {
@@ -269,6 +269,25 @@ function handleRequest(request) {
           description: "Open the RPM project page in the default browser",
           inputSchema: { type: "object", properties: {} },
         },
+        {
+          name: "set_status",
+          description: "Set the status of a todo: todo, in-progress, blocked, or done",
+          inputSchema: {
+            type: "object",
+            properties: {
+              todo_id: {
+                type: "number",
+                description: "The numeric ID of the TODO",
+              },
+              status: {
+                type: "string",
+                enum: ["todo", "in-progress", "blocked", "done"],
+                description: "New status for the TODO",
+              },
+            },
+            required: ["todo_id", "status"],
+          },
+        },
       ] } };
   }
 
@@ -385,6 +404,12 @@ function handleRequest(request) {
       if (name === "set_blizzard_link") {
         execArgs("projot", ["add-blizzard", "--url", args.url]);
         return ok(`Blizzard URL updated: ${args.url}`);
+      }
+
+      if (name === "set_status") {
+        const { todo_id, status } = args;
+        execArgs("projot", ["status", "--todo", String(todo_id), status]);
+        return ok(`TODO #${todo_id} status set to: ${status}`);
       }
 
       return err(`Unknown tool: ${name}`);

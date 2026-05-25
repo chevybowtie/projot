@@ -27,8 +27,8 @@ std::vector<const Todo*> filter_todos(const std::vector<Todo>& todos, TodoFilter
     std::vector<const Todo*> result;
     for (const auto& t : todos) {
         if (filter == TodoFilter::All ||
-            (filter == TodoFilter::Open && !t.completed) ||
-            (filter == TodoFilter::Closed && t.completed)) {
+            (filter == TodoFilter::Open  && t.status != TodoStatus::Done) ||
+            (filter == TodoFilter::Closed && t.status == TodoStatus::Done)) {
             result.push_back(&t);
         }
     }
@@ -39,12 +39,29 @@ TodoResult complete_todo(std::vector<Todo>& todos, int id, const std::string& da
     auto* t = find_todo(todos, id);
     if (!t) return {false, false, "Todo ID " + std::to_string(id) + " not found."};
 
-    if (t->completed) {
+    if (t->status == TodoStatus::Done) {
         return {true, true, "Todo " + std::to_string(id) + " is already completed."};
     }
 
-    t->completed = true;
+    t->status = TodoStatus::Done;
     t->completed_date = date;
+    return {true, false, ""};
+}
+
+TodoResult set_todo_status(std::vector<Todo>& todos, int id, TodoStatus status, const std::string& date) {
+    auto* t = find_todo(todos, id);
+    if (!t) return {false, false, "todo " + std::to_string(id) + " not found."};
+
+    if (t->status == status) {
+        return {true, true, "todo " + std::to_string(id) + " is already at that status."};
+    }
+
+    t->status = status;
+    if (status == TodoStatus::Done) {
+        t->completed_date = date;
+    } else {
+        t->completed_date.clear();
+    }
     return {true, false, ""};
 }
 
@@ -53,7 +70,7 @@ TodoResult add_note(std::vector<Todo>& todos, int id, const std::string& note) {
     if (!t) return {false, false, "Todo ID " + std::to_string(id) + " not found."};
 
     TodoResult result{true, false, ""};
-    if (t->completed) {
+    if (t->status == TodoStatus::Done) {
         result.warned = true;
         result.message = "Warning: todo " + std::to_string(id) + " is already completed.";
     }

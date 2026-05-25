@@ -23,10 +23,9 @@ enum class Section {
     Unknown
 };
 
-// Parse a todo header line like "1. [ ] text" or "2. [x] text".
-// Returns true and fills id/completed/text on success.
-static bool parse_todo_line(const std::string& line, int& id, bool& completed, std::string& text) {
-    // Expected format: "{id}. [x] {text}" or "{id}. [ ] {text}"
+// Parse a todo header line like "1. [ ] text", "2. [>] text", "3. [~] text", "4. [x] text".
+// Returns true and fills id/status/text on success.
+static bool parse_todo_line(const std::string& line, int& id, TodoStatus& status, std::string& text) {
     std::size_t dot = line.find(". ");
     if (dot == std::string::npos) return false;
 
@@ -39,15 +38,11 @@ static bool parse_todo_line(const std::string& line, int& id, bool& completed, s
     const std::string rest = line.substr(dot + 2);
     if (rest.size() < 4) return false;
 
-    if (starts_with(rest, "[ ] ")) {
-        completed = false;
-        text = rest.substr(4);
-    } else if (starts_with(rest, "[x] ")) {
-        completed = true;
-        text = rest.substr(4);
-    } else {
-        return false;
-    }
+    if (starts_with(rest, "[ ] "))      { status = TodoStatus::Todo;       text = rest.substr(4); }
+    else if (starts_with(rest, "[>] ")) { status = TodoStatus::InProgress;  text = rest.substr(4); }
+    else if (starts_with(rest, "[~] ")) { status = TodoStatus::Blocked;     text = rest.substr(4); }
+    else if (starts_with(rest, "[x] ")) { status = TodoStatus::Done;        text = rest.substr(4); }
+    else { return false; }
     return true;
 }
 
@@ -166,11 +161,11 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
 
         // Todos section
         if (section == Section::Todos) {
-            // Try to parse a new todo header line: "1. [ ] text"
-            int id; bool completed; std::string text;
+            // Try to parse a new todo header line: "1. [ ] text", "2. [>] text", etc.
+            int id; TodoStatus status; std::string text;
             if (!line.empty() && std::isdigit(static_cast<unsigned char>(line[0])) &&
-                parse_todo_line(line, id, completed, text)) {
-                out.todos.push_back(Todo{id, text, completed, "", "", {}});
+                parse_todo_line(line, id, status, text)) {
+                out.todos.push_back(Todo{id, text, status, "", "", {}});
                 current_todo = &out.todos.back();
                 in_notes_block = false;
                 continue;

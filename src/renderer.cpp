@@ -123,10 +123,16 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     out << "\n";
 
     for (const auto& todo : todos) {
-        const char* box = todo.completed ? "[x]" : "[ ]";
+        const char* box;
+        switch (todo.status) {
+            case TodoStatus::InProgress: box = "[>]"; break;
+            case TodoStatus::Blocked:    box = "[~]"; break;
+            case TodoStatus::Done:       box = "[x]"; break;
+            default:                     box = "[ ]"; break;
+        }
         out << todo.id << ". " << box << " " << todo.text << "\n";
         out << "   - Created: " << todo.created_date << "\n";
-        if (todo.completed && !todo.completed_date.empty()) {
+        if (todo.status == TodoStatus::Done && !todo.completed_date.empty()) {
             out << "   - Completed: " << todo.completed_date << "\n";
         }
         out << "   - Notes:\n";

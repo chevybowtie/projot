@@ -25,6 +25,9 @@ int cmd_complete(const Args& args);
 // Add a note under a todo.
 int cmd_add_note(const Args& args);
 
+// Set the status of a todo (todo, in-progress, blocked, done).
+int cmd_status(const Args& args);
+
 // Set or update a single-value link URL (teams, itrack, rpm, other).
 int cmd_set_link(const Args& args);
 
@@ -59,3 +62,6 @@ int cmd_install_mcp_server(const Args& args);
 int cmd_uninstall_mcp_server(const Args& args);
 
 int cmd_set_global(const Args& args);
+
+// Set the Teams incoming webhook URL for Kanban sync.
+int cmd_set_teams_webhook(const Args& args);

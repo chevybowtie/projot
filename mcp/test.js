@@ -238,6 +238,16 @@ if (openCmd) {
   });
 }
 
+test("set_status: projot status called with todo id and status string", (assert) => {
+  const { projotCalls } = runTool("set_status", { todo_id: 3, status: "in-progress" });
+  assert("projot called", projotCalls.length > 0);
+  const cmd = projotCalls[0];
+  assert("subcommand is status", cmd.includes("status"));
+  assert("--todo present", cmd.includes("--todo"));
+  assert("todo_id in call", cmd.includes("3"));
+  assert("status in call", cmd.includes("in-progress"));
+});
+
 // ── Summary ────────────────────────────────────────────────────────────────
 
 const total = pass + fail;

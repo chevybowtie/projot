@@ -135,12 +135,84 @@ int cmd_list(const Args& args) {
         std::cout << "(no todos)\n";
     } else {
         for (const auto* t : todos) {
-            std::cout << t->id << ". "
-                      << (t->completed ? "[x]" : "[ ]")
-                      << " " << t->text << "\n";
+            const char* marker;
+            switch (t->status) {
+                case TodoStatus::InProgress: marker = "[>]"; break;
+                case TodoStatus::Blocked:    marker = "[~]"; break;
+                case TodoStatus::Done:       marker = "[x]"; break;
+                default:                     marker = "[ ]"; break;
+            }
+            std::cout << t->id << ". " << marker << " " << t->text << "\n";
         }
     }
     return 0;
+}
+
+// status
+
+int cmd_status(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot status --todo <ID> <status>\n\n"
+            "Set the status of a todo.\n\n"
+            "Required:\n"
+            "  --todo <ID>   Stable numeric todo ID\n"
+            "  <status>      One of: todo, in-progress, blocked, done\n\n"
+            "Example:\n"
+            "  projot status --todo 1 in-progress\n"
+            "  projot status --todo 1 done\n";
+        return 0;
+    }
+
+    if (!args.has("todo")) {
+        std::cerr << "error: --todo is required. Run 'projot status --help' for usage.\n";
+        return 1;
+    }
+    if (args.positional.empty()) {
+        std::cerr << "error: status is required (todo, in-progress, blocked, done). "
+                     "Run 'projot status --help' for usage.\n";
+        return 1;
+    }
+
+    int id;
+    try { id = std::stoi(args.get("todo")); }
+    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+
+    const std::string status_str = args.positional[0];
+    TodoStatus new_status;
+    if      (status_str == "todo")        new_status = TodoStatus::Todo;
+    else if (status_str == "in-progress") new_status = TodoStatus::InProgress;
+    else if (status_str == "blocked")     new_status = TodoStatus::Blocked;
+    else if (status_str == "done")        new_status = TodoStatus::Done;
+    else {
+        std::cerr << "error: unknown status '" << status_str
+                  << "'. Valid values: todo, in-progress, blocked, done.\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    return execute_project_command(ctx, [id, new_status, &status_str](Project& proj) {
+        if (!find_todo(proj.todos, id)) {
+            std::string msg = "todo " + std::to_string(id) + " not found.";
+            if (!proj.todos.empty()) {
+                msg += " Valid IDs:";
+                for (const auto& t : proj.todos) msg += " " + std::to_string(t.id);
+            }
+            return ParseResult{false, msg};
+        }
+
+        auto result = set_todo_status(proj.todos, id, new_status, date_today());
+        if (result.warned) {
+            std::cerr << "warning: todo " << id << " is already '" << status_str << "'.\n";
+            return ParseResult{false, "already_completed"};
+        }
+
+        std::cout << "Todo " << id << " status set to: " << status_str << ".\n";
+        return ParseResult{true, ""};
+    });
 }
 
 // complete

@@ -76,6 +76,7 @@ int cmd_new(const Args& args) {
             "  --itrack <iTrack>         iTrack ticket number\n\n"
             "Optional:\n"
             "  --teams <URL>             Teams channel URL\n"
+            "  --teams-webhook <URL>     Teams incoming webhook URL for Kanban sync\n"
             "  --rpm-url <URL>           RPM system link\n"
             "  --itrack-url <URL>        iTrack link\n"
             "  --other <URL>             Other URL\n"
@@ -119,6 +120,9 @@ int cmd_new(const Args& args) {
             ctx.config.link_urls[ld.key] = args.get(ld.flag);
         }
     }
+
+    if (args.has("teams-webhook"))
+        ctx.config.teams_webhook = args.get("teams-webhook");
 
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
@@ -377,4 +381,38 @@ int cmd_set_global(const Args& args) {
 
     std::cout << "Updated global config: " << path->string() << "\n";
     return 0;
+}
+
+// set-teams-webhook
+
+int cmd_set_teams_webhook(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-teams-webhook <URL>\n\n"
+            "Set the Teams incoming webhook URL for Kanban sync.\n\n"
+            "The webhook URL is created in Teams channel settings under\n"
+            "Connectors > Incoming Webhook. It is stored in .projot/config.\n\n"
+            "Note: .projot/config is git-tracked. For public repos, avoid\n"
+            "committing a webhook URL, or gitignore .projot/config.\n\n"
+            "Example:\n"
+            "  projot set-teams-webhook https://xxx.webhook.office.com/webhookb2/...\n";
+        return 0;
+    }
+
+    if (args.positional.empty()) {
+        std::cerr << "error: webhook URL is required. "
+                     "Run 'projot set-teams-webhook --help' for usage.\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    const std::string url = args.positional[0];
+
+    return execute_config_command(ctx, [&url](Context& c) {
+        c.config.teams_webhook = url;
+        return ParseResult{true, ""};
+    }, false, "Set teams_webhook = " + url);
 }

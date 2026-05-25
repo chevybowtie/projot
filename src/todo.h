@@ -4,12 +4,14 @@
 #include <vector>
 #include <optional>
 
+enum class TodoStatus { Todo, InProgress, Blocked, Done };
+
 struct Todo {
     int id = 0;
     std::string text;
-    bool completed = false;
+    TodoStatus status = TodoStatus::Todo;
     std::string created_date;
-    std::string completed_date;
+    std::string completed_date;   // set when status transitions to Done; cleared otherwise
     std::vector<std::string> notes;
 };
 
@@ -31,8 +33,11 @@ struct TodoResult {
     std::string message;   // warning or error text
 };
 
-// Mark a todo completed. Returns warned=true if already completed.
+// Mark a todo done. Returns warned=true if already done.
 TodoResult complete_todo(std::vector<Todo>& todos, int id, const std::string& date);
 
-// Add a note to a todo. Returns warned=true if todo is already completed.
+// Set a todo's status. Returns warned=true if already at that status.
+TodoResult set_todo_status(std::vector<Todo>& todos, int id, TodoStatus status, const std::string& date);
+
+// Add a note to a todo. Returns warned=true if todo is already done.
 TodoResult add_note(std::vector<Todo>& todos, int id, const std::string& note);
