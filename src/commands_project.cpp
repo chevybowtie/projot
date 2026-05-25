@@ -56,7 +56,8 @@ int cmd_close(const Args& args) {
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
-    std::cout << "Closed. Run 'projot new' to start the next project.\n";
+    std::cout << "Closed. Run 'projot new' to start the next project.\n"
+              << "Note: pre-commit hook is still installed — run 'projot uninstall-hook' if you don't want it active between projects.\n";
     return 0;
 }
 
