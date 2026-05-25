@@ -187,7 +187,7 @@ int cmd_render(const Args& args) {
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
-    if (!require_project(ctx)) return 1;
+    if (ctx.config.rpm.empty()) return 0;  // no active project; hook is a no-op between projects
 
     Project proj;
     auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
