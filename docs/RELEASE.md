@@ -2,7 +2,7 @@
 
 ## Overview
 
-Releases are created from `master` branch only. The release workflow is triggered by git tags matching `v*` (e.g., `v0.1.4`).
+Final releases are created from `master` branch only. The release workflow is triggered by git tags matching `v*` (e.g., `v0.1.4`).
 
 ## Release Checklist
 
@@ -30,6 +30,15 @@ git tag v0.1.4
 git push origin v0.1.4
 ```
 
+To publish a **pre-release** (beta, RC, etc.), append a suffix to the tag:
+
+```sh
+git tag v0.1.4-beta1
+git push origin v0.1.4-beta1
+```
+
+The workflow extracts the suffix from the tag and passes it to CMake, so `projot --version` reports `0.1.4-beta1`. GitHub marks the release as a pre-release automatically when the tag contains a hyphen. The `CMakeLists.txt` version field stays as the plain numeric version (`0.1.4`); only the tag carries the suffix.
+
 ### 4. GitHub Actions builds and publishes
 
 The release workflow automatically:
@@ -54,13 +63,21 @@ The release workflow automatically:
 
 ## Version numbering
 
-Version is defined in `CMakeLists.txt` line 2:
+The numeric version is defined in `CMakeLists.txt`:
 
 ```cmake
 project(projot VERSION X.Y.Z LANGUAGES CXX)
 ```
 
-Bump this before creating the release tag.
+Bump this before creating the release tag. Pre-release suffixes (e.g. `beta1`, `rc2`) are **not** part of the CMake version — they are carried only by the git tag and appended to the binary version string automatically by the release workflow.
+
+To test a pre-release build locally:
+
+```sh
+cmake -B build -DPROJOT_VERSION_SUFFIX=beta1
+cmake --build build
+./build/projot --version   # prints 0.1.4-beta1
+```
 
 ## Automation notes
 
