@@ -111,10 +111,18 @@ TEST_CASE("render_omits_empty_blizzard") {
 }
 
 TEST_CASE("render_managed_comment") {
+    // Comment is always present, even without managed sections, and always just before ## Todos.
     auto cfg = make_base_config();
-    cfg.github = {"https://github.com/org/repo"};
+    cfg.github.clear();
+    cfg.swagger.clear();
+    cfg.blizzard.clear();
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "<!-- projot-managed"));
+    auto comment_pos = output.find("<!-- projot-managed");
+    auto todos_pos   = output.find("## Todos");
+    CHECK(comment_pos < todos_pos);
+    // No blank line between comment and ## Todos heading.
+    CHECK(contains(output, "<!-- projot-managed: content above is generated from .projot/config"));
 }
 
 TEST_CASE("render_section_order") {
