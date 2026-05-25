@@ -1,12 +1,20 @@
 cmake_minimum_required(VERSION 3.16)
-project(projot VERSION 0.1.12 LANGUAGES CXX)
+project(projot VERSION 0.1.13 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Pre-release suffix (e.g. beta1, rc2). Pass via -DPROJOT_VERSION_SUFFIX=beta1.
+set(PROJOT_VERSION_SUFFIX "" CACHE STRING "Pre-release suffix appended to version string")
+if(PROJOT_VERSION_SUFFIX STREQUAL "")
+    set(PROJOT_VERSION_FULL "${PROJECT_VERSION}")
+else()
+    set(PROJOT_VERSION_FULL "${PROJECT_VERSION}-${PROJOT_VERSION_SUFFIX}")
+endif()
+
 # Version string baked into binary
-add_compile_definitions(PROJOT_VERSION="${PROJECT_VERSION}")
+add_compile_definitions(PROJOT_VERSION="${PROJOT_VERSION_FULL}")
 add_compile_definitions(PROJOT_CONFIG_VERSION=1)
 
 # Cross-platform warnings
