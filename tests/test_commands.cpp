@@ -3,6 +3,7 @@
 #include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
+#include "todo.h"
 #include "utils.h"
 
 #include <filesystem>
@@ -335,7 +336,7 @@ TEST_CASE("complete_marks_done") {
     Project proj;
     parse_markdown((repo.path / ".projot" / "6.md").string(), proj);
     REQUIRE(!proj.todos.empty());
-    CHECK(proj.todos[0].completed);
+    CHECK(proj.todos[0].status == TodoStatus::Done);
     CHECK(!proj.todos[0].completed_date.empty());
 }
 
@@ -883,4 +884,78 @@ TEST_CASE("load_context_local_config_overrides_global") {
     auto ctx = load_context();
     REQUIRE(ctx.ok);
     CHECK(ctx.config.rpm_base_url == "https://local.example.com/");
+}
+
+// ── cmd_status ────────────────────────────────────────────────────────────────
+
+TEST_CASE("status_sets_in_progress") {
+    TempRepo repo("status_in_progress");
+    repo.init(); repo.new_project("20");
+    cmd_add_todo(make_args("add-todo", {}, "Work item"));
+    int ret = cmd_status(make_args("status", {{"todo", "1"}}, "in-progress"));
+    CHECK(ret == 0);
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "20.md").string(), proj);
+    REQUIRE(!proj.todos.empty());
+    CHECK(proj.todos[0].status == TodoStatus::InProgress);
+}
+
+TEST_CASE("status_sets_blocked") {
+    TempRepo repo("status_blocked");
+    repo.init(); repo.new_project("21");
+    cmd_add_todo(make_args("add-todo", {}, "Blocked item"));
+    int ret = cmd_status(make_args("status", {{"todo", "1"}}, "blocked"));
+    CHECK(ret == 0);
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "21.md").string(), proj);
+    REQUIRE(!proj.todos.empty());
+    CHECK(proj.todos[0].status == TodoStatus::Blocked);
+}
+
+TEST_CASE("status_sets_done") {
+    TempRepo repo("status_done");
+    repo.init(); repo.new_project("22");
+    cmd_add_todo(make_args("add-todo", {}, "Finish me"));
+    int ret = cmd_status(make_args("status", {{"todo", "1"}}, "done"));
+    CHECK(ret == 0);
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "22.md").string(), proj);
+    REQUIRE(!proj.todos.empty());
+    CHECK(proj.todos[0].status == TodoStatus::Done);
+    CHECK(!proj.todos[0].completed_date.empty());
+}
+
+TEST_CASE("status_already_at_status_warns_not_errors") {
+    TempRepo repo("status_already");
+    repo.init(); repo.new_project("23");
+    cmd_add_todo(make_args("add-todo", {}, "Todo item"));
+    // todo is already in Todo state
+    int ret = cmd_status(make_args("status", {{"todo", "1"}}, "todo"));
+    CHECK(ret == 0); // warn, not error
+}
+
+TEST_CASE("status_unknown_status_string_errors") {
+    TempRepo repo("status_unknown");
+    repo.init(); repo.new_project("24");
+    cmd_add_todo(make_args("add-todo", {}, "Todo item"));
+    int ret = cmd_status(make_args("status", {{"todo", "1"}}, "invalid-status"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("status_missing_todo_flag_errors") {
+    TempRepo repo("status_no_todo");
+    repo.init(); repo.new_project("25");
+    int ret = cmd_status(make_args("status", {}, "in-progress"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("status_complete_still_works_backward_compat") {
+    TempRepo repo("status_complete_compat");
+    repo.init(); repo.new_project("26");
+    cmd_add_todo(make_args("add-todo", {}, "Compat todo"));
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "26.md").string(), proj);
+    REQUIRE(!proj.todos.empty());
+    CHECK(proj.todos[0].status == TodoStatus::Done);
 }
