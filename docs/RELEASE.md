@@ -10,7 +10,7 @@ Final releases are created from `master` branch only. The release workflow is tr
 
 - Make all changes (code, packaging, docs) on your feature branch
 - Ensure `CMakeLists.txt` has the target version number (e.g., `0.1.4`)
-- Perform one final verbose test: `./build/projot_tests`
+- Perform one final verbose test: `ctest --test-dir build --output-on-failure`
 
 ### 2. Create PR and merge to master
 
