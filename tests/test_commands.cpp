@@ -725,10 +725,10 @@ TEST_CASE("version_flag") {
 
 // ── cmd_render error paths ────────────────────────────────────────────────────
 
-TEST_CASE("render_requires_project") {
-    TempRepo repo("render_requires_project");
+TEST_CASE("render_no_project_is_noop") {
+    TempRepo repo("render_no_project_is_noop");
     repo.init(); // no new_project — rpm is empty
-    CHECK(cmd_render(make_args("render")) != 0);
+    CHECK(cmd_render(make_args("render")) == 0);  // no-op; hook must not block commits between projects
 }
 
 TEST_CASE("render_write_failure") {
