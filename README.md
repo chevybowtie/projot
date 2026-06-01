@@ -161,7 +161,7 @@ Date format tokens (display only):
 |---|---|
 | `init` | Initialize projot for this repo (repo-level setup) |
 | `new` | Start a new RPM project in this repo |
-| `close` | Close the current project (clears project-level config) |
+| `close` | Close the current project (clears project-level config, carries open todos to next project) |
 | `add-todo` | Append a todo (`projot add-todo "message"`) |
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
 | `complete` | Mark a todo completed (`--todo <ID>`) |

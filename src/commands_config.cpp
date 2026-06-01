@@ -11,6 +11,7 @@
 #include <algorithm>
 
 namespace fs = std::filesystem;
+static const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
 
 // init
 
@@ -127,8 +128,33 @@ int cmd_new(const Args& args) {
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
-    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, {});
+    std::vector<Todo> carryover_todos;
+    fs::path carryover_path = ctx.repo_root / ".projot" / CARRYOVER_TODOS_FILE;
+    if (fs::exists(carryover_path)) {
+        Project carryover_project;
+        auto parse = parse_markdown(carryover_path.string(), carryover_project);
+        if (!parse.ok) {
+            std::cerr << "error: " << parse.error << "\n";
+            return 1;
+        }
+
+        int next_id = 1;
+        for (const auto* todo : filter_todos(carryover_project.todos, TodoFilter::Open)) {
+            Todo copied = *todo;
+            copied.id = next_id++;
+            copied.completed_date.clear();
+            carryover_todos.push_back(std::move(copied));
+        }
+    }
+
+    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, carryover_todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
+
+    std::error_code ec;
+    fs::remove(carryover_path, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        std::cerr << "warning: failed to clear carryover todos file: " << ec.message() << "\n";
+    }
 
     std::cout << "Created project " << ctx.config.name
               << " (RPM " << ctx.config.rpm << ")\n";

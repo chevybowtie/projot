@@ -2,6 +2,7 @@
 #include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
+#include "renderer.h"
 #include "todo.h"
 #include "utils.h"
 
@@ -10,6 +11,7 @@
 #include <algorithm>
 
 namespace fs = std::filesystem;
+static const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
 
 // close
 
@@ -19,7 +21,8 @@ int cmd_close(const Args& args) {
             "Usage: projot close\n\n"
             "Archive the current project and reset for the next one.\n\n"
             "Moves the project notes file to .projot/archive/ and clears all\n"
-            "project-level configuration (rpm, itrack, todos, etc).\n"
+            "project-level configuration (rpm, itrack, etc).\n"
+            "Open todos are carried forward to the next project.\n"
             "Repo-level settings (app_id, GitHub, Swagger, Blizzard) are preserved.\n\n"
             "No flags required.\n\n"
             "Example:\n"
@@ -40,6 +43,22 @@ int cmd_close(const Args& args) {
     }
 
     fs::path old_notes = ctx.repo_root / ".projot" / (ctx.config.rpm + ".md");
+    fs::path carryover_notes = ctx.repo_root / ".projot" / CARRYOVER_TODOS_FILE;
+
+    Project closing_project;
+    auto parse = parse_markdown(old_notes.string(), closing_project);
+    if (!parse.ok) {
+        std::cerr << "error: " << parse.error << "\n";
+        return 1;
+    }
+
+    std::vector<Todo> carryover_todos;
+    for (const auto* todo : filter_todos(closing_project.todos, TodoFilter::Open)) {
+        carryover_todos.push_back(*todo);
+    }
+
+    Config closing_config = ctx.config;
+
     fs::path archived_notes = archive_dir / (ctx.config.rpm + ".md");
     fs::rename(old_notes, archived_notes, ec);
     if (ec && ec != std::errc::no_such_file_or_directory) {
@@ -55,6 +74,20 @@ int cmd_close(const Args& args) {
 
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+
+    if (carryover_todos.empty()) {
+        fs::remove(carryover_notes, ec);
+        if (ec && ec != std::errc::no_such_file_or_directory) {
+            std::cerr << "error: cannot clear carryover todos: " << ec.message() << "\n";
+            return 1;
+        }
+    } else {
+        auto carryover_render = render_to_file(carryover_notes.string(), closing_config, carryover_todos);
+        if (!carryover_render.ok) {
+            std::cerr << "error: " << carryover_render.error << "\n";
+            return 1;
+        }
+    }
 
     std::cout << "Closed. Run 'projot new' to start the next project.\n"
               << "Note: pre-commit hook is still installed — run 'projot uninstall-hook' if you don't want it active between projects.\n";
