@@ -230,6 +230,51 @@ TEST_CASE("close_archives_notes_file") {
     CHECK(!fs::exists(repo.path / ".projot" / "54321.md"));
 }
 
+TEST_CASE("close_carries_open_todos_to_next_project") {
+    TempRepo repo("close_carries_open_todos_to_next_project");
+    repo.init();
+    repo.new_project("carry1", "Carry One", "11111");
+
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Done item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Blocked item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Todo item")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "1"}}, "done")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "2"}}, "blocked")) == 0);
+
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(repo.new_project("carry2", "Carry Two", "22222") == 0);
+
+    Project next_proj;
+    auto parse = parse_markdown((repo.path / ".projot" / "carry2.md").string(), next_proj);
+    REQUIRE(parse.ok);
+    REQUIRE(next_proj.todos.size() == 2);
+    CHECK(next_proj.todos[0].id == 1);
+    CHECK(next_proj.todos[0].text == "Blocked item");
+    CHECK(next_proj.todos[0].status == TodoStatus::Blocked);
+    CHECK(next_proj.todos[1].id == 2);
+    CHECK(next_proj.todos[1].text == "Todo item");
+    CHECK(next_proj.todos[1].status == TodoStatus::Todo);
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
+}
+
+TEST_CASE("close_without_open_todos_does_not_carry_over") {
+    TempRepo repo("close_without_open_todos_does_not_carry_over");
+    repo.init();
+    repo.new_project("carry3", "Carry Three", "33333");
+
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Only done item")) == 0);
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
+
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(repo.new_project("carry4", "Carry Four", "44444") == 0);
+
+    Project next_proj;
+    auto parse = parse_markdown((repo.path / ".projot" / "carry4.md").string(), next_proj);
+    REQUIRE(parse.ok);
+    CHECK(next_proj.todos.empty());
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
+}
+
 TEST_CASE("close_clears_azure_resources") {
     TempRepo repo("close_clears_azure_resources");
     repo.init();
