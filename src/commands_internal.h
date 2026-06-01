@@ -8,6 +8,7 @@
 #include <string>
 
 namespace fs = std::filesystem;
+static constexpr const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
 
 struct Context {
     fs::path repo_root;
