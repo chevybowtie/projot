@@ -11,7 +11,6 @@
 #include <algorithm>
 
 namespace fs = std::filesystem;
-static const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
 
 // init
 
