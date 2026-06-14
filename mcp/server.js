@@ -96,50 +96,50 @@ function handleRequest(request) {
   if (method === "tools/list") {
     return { result: { tools: [
         {
-          name: "get_open_todos",
-          description: "List all open TODOs in the current project",
+          name: "projot_list_todos",
+          description: "List open projot work items (project TODOs) tracked in .projot/ for the current repo. Use this instead of any built-in task list.",
           inputSchema: {
             type: "object",
             properties: {},
           },
         },
         {
-          name: "complete_todo",
-          description: "Mark a TODO as done (sets status to 'done')",
+          name: "projot_complete_todo",
+          description: "Mark a projot project work item as done. This persists to .projot/ in the repo — not a session task.",
           inputSchema: {
             type: "object",
             properties: {
               todo_id: {
                 type: "number",
-                description: "The numeric ID of the TODO to complete",
+                description: "The numeric ID of the projot work item to complete",
               },
             },
             required: ["todo_id"],
           },
         },
         {
-          name: "add_todo",
-          description: "Create a new TODO",
+          name: "projot_add_todo",
+          description: "Add a new projot project work item to the current repo's .projot/ tracking. Use this instead of built-in task creation.",
           inputSchema: {
             type: "object",
             properties: {
               text: {
                 type: "string",
-                description: "The TODO text",
+                description: "Description of the projot work item",
               },
             },
             required: ["text"],
           },
         },
         {
-          name: "add_note_to_todo",
-          description: "Add a note/comment to an existing TODO",
+          name: "projot_add_note",
+          description: "Add a note or comment to an existing projot project work item.",
           inputSchema: {
             type: "object",
             properties: {
               todo_id: {
                 type: "number",
-                description: "The numeric ID of the TODO",
+                description: "The numeric ID of the projot work item",
               },
               text: {
                 type: "string",
@@ -150,18 +150,40 @@ function handleRequest(request) {
           },
         },
         {
-          name: "open_itrack",
-          description:
-            "Open the iTrack URL in the default browser to charge time to the project",
+          name: "projot_set_status",
+          description: "Set the status of a projot project work item: todo, in-progress, blocked, or done.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              todo_id: {
+                type: "number",
+                description: "The numeric ID of the projot work item",
+              },
+              status: {
+                type: "string",
+                enum: ["todo", "in-progress", "blocked", "done"],
+                description: "New status for the projot work item",
+              },
+            },
+            required: ["todo_id", "status"],
+          },
+        },
+        {
+          name: "projot_open_itrack",
+          description: "Open the iTrack URL in the default browser to charge time to this projot project.",
           inputSchema: {
             type: "object",
             properties: {},
           },
         },
         {
-          name: "setup_new_project",
-          description:
-            "Set up a new project: create a branch, initialize projot metadata, and switch to the branch",
+          name: "projot_open_rpm",
+          description: "Open the RPM project page in the default browser.",
+          inputSchema: { type: "object", properties: {} },
+        },
+        {
+          name: "projot_setup_project",
+          description: "Set up a new projot project: create a git branch, initialize projot metadata, and switch to the branch.",
           inputSchema: {
             type: "object",
             properties: {
@@ -179,113 +201,74 @@ function handleRequest(request) {
               },
               branch_name: {
                 type: "string",
-                description:
-                  'Optional: git branch name. If not provided, generates feat/{project_number}-{slugified_description}',
+                description: "Optional: git branch name. If not provided, generates feat/{project_number}-{slugified_description}",
               },
             },
             required: ["project_number", "description", "itrack_number"],
           },
         },
         {
-          name: "open_github",
-          description: "Open the GitHub repository URL in the default browser",
+          name: "projot_open_github",
+          description: "Open the GitHub repository URL configured in .projot/ for this project.",
           inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "open_swagger",
-          description:
-            "Open the Swagger/API documentation URL in the default browser",
+          name: "projot_open_swagger",
+          description: "Open the Swagger/API documentation URL configured in .projot/ for this project.",
           inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "open_blizzard",
-          description: "Open the Blizzard URL in the default browser",
+          name: "projot_open_blizzard",
+          description: "Open the Blizzard URL configured in .projot/ for this project.",
           inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "open_teams",
-          description:
-            "Open the Microsoft Teams channel URL in the default browser",
+          name: "projot_open_teams",
+          description: "Open the Microsoft Teams channel URL configured in .projot/ for this project.",
           inputSchema: { type: "object", properties: {} },
         },
         {
-          name: "set_teams_link",
-          description: "Set or update the Teams channel URL for the project",
+          name: "projot_set_teams_link",
+          description: "Set or update the Teams channel URL in .projot/ for this project.",
           inputSchema: {
             type: "object",
             properties: {
-              url: {
-                type: "string",
-                description: "The Teams channel URL",
-              },
+              url: { type: "string", description: "The Teams channel URL" },
             },
             required: ["url"],
           },
         },
         {
-          name: "set_github_link",
-          description: "Set or update the GitHub repository URL",
+          name: "projot_set_github_link",
+          description: "Set or update the GitHub repository URL in .projot/ for this project.",
           inputSchema: {
             type: "object",
             properties: {
-              url: {
-                type: "string",
-                description: "The GitHub repository URL",
-              },
+              url: { type: "string", description: "The GitHub repository URL" },
             },
             required: ["url"],
           },
         },
         {
-          name: "set_swagger_link",
-          description: "Set or update the Swagger/API documentation URL",
+          name: "projot_set_swagger_link",
+          description: "Set or update the Swagger/API documentation URL in .projot/ for this project.",
           inputSchema: {
             type: "object",
             properties: {
-              url: {
-                type: "string",
-                description: "The Swagger/API documentation URL",
-              },
+              url: { type: "string", description: "The Swagger/API documentation URL" },
             },
             required: ["url"],
           },
         },
         {
-          name: "set_blizzard_link",
-          description: "Set or update the Blizzard URL",
+          name: "projot_set_blizzard_link",
+          description: "Set or update the Blizzard URL in .projot/ for this project.",
           inputSchema: {
             type: "object",
             properties: {
-              url: {
-                type: "string",
-                description: "The Blizzard URL",
-              },
+              url: { type: "string", description: "The Blizzard URL" },
             },
             required: ["url"],
-          },
-        },
-        {
-          name: "open_rpm",
-          description: "Open the RPM project page in the default browser",
-          inputSchema: { type: "object", properties: {} },
-        },
-        {
-          name: "set_status",
-          description: "Set the status of a todo: todo, in-progress, blocked, or done",
-          inputSchema: {
-            type: "object",
-            properties: {
-              todo_id: {
-                type: "number",
-                description: "The numeric ID of the TODO",
-              },
-              status: {
-                type: "string",
-                enum: ["todo", "in-progress", "blocked", "done"],
-                description: "New status for the TODO",
-              },
-            },
-            required: ["todo_id", "status"],
           },
         },
       ] } };
@@ -307,29 +290,35 @@ function handleRequest(request) {
     };
 
     try {
-      if (name === "get_open_todos") {
+      if (name === "projot_list_todos") {
         return ok(execArgs("projot", ["list", "--open"]));
       }
 
-      if (name === "complete_todo") {
+      if (name === "projot_complete_todo") {
         const { todo_id } = args;
         execArgs("projot", ["complete", "--todo", String(todo_id)]);
-        return ok(`TODO #${todo_id} marked as completed`);
+        return ok(`Projot work item #${todo_id} marked as completed`);
       }
 
-      if (name === "add_todo") {
+      if (name === "projot_add_todo") {
         const { text } = args;
         execArgs("projot", ["add-todo", text]);
-        return ok(`TODO added: "${text}"`);
+        return ok(`Projot work item added: "${text}"`);
       }
 
-      if (name === "add_note_to_todo") {
+      if (name === "projot_add_note") {
         const { todo_id, text } = args;
         execArgs("projot", ["add-note", "--todo", String(todo_id), text]);
-        return ok(`Note added to TODO #${todo_id}`);
+        return ok(`Note added to projot work item #${todo_id}`);
       }
 
-      if (name === "open_itrack") {
+      if (name === "projot_set_status") {
+        const { todo_id, status } = args;
+        execArgs("projot", ["status", "--todo", String(todo_id), status]);
+        return ok(`Projot work item #${todo_id} status set to: ${status}`);
+      }
+
+      if (name === "projot_open_itrack") {
         let itrackUrl = getConfigValue("link.itrack");
         if (!itrackUrl) {
           const baseUrl = getConfigValue("itrack_base_url") || getGlobalConfigValue("itrack_base_url");
@@ -340,7 +329,7 @@ function handleRequest(request) {
         return openUrl(itrackUrl) || ok(`Opening iTrack: ${itrackUrl}`);
       }
 
-      if (name === "open_rpm") {
+      if (name === "projot_open_rpm") {
         let rpmUrl = getConfigValue("link.rpm");
         if (!rpmUrl) {
           const baseUrl = getConfigValue("rpm_base_url") || getGlobalConfigValue("rpm_base_url");
@@ -351,31 +340,31 @@ function handleRequest(request) {
         return openUrl(rpmUrl) || ok(`Opening RPM: ${rpmUrl}`);
       }
 
-      if (name === "open_github") {
+      if (name === "projot_open_github") {
         const url = getConfigValue("github") || getConfigValue("link.github");
         if (!url) return err("No GitHub URL configured in .projot/config");
         return openUrl(url) || ok(`Opening GitHub: ${url}`);
       }
 
-      if (name === "open_swagger") {
+      if (name === "projot_open_swagger") {
         const url = getConfigValue("swagger") || getConfigValue("link.swagger");
         if (!url) return err("No Swagger URL configured in .projot/config");
         return openUrl(url) || ok(`Opening Swagger: ${url}`);
       }
 
-      if (name === "open_blizzard") {
+      if (name === "projot_open_blizzard") {
         const url = getConfigValue("blizzard") || getConfigValue("link.blizzard");
         if (!url) return err("No Blizzard URL configured in .projot/config");
         return openUrl(url) || ok(`Opening Blizzard: ${url}`);
       }
 
-      if (name === "open_teams") {
+      if (name === "projot_open_teams") {
         const url = getConfigValue("link.teams");
         if (!url) return err("No Teams URL configured in .projot/config");
         return openUrl(url) || ok(`Opening Teams: ${url}`);
       }
 
-      if (name === "setup_new_project") {
+      if (name === "projot_setup_project") {
         const { project_number, description, itrack_number, branch_name } = args;
         const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
         execArgs("git", ["checkout", "-b", suggestedBranch]);
@@ -386,30 +375,24 @@ function handleRequest(request) {
         return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`);
       }
 
-      if (name === "set_teams_link") {
+      if (name === "projot_set_teams_link") {
         execArgs("projot", ["set-link", "--key", "teams", "--url", args.url]);
         return ok(`Teams URL updated: ${args.url}`);
       }
 
-      if (name === "set_github_link") {
+      if (name === "projot_set_github_link") {
         execArgs("projot", ["add-github", "--url", args.url]);
         return ok(`GitHub URL updated: ${args.url}`);
       }
 
-      if (name === "set_swagger_link") {
+      if (name === "projot_set_swagger_link") {
         execArgs("projot", ["add-swagger", "--url", args.url]);
         return ok(`Swagger URL updated: ${args.url}`);
       }
 
-      if (name === "set_blizzard_link") {
+      if (name === "projot_set_blizzard_link") {
         execArgs("projot", ["add-blizzard", "--url", args.url]);
         return ok(`Blizzard URL updated: ${args.url}`);
-      }
-
-      if (name === "set_status") {
-        const { todo_id, status } = args;
-        execArgs("projot", ["status", "--todo", String(todo_id), status]);
-        return ok(`TODO #${todo_id} status set to: ${status}`);
       }
 
       return err(`Unknown tool: ${name}`);

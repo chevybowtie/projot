@@ -26,12 +26,13 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 ## Features (v0.1)
 
 - Initialize a repo with app-level metadata (`init`) then start a project (`new`).
-- Track todos with created/completed dates and stable numeric IDs.
+- Track todos with stable numeric IDs and four states: **Todo**, **In Progress**, **Blocked**, **Done**.
 - Append notes under each todo.
-- Store project metadata: RPM number, iTrack, project name, app ID, created date, last updated date.
+- Store project metadata: RPM number, iTrack, project name, app ID, created date.
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
 - Configurable Links section with Teams, iTrack, RPM, and other single-value URLs.
 - List open, closed, or all todos.
+- Automatic Teams Kanban sync on every commit (via incoming webhook).
 - Cross-platform (Linux + Windows).
 - C++ standard library only — no external dependencies.
 - Fully unit-tested.
@@ -60,7 +61,10 @@ projot add-todo "Validate index rebuild plan"
 # List open todos
 projot list
 
-# Complete a todo
+# Update status (todo / in-progress / blocked / done)
+projot status --todo 1 in-progress
+
+# Complete a todo (shorthand for status done)
 projot complete --todo 1
 
 # Add a note to a todo
@@ -114,11 +118,21 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 1. [ ] Validate index rebuild plan
    - Created: 2025-11-23
    - Notes:
-    - 2025-11-23 - Waiting on supervisor feedback
+     - Waiting on supervisor feedback
 
-2. [x] Initial setup complete
+2. [>] Implement widget renderer
+   - Created: 2025-11-22
+   - Notes:
+
+3. [~] Performance review
+   - Created: 2025-11-21
+   - Notes:
+     - Blocked on load test results
+
+4. [x] Initial setup complete
    - Created: 2025-11-20
    - Completed: 2025-11-21
+   - Notes:
 ```
 
 ---
@@ -140,17 +154,10 @@ blizzard = https://blizzard.example.com/project
 rpm = 12345
 name = Widget Redesign
 itrack = 67890
-date_format = YYYY-MM-DD
 links = teams, itrack, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
-
-Date format tokens (display only):
-
-- Supported tokens: `YYYY` (4-digit year), `MM` (zero-padded month), `DD` (zero-padded day).
-- Examples: `YYYY-MM-DD` → 2026-05-15, `DD/MM/YYYY` → 15/05/2026, `MM-DD-YYYY` → 05-15-2026.
-- Behavior: if `date_format` is empty, projot falls back to ISO (`YYYY-MM-DD`). projot performs simple token replacement only — no locale-aware names, no time-of-day, and no timezone conversion.
-- Notes: named presets (e.g. `preset:US`) are not implemented in v0.1; rely on the token patterns above for predictable output.
+teams_webhook = https://xxx.webhook.office.com/webhookb2/...
 ```
 
 ---
@@ -164,8 +171,9 @@ Date format tokens (display only):
 | `close` | Close the current project (clears project-level config) |
 | `add-todo` | Append a todo (`projot add-todo "message"`) |
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
-| `complete` | Mark a todo completed (`--todo <ID>`) |
-| `add-note` | Add a note to a todo (`--todo <ID> --text "..."`) |
+| `status` | Set todo status (`--todo <ID> todo\|in-progress\|blocked\|done`) |
+| `complete` | Mark a todo done — shorthand for `status done` (`--todo <ID>`) |
+| `add-note` | Add a note to a todo (`--todo <ID> "note text"`) |
 | `set-link` | Set a single-value link URL (`--key <key> --url <url>`) |
 | `set-app-id` | Update the app ID (`--force` required if already set) |
 | `add-github` | Add a GitHub URL to config |
@@ -174,6 +182,7 @@ Date format tokens (display only):
 | `add-azure` | Add an Azure resource URL (`--type <type> --url <url> [--name <label>]`) |
 | `render` | Re-render the notes file from config |
 | `set-global` | Set global defaults (`--rpm-base-url`, `--itrack-base-url`) |
+| `set-teams-webhook` | Set the Teams incoming webhook URL for Kanban sync |
 | `install-hook` | Install the pre-commit git hook |
 | `uninstall-hook` | Remove the pre-commit git hook |
 | `install-mcp-server` | Configure the MCP server in your IDE settings |
@@ -226,8 +235,9 @@ The `mcp/` directory contains a **Model Context Protocol server** that integrate
 With the MCP server configured, you can ask your AI assistant in your IDE to:
 
 - **Show TODOs**: *"Show my open TODOs"* → Lists them with IDs
-- **Complete TODOs**: *"Close TODO #2"* → Marks it done
 - **Add TODOs**: *"Add a TODO: fix the Windows build"*
+- **Update status**: *"Mark TODO #3 as in-progress"* → Sets the Kanban state
+- **Complete TODOs**: *"Close TODO #2"* → Marks it done
 - **Set up projects**: *"Help me set up a new project"* → Creates branch, initializes projot metadata
 - **Open time tracking**: *"Open iTrack to charge time"* → Opens your iTrack URL in the browser
 
