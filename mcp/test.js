@@ -55,7 +55,7 @@ function runTool(toolName, toolArgs) {
   writeFileSync(logFile, "");
 
   const input = [
-    JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }),
+    JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } }),
     JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call",
                      params: { name: toolName, arguments: toolArgs } }),
   ].join("\n") + "\n";
@@ -246,6 +246,46 @@ test("set_status: projot status called with todo id and status string", (assert)
   assert("--todo present", cmd.includes("--todo"));
   assert("todo_id in call", cmd.includes("3"));
   assert("status in call", cmd.includes("in-progress"));
+});
+
+// Protocol negotiation tests
+function runInitialize(protocolVersion) {
+  const params = protocolVersion !== undefined ? { protocolVersion } : {};
+  const input = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params }) + "\n";
+  const result = spawnSync("node", [SERVER], {
+    input,
+    cwd: tmp,
+    env: testEnv,
+    encoding: "utf8",
+    timeout: 8000,
+  });
+  try {
+    return JSON.parse(result.stdout.trim());
+  } catch {
+    return null;
+  }
+}
+
+test("initialize: supported version 2024-11-05 is accepted and echoed back", (assert) => {
+  const resp = runInitialize("2024-11-05");
+  assert("response received", !!resp);
+  assert("no error", !resp.error);
+  assert("protocolVersion echoed", resp.result && resp.result.protocolVersion === "2024-11-05");
+  assert("tools capability declared", resp.result && resp.result.capabilities && "tools" in resp.result.capabilities);
+});
+
+test("initialize: unsupported version returns error", (assert) => {
+  const resp = runInitialize("2099-01-01");
+  assert("response received", !!resp);
+  assert("error returned", !!resp.error);
+});
+
+test("initialize: no protocolVersion defaults to supported version", (assert) => {
+  const resp = runInitialize(undefined);
+  assert("response received", !!resp);
+  assert("no error", !resp.error);
+  assert("protocolVersion present", resp.result && !!resp.result.protocolVersion);
+  assert("tools capability declared", resp.result && resp.result.capabilities && "tools" in resp.result.capabilities);
 });
 
 // ── Summary ────────────────────────────────────────────────────────────────
