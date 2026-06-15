@@ -403,8 +403,14 @@ function handleRequest(request) {
 
   // MCP initialization
   if (method === "initialize") {
+    const SUPPORTED_VERSIONS = ["2024-11-05"];
+    const requested = params && params.protocolVersion;
+    if (requested && !SUPPORTED_VERSIONS.includes(requested)) {
+      return { error: `Unsupported protocol version: ${requested}. Supported: ${SUPPORTED_VERSIONS.join(", ")}` };
+    }
+    const negotiated = requested || SUPPORTED_VERSIONS[0];
     return { result: {
-      protocolVersion: "2024-11-05",
+      protocolVersion: negotiated,
       capabilities: { tools: {} },
       serverInfo: { name: "projot-mcp", version: "1.0.0" },
     } };
