@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(projot VERSION 0.1.13 LANGUAGES CXX)
+project(projot VERSION 0.1.14 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -87,6 +87,7 @@ target_include_directories(projot_tests PRIVATE
 target_link_libraries(projot_tests PRIVATE projot_core)
 target_compile_definitions(projot_tests PRIVATE
     PROJOT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+    $<$<CXX_COMPILER_ID:MSVC>:DOCTEST_CONFIG_USE_STD_HEADERS>
 )
 
 add_test(NAME projot_tests COMMAND projot_tests)
