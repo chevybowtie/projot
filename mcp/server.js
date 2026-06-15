@@ -405,7 +405,7 @@ function handleRequest(request) {
   if (method === "initialize") {
     return { result: {
       protocolVersion: "2024-11-05",
-      capabilities: {},
+      capabilities: { tools: {} },
       serverInfo: { name: "projot-mcp", version: "1.0.0" },
     } };
   }
