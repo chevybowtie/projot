@@ -87,6 +87,7 @@ target_include_directories(projot_tests PRIVATE
 target_link_libraries(projot_tests PRIVATE projot_core)
 target_compile_definitions(projot_tests PRIVATE
     PROJOT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+    $<$<CXX_COMPILER_ID:MSVC>:DOCTEST_CONFIG_USE_STD_HEADERS>
 )
 
 add_test(NAME projot_tests COMMAND projot_tests)
