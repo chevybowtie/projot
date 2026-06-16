@@ -266,7 +266,15 @@ function runInitialize(protocolVersion) {
   }
 }
 
-test("initialize: supported version 2024-11-05 is accepted and echoed back", (assert) => {
+test("initialize: supported version 2025-11-25 is accepted and echoed back", (assert) => {
+  const resp = runInitialize("2025-11-25");
+  assert("response received", !!resp);
+  assert("no error", !resp.error);
+  assert("protocolVersion echoed", resp.result && resp.result.protocolVersion === "2025-11-25");
+  assert("tools capability declared", resp.result && resp.result.capabilities && "tools" in resp.result.capabilities);
+});
+
+test("initialize: supported legacy version 2024-11-05 is accepted and echoed back", (assert) => {
   const resp = runInitialize("2024-11-05");
   assert("response received", !!resp);
   assert("no error", !resp.error);
@@ -284,7 +292,7 @@ test("initialize: no protocolVersion defaults to supported version", (assert) =>
   const resp = runInitialize(undefined);
   assert("response received", !!resp);
   assert("no error", !resp.error);
-  assert("protocolVersion present", resp.result && !!resp.result.protocolVersion);
+  assert("protocolVersion defaults to latest", resp.result && resp.result.protocolVersion === "2025-11-25");
   assert("tools capability declared", resp.result && resp.result.capabilities && "tools" in resp.result.capabilities);
 });
 
