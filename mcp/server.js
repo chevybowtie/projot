@@ -403,7 +403,7 @@ function handleRequest(request) {
 
   // MCP initialization
   if (method === "initialize") {
-    const SUPPORTED_VERSIONS = ["2024-11-05"];
+    const SUPPORTED_VERSIONS = ["2025-11-25", "2024-11-05"];
     const requested = params && params.protocolVersion;
     if (requested && !SUPPORTED_VERSIONS.includes(requested)) {
       return { error: `Unsupported protocol version: ${requested}. Supported: ${SUPPORTED_VERSIONS.join(", ")}` };
