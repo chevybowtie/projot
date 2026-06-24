@@ -101,8 +101,8 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.date_format = value;
         } else if (key == "created") {
             out.created = value;
-        } else if (key == "teams_webhook") {
-            out.teams_webhook = value;
+        } else if (key == "teams_sync_url" || key == "teams_webhook") {
+            out.teams_sync_url = value;
         } else if (is_list_key(key)) {
             auto items = split_list(value);
             if (key == "github")                out.github                = items;
@@ -175,8 +175,8 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     if (!cfg.date_format.empty()) {
         file << "date_format = " << cfg.date_format << "\n";
     }
-    if (!cfg.teams_webhook.empty()) {
-        file << "teams_webhook = " << cfg.teams_webhook << "\n";
+    if (!cfg.teams_sync_url.empty()) {
+        file << "teams_sync_url = " << cfg.teams_sync_url << "\n";
     }
 
     file << "\n";
