@@ -53,8 +53,8 @@ struct Config {
     std::map<std::string, std::string> labels;   // label.<key> -> display label
     std::map<std::string, std::string> link_urls; // link.<key> -> url
 
-    // Teams incoming webhook URL for Kanban sync (project-level, kept off git ideally)
-    std::string teams_webhook;
+    // Teams sync endpoint URL for Kanban sync (legacy webhook or flow endpoint).
+    std::string teams_sync_url;
 
     // Azure resources (project-level). Each entry is "name|url" or just "url".
     std::vector<std::string> azure_subscription;
@@ -81,7 +81,7 @@ struct Config {
         azure_log_analytics.clear();
         azure_storage.clear();
         azure_private_dns.clear();
-        teams_webhook.clear();
+        teams_sync_url.clear();
     }
 };
 

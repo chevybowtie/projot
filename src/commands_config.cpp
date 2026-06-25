@@ -76,7 +76,8 @@ int cmd_new(const Args& args) {
             "  --itrack <iTrack>         iTrack ticket number\n\n"
             "Optional:\n"
             "  --teams <URL>             Teams channel URL\n"
-            "  --teams-webhook <URL>     Teams incoming webhook URL for Kanban sync\n"
+            "  --teams-sync-url <URL>    Teams sync endpoint URL for Kanban updates\n"
+            "  --teams-webhook <URL>     Backward-compatible alias for --teams-sync-url\n"
             "  --rpm-url <URL>           RPM system link\n"
             "  --itrack-url <URL>        iTrack link\n"
             "  --other <URL>             Other URL\n"
@@ -121,8 +122,10 @@ int cmd_new(const Args& args) {
         }
     }
 
-    if (args.has("teams-webhook"))
-        ctx.config.teams_webhook = args.get("teams-webhook");
+    if (args.has("teams-sync-url"))
+        ctx.config.teams_sync_url = args.get("teams-sync-url");
+    else if (args.has("teams-webhook"))
+        ctx.config.teams_sync_url = args.get("teams-webhook");
 
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
@@ -389,13 +392,17 @@ int cmd_set_teams_webhook(const Args& args) {
     if (args.help_requested) {
         std::cout <<
             "Usage: projot set-teams-webhook <URL>\n\n"
-            "Set the Teams incoming webhook URL for Kanban sync.\n\n"
-            "The webhook URL is created in Teams channel settings under\n"
-            "Connectors > Incoming Webhook. It is stored in .projot/config.\n\n"
+            "Set the Teams sync endpoint URL for Kanban sync.\n\n"
+            "Accepted URL types:\n"
+            "  - Legacy Teams Incoming Webhook URL\n"
+            "  - Power Automate / Workflows HTTP trigger URL\n\n"
+            "If your Teams channel no longer exposes Connectors > Incoming Webhook,\n"
+            "create a flow that accepts an HTTP request and posts to the channel,\n"
+            "then store that flow URL here. It is stored in .projot/config.\n\n"
             "Note: .projot/config is git-tracked. For public repos, avoid\n"
-            "committing a webhook URL, or gitignore .projot/config.\n\n"
+            "committing a sync URL, or gitignore .projot/config.\n\n"
             "Example:\n"
-            "  projot set-teams-webhook https://xxx.webhook.office.com/webhookb2/...\n";
+            "  projot set-teams-webhook https://prod-00.westus.logic.azure.com:443/workflows/...\n";
         return 0;
     }
 
@@ -412,7 +419,7 @@ int cmd_set_teams_webhook(const Args& args) {
     const std::string url = args.positional[0];
 
     return execute_config_command(ctx, [&url](Context& c) {
-        c.config.teams_webhook = url;
+        c.config.teams_sync_url = url;
         return ParseResult{true, ""};
-    }, false, "Set teams_webhook = " + url);
+    }, false, "Set teams_sync_url = " + url);
 }

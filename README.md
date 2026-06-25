@@ -32,7 +32,7 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
 - Configurable Links section with Teams, iTrack, RPM, and other single-value URLs.
 - List open, closed, or all todos.
-- Automatic Teams Kanban sync on every commit (via incoming webhook).
+- Automatic Teams Kanban sync on every commit (via legacy webhook or Workflows/Power Automate endpoint).
 - Cross-platform (Linux + Windows).
 - C++ standard library only — no external dependencies.
 - Fully unit-tested.
@@ -157,7 +157,7 @@ itrack = 67890
 links = teams, itrack, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
-teams_webhook = https://xxx.webhook.office.com/webhookb2/...
+teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 ```
 
 ---
@@ -182,11 +182,51 @@ teams_webhook = https://xxx.webhook.office.com/webhookb2/...
 | `add-azure` | Add an Azure resource URL (`--type <type> --url <url> [--name <label>]`) |
 | `render` | Re-render the notes file from config |
 | `set-global` | Set global defaults (`--rpm-base-url`, `--itrack-base-url`) |
-| `set-teams-webhook` | Set the Teams incoming webhook URL for Kanban sync |
+| `set-teams-webhook` | Set the Teams sync endpoint URL for Kanban sync |
 | `install-hook` | Install the pre-commit git hook |
 | `uninstall-hook` | Remove the pre-commit git hook |
 | `install-mcp-server` | Configure the MCP server in your IDE settings |
 | `uninstall-mcp-server` | Remove the MCP server from your IDE settings |
+
+---
+
+## Teams sync setup
+
+Microsoft Teams no longer exposes the old **Connectors > Incoming Webhook** flow in every channel. `projot` now supports two endpoint styles for Kanban sync:
+
+- **Legacy Teams incoming webhook URLs** (`*.webhook.office.com`, `outlook.office.com`, etc.)
+- **Power Automate / Workflows HTTP trigger URLs**
+
+If the legacy connector UI is unavailable, create a Power Automate / Workflows flow that accepts an HTTP request and posts to the target Teams channel:
+
+1. Open **Workflows** in Teams (or Power Automate in the browser) and create a new cloud flow.
+2. Choose a trigger that exposes an HTTP POST URL such as **When an HTTP request is received**.
+3. Add a Teams action such as **Post message in a chat or channel** or **Post adaptive card in a chat or channel**.
+4. Map the `projot` payload fields into that action. The most useful fields are `summary`, `card`, and the `kanban.*` arrays.
+5. Save the flow, then copy the generated HTTP URL from the trigger.
+
+Store that URL with:
+
+```sh
+projot set-teams-webhook https://prod-00.westus.logic.azure.com:443/workflows/...
+```
+
+If you are creating the project for the first time, you can also pass the same URL to `projot new --teams-sync-url ...`.
+
+For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly. For other endpoint URLs, `projot` posts a generic JSON payload with these fields so your flow can decide how to render it:
+
+- `projectName`
+- `rpm`
+- `summary`
+- `card`
+- `kanban.todo`
+- `kanban.inProgress`
+- `kanban.blocked`
+- `kanban.done`
+
+For Microsoft setup guidance, see the official Power Automate documentation at <https://learn.microsoft.com/power-automate/> and search for **"When an HTTP request is received"** and **"Post adaptive card in a chat or channel"**.
+
+`projot` stores the sync URL, but it does not provision Teams connectors or flows automatically.
 
 ---
 

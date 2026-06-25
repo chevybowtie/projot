@@ -167,6 +167,23 @@ TEST_CASE("new_with_teams_url") {
     CHECK(cfg.link_urls["teams"] == "https://teams.microsoft.com/t");
 }
 
+TEST_CASE("new_with_teams_sync_url") {
+    TempRepo repo("new_with_teams_sync_url");
+    repo.init();
+    Args a;
+    a.subcommand = "new";
+    a.flags["rpm"].push_back("66667");
+    a.flags["name"].push_back("T");
+    a.flags["itrack"].push_back("2");
+    a.flags["teams-sync-url"].push_back("https://flow.example.com/invoke");
+    a.flags["no-hook"].push_back("true");
+    CHECK(cmd_new(a) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.teams_sync_url == "https://flow.example.com/invoke");
+}
+
 TEST_CASE("new_fails_if_rpm_set") {
     TempRepo repo("new_fails_if_rpm_set");
     repo.init();
@@ -410,6 +427,21 @@ TEST_CASE("set_link_update_key") {
     int count = 0;
     for (const auto& k : cfg.links) if (k == "teams") ++count;
     CHECK(count == 1);
+}
+
+TEST_CASE("set_teams_webhook_writes_sync_url_key") {
+    TempRepo repo("set_teams_webhook_writes_sync_url_key");
+    repo.init(); repo.new_project("11a");
+    CHECK(cmd_set_teams_webhook(make_args("set-teams-webhook", {}, "https://flow.example.com/invoke")) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.teams_sync_url == "https://flow.example.com/invoke");
+
+    std::ifstream f((repo.path / ".projot" / "config").string());
+    std::stringstream buffer;
+    buffer << f.rdbuf();
+    CHECK(buffer.str().find("teams_sync_url = https://flow.example.com/invoke") != std::string::npos);
 }
 
 // ── set-app-id ───────────────────────────────────────────────────────────────

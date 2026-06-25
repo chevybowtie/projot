@@ -63,5 +63,5 @@ int cmd_uninstall_mcp_server(const Args& args);
 
 int cmd_set_global(const Args& args);
 
-// Set the Teams incoming webhook URL for Kanban sync.
+// Set the Teams sync endpoint URL for Kanban sync.
 int cmd_set_teams_webhook(const Args& args);
