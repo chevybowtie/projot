@@ -197,11 +197,21 @@ Microsoft Teams no longer exposes the old **Connectors > Incoming Webhook** flow
 - **Legacy Teams incoming webhook URLs** (`*.webhook.office.com`, `outlook.office.com`, etc.)
 - **Power Automate / Workflows HTTP trigger URLs**
 
-If the legacy connector UI is unavailable, create a flow that accepts an HTTP request and posts to the target Teams channel, then store that URL with:
+If the legacy connector UI is unavailable, create a Power Automate / Workflows flow that accepts an HTTP request and posts to the target Teams channel:
+
+1. Open **Workflows** in Teams (or Power Automate in the browser) and create a new cloud flow.
+2. Choose a trigger that exposes an HTTP POST URL such as **When an HTTP request is received**.
+3. Add a Teams action such as **Post message in a chat or channel** or **Post adaptive card in a chat or channel**.
+4. Map the `projot` payload fields into that action. The most useful fields are `summary`, `card`, and the `kanban.*` arrays.
+5. Save the flow, then copy the generated HTTP URL from the trigger.
+
+Store that URL with:
 
 ```sh
 projot set-teams-webhook https://prod-00.westus.logic.azure.com:443/workflows/...
 ```
+
+If you are creating the project for the first time, you can also pass the same URL to `projot new --teams-sync-url ...`.
 
 For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly. For other endpoint URLs, `projot` posts a generic JSON payload with these fields so your flow can decide how to render it:
 
@@ -213,6 +223,8 @@ For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly
 - `kanban.inProgress`
 - `kanban.blocked`
 - `kanban.done`
+
+For Microsoft setup guidance, see the official Power Automate documentation at <https://learn.microsoft.com/power-automate/> and search for **"When an HTTP request is received"** and **"Post adaptive card in a chat or channel"**.
 
 `projot` stores the sync URL, but it does not provision Teams connectors or flows automatically.
 
