@@ -50,6 +50,7 @@ Version: $version
 Section: utils
 Priority: optional
 Architecture: amd64
+Recommends: bash-completion
 Maintainer: Paul Sturm <paul.sturm@cotton-software.com>
 Description: Repo-centric developer notepad
  CLI tool for tracking todos, notes, and URLs inside a .projot/
