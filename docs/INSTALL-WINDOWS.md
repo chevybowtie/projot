@@ -78,7 +78,7 @@ Requirements:
 ### Using CMake (all platforms)
 
 ```powershell
-git clone https://github.com/ORG/projot
+git clone https://github.com/chevybowtie/projot
 cd projot
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
@@ -102,7 +102,7 @@ projot set-global `
   --itrack-base-url "https://itrack.example.com/record/"
 ```
 
-These base URLs are automatically used by all projects in the MCP tools (e.g., `open_rpm`, `open_itrack`).
+These base URLs are automatically used by all projects in the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`).
 
 ## Troubleshooting
 

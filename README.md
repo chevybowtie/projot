@@ -42,19 +42,24 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 ## Quickstart
 
 ### 1. Initialize the repository
+
 Run once per repo to set repo-level metadata:
-```
+
+```sh
 projot init --app-id MyApp --github https://github.com/org/repo
 ```
 
 ### 2. Start a project
+
 Run when assigned a new RPM project:
-```
+
+```sh
 projot new --rpm 12345 --name "Widget Redesign" --itrack 67890 --teams https://teams.microsoft.com/...
 ```
 
 ### 3. Work with todos
-```
+
+```sh
 # Add a todo
 projot add-todo "Validate index rebuild plan"
 
@@ -72,7 +77,8 @@ projot add-note --todo 1 "Waiting on supervisor feedback"
 ```
 
 ### 4. Manage URLs
-```
+
+```sh
 # Add a GitHub repo URL
 projot add-github --url https://github.com/org/another-repo
 
@@ -84,7 +90,7 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 
 ## File Layout
 
-```
+```text
 {repo_root}/
 └── .projot/
     ├── config          ← project configuration (key = value)
@@ -142,7 +148,8 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 `.projot/config` is a `key = value` text file with two categories of fields.
 
 **Repo-level** (set by `init`):
-```
+
+```text
 app_id = MyApp
 github = https://github.com/org/repo
 swagger = https://api.example.com/swagger
@@ -150,7 +157,8 @@ blizzard = https://blizzard.example.com/project
 ```
 
 **Project-level** (set by `new`):
-```
+
+```text
 rpm = 12345
 name = Widget Redesign
 itrack = 67890
@@ -192,7 +200,7 @@ teams_webhook = https://xxx.webhook.office.com/webhookb2/...
 
 ## Project Structure
 
-```
+```text
 projot/
 ├── docs/
 │   └── DESIGN.md
@@ -241,7 +249,7 @@ With the MCP server configured, you can ask your AI assistant in your IDE to:
 - **Set up projects**: *"Help me set up a new project"* → Creates branch, initializes projot metadata
 - **Open time tracking**: *"Open iTrack to charge time"* → Opens your iTrack URL in the browser
 
-See [mcp/README.md](mcp/README.md) for installation and usage instructions.
+See [docs/MCP.md](docs/MCP.md) for installation, usage, and the full tool list, or [mcp/README.md](mcp/README.md) for manual IDE configuration and server internals.
 
 ---
 
@@ -250,11 +258,11 @@ See [mcp/README.md](mcp/README.md) for installation and usage instructions.
 See [docs/DESIGN.md](docs/DESIGN.md) for the full design specification.
 
 Planned post-v0.1 features:
+
 - Interactive TUI (ncurses)
 - Search and filtering across todos
 - Weekly/monthly reporting
 - Export to HTML/PDF
-- Project archiving
 
 ---
 
