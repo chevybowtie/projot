@@ -24,6 +24,7 @@ sudo mv projot /usr/local/bin/
 ```
 
 (Optional) Verify the SHA-256 checksum printed on the release page:
+
 ```sh
 sha256sum projot
 ```
@@ -60,6 +61,7 @@ Download the completion script for your shell from the release page and install 
 | Fish | `projot.fish` | `~/.config/fish/completions/projot.fish` |
 
 Example (Bash):
+
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
 curl -o ~/.local/share/bash-completion/completions/projot \
@@ -67,6 +69,7 @@ curl -o ~/.local/share/bash-completion/completions/projot \
 ```
 
 Restart your shell or source the completion file:
+
 ```sh
 source ~/.local/share/bash-completion/completions/projot
 ```
@@ -84,11 +87,13 @@ ctest --test-dir build --output-on-failure   # run tests
 ```
 
 Install to system:
+
 ```sh
 sudo cmake --install build --prefix /usr/local
 ```
 
 Or copy the binary manually:
+
 ```sh
 sudo cp build/projot /usr/local/bin/
 ```
@@ -108,12 +113,45 @@ These base URLs are automatically used by all projects in the MCP tools (e.g., `
 ## Troubleshooting
 
 **Completion not working after installing .deb**
+
 - Start a new shell session: `bash` or `zsh` or `fish`
 - Or reload your shell config: `source ~/.bashrc` (Bash), `exec zsh` (Zsh), `exec fish` (Fish)
 
+**Bash completion not working at all (common on WSL and minimal/corporate images)**
+
+The .deb installs its completion to `/usr/share/bash-completion/completions/projot`, which is loaded on demand by the `bash-completion` framework — plain bash never reads that directory. If the framework is missing or not enabled, projot completion silently does nothing.
+
+Check whether the framework is active in your shell:
+
+```sh
+type -t _init_completion    # prints "function" if bash-completion is loaded
+```
+
+If it prints nothing:
+
+```sh
+sudo apt install bash-completion
+```
+
+Then make sure your `~/.bashrc` sources it (Ubuntu's default bashrc does; Debian and hardened corporate images often don't):
+
+```sh
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+fi
+```
+
+Quick workaround without the framework — source the projot script directly from `~/.bashrc`:
+
+```sh
+source /usr/share/bash-completion/completions/projot
+```
+
 **Binary not found after install**
+
 - Verify it's in your PATH: `which projot`
 - If not, check that `/usr/local/bin` is in `$PATH`: `echo $PATH`
 
 **Cannot read .projot/config**
+
 - Ensure you're inside a git repository that has been initialized: `projot init`
