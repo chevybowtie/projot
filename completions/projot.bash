@@ -17,7 +17,7 @@ _projot() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     words=("${COMP_WORDS[@]}")
 
-    local subcommands="init new close add-todo list complete add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook install-mcp-server set-global"
+    local subcommands="init new close add-todo list complete status add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook uninstall-hook install-mcp-server uninstall-mcp-server set-global set-teams-webhook"
 
     # First word after projot — complete subcommands
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -34,7 +34,7 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--app-id --github --swagger --blizzard --help" -- "${cur}") )
                 ;;
             new)
-                COMPREPLY=( $(compgen -W "--rpm --name --itrack --teams --rpm-url --itrack-url --other --no-hook --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--rpm --name --itrack --teams --teams-webhook --rpm-url --itrack-url --other --no-hook --help" -- "${cur}") )
                 ;;
             close)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
@@ -45,11 +45,11 @@ _projot() {
             list)
                 COMPREPLY=( $(compgen -W "--open --closed --all --help" -- "${cur}") )
                 ;;
-            complete)
+            complete|status)
                 COMPREPLY=( $(compgen -W "--todo --help" -- "${cur}") )
                 ;;
             add-note)
-                COMPREPLY=( $(compgen -W "--todo --text --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--todo --help" -- "${cur}") )
                 ;;
             set-link)
                 COMPREPLY=( $(compgen -W "--key --url --help" -- "${cur}") )
@@ -63,10 +63,10 @@ _projot() {
             add-azure)
                 COMPREPLY=( $(compgen -W "--type --name --url --help" -- "${cur}") )
                 ;;
-            render|install-hook)
+            render|install-hook|uninstall-hook|set-teams-webhook)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
-            install-mcp-server)
+            install-mcp-server|uninstall-mcp-server)
                 COMPREPLY=( $(compgen -W "--no-vscode --help" -- "${cur}") )
                 ;;
             set-global)
@@ -82,11 +82,18 @@ _projot() {
             local ids
             ids=$(_projot_open_todo_ids)
             COMPREPLY=( $(compgen -W "${ids}" -- "${cur}") )
+            return
             ;;
         --key)
             COMPREPLY=( $(compgen -W "teams itrack rpm other" -- "${cur}") )
+            return
             ;;
     esac
+
+    # Positional status value for `status`
+    if [[ "${subcmd}" == "status" ]]; then
+        COMPREPLY=( $(compgen -W "todo in-progress blocked done" -- "${cur}") )
+    fi
 }
 
 complete -F _projot projot
