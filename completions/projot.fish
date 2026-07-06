@@ -15,9 +15,10 @@ function __projot_open_todo_ids
 end
 
 function __projot_no_subcommand
-    not __fish_seen_subcommand_from init new close add-todo list complete add-note \
+    not __fish_seen_subcommand_from init new close add-todo list complete status add-note \
         set-link set-app-id add-github add-swagger add-blizzard add-azure render \
-        install-hook install-mcp-server set-global
+        install-hook uninstall-hook install-mcp-server uninstall-mcp-server \
+        set-global set-teams-webhook
 end
 
 # Top-level flags
@@ -31,6 +32,7 @@ complete -c projot -n __projot_no_subcommand -a close         -d 'Archive curren
 complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new todo'
 complete -c projot -n __projot_no_subcommand -a list          -d 'Show project summary and todos'
 complete -c projot -n __projot_no_subcommand -a complete      -d 'Mark a todo completed'
+complete -c projot -n __projot_no_subcommand -a status        -d "Set a todo's status"
 complete -c projot -n __projot_no_subcommand -a add-note      -d 'Add a note to a todo'
 complete -c projot -n __projot_no_subcommand -a set-link      -d 'Set or update a single-value link URL'
 complete -c projot -n __projot_no_subcommand -a set-app-id    -d 'Set the application ID'
@@ -40,13 +42,17 @@ complete -c projot -n __projot_no_subcommand -a add-blizzard      -d 'Add a Bliz
 complete -c projot -n __projot_no_subcommand -a add-azure        -d 'Add an Azure resource'
 complete -c projot -n __projot_no_subcommand -a render           -d 'Re-render notes file and stage it'
 complete -c projot -n __projot_no_subcommand -a install-hook     -d 'Install the pre-commit git hook'
+complete -c projot -n __projot_no_subcommand -a uninstall-hook   -d 'Remove the projot pre-commit git hook'
 complete -c projot -n __projot_no_subcommand -a install-mcp-server -d 'Configure MCP server'
+complete -c projot -n __projot_no_subcommand -a uninstall-mcp-server -d 'Remove MCP server configuration'
 complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global defaults'
+complete -c projot -n __projot_no_subcommand -a set-teams-webhook -d 'Set the Teams incoming webhook URL'
 
 # --help on every subcommand
-for sub in init new close add-todo list complete add-note set-link set-app-id \
+for sub in init new close add-todo list complete status add-note set-link set-app-id \
            add-github add-swagger add-blizzard add-azure render install-hook \
-           install-mcp-server set-global
+           uninstall-hook install-mcp-server uninstall-mcp-server set-global \
+           set-teams-webhook
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l help -d 'Show help'
 end
 
@@ -61,6 +67,7 @@ complete -c projot -n '__fish_seen_subcommand_from new' -l rpm       -d 'RPM pro
 complete -c projot -n '__fish_seen_subcommand_from new' -l name      -d 'Project name' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l itrack    -d 'iTrack ticket number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams     -d 'Teams channel URL' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l teams-webhook -d 'Teams incoming webhook URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l rpm-url   -d 'RPM system link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l itrack-url -d 'iTrack link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l other     -d 'Other URL' -r
@@ -77,10 +84,15 @@ complete -c projot -n '__fish_seen_subcommand_from list' -l all    -d 'All todos
 complete -c projot -n '__fish_seen_subcommand_from complete' -l todo \
     -d 'Todo ID' -r -a '(__projot_open_todo_ids)'
 
-# add-note
+# status (positional status value after --todo <ID>)
+complete -c projot -n '__fish_seen_subcommand_from status' -l todo \
+    -d 'Todo ID' -r -a '(__projot_open_todo_ids)'
+complete -c projot -n '__fish_seen_subcommand_from status' \
+    -a 'todo in-progress blocked done'
+
+# add-note (note text is a positional argument)
 complete -c projot -n '__fish_seen_subcommand_from add-note' -l todo \
     -d 'Todo ID' -r -a '(__projot_open_todo_ids)'
-complete -c projot -n '__fish_seen_subcommand_from add-note' -l text -d 'Note text' -r
 
 # set-link
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l key \
@@ -102,8 +114,9 @@ complete -c projot -n '__fish_seen_subcommand_from add-azure' -l type -d 'Resour
 complete -c projot -n '__fish_seen_subcommand_from add-azure' -l name -d 'Resource name' -r
 complete -c projot -n '__fish_seen_subcommand_from add-azure' -l url -d 'URL' -r
 
-# install-mcp-server
+# install-mcp-server / uninstall-mcp-server
 complete -c projot -n '__fish_seen_subcommand_from install-mcp-server' -l no-vscode -d 'Skip VS Code configuration'
+complete -c projot -n '__fish_seen_subcommand_from uninstall-mcp-server' -l no-vscode -d 'Skip VS Code removal'
 
 # set-global
 complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r

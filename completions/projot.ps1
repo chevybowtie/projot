@@ -4,29 +4,34 @@
 # Or install via projot's installer
 
 $projotSubcommands = @(
-    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'add-note',
+    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'status', 'add-note',
     'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
-    'add-azure', 'render', 'install-hook', 'install-mcp-server', 'set-global'
+    'add-azure', 'render', 'install-hook', 'uninstall-hook',
+    'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook'
 )
 
 $projotFlags = @{
-    'init'               = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
-    'new'                = @('--rpm', '--name', '--itrack', '--teams', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help')
-    'close'              = @('--help')
-    'add-todo'           = @('--help')
-    'list'               = @('--open', '--closed', '--all', '--help')
-    'complete'           = @('--todo', '--help')
-    'add-note'           = @('--todo', '--text', '--help')
-    'set-link'           = @('--key', '--url', '--help')
-    'set-app-id'         = @('--app-id', '--force', '--help')
-    'add-github'         = @('--url', '--help')
-    'add-swagger'        = @('--url', '--help')
-    'add-blizzard'       = @('--url', '--help')
-    'add-azure'          = @('--type', '--name', '--url', '--help')
-    'render'             = @('--help')
-    'install-hook'       = @('--help')
-    'install-mcp-server' = @('--no-vscode', '--help')
-    'set-global'         = @('--rpm-base-url', '--itrack-base-url', '--help')
+    'init'                 = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
+    'new'                  = @('--rpm', '--name', '--itrack', '--teams', '--teams-webhook', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help')
+    'close'                = @('--help')
+    'add-todo'             = @('--help')
+    'list'                 = @('--open', '--closed', '--all', '--help')
+    'complete'             = @('--todo', '--help')
+    'status'               = @('--todo', '--help')
+    'add-note'             = @('--todo', '--help')
+    'set-link'             = @('--key', '--url', '--help')
+    'set-app-id'           = @('--app-id', '--force', '--help')
+    'add-github'           = @('--url', '--help')
+    'add-swagger'          = @('--url', '--help')
+    'add-blizzard'         = @('--url', '--help')
+    'add-azure'            = @('--type', '--name', '--url', '--help')
+    'render'               = @('--help')
+    'install-hook'         = @('--help')
+    'uninstall-hook'       = @('--help')
+    'install-mcp-server'   = @('--no-vscode', '--help')
+    'uninstall-mcp-server' = @('--no-vscode', '--help')
+    'set-global'           = @('--rpm-base-url', '--itrack-base-url', '--help')
+    'set-teams-webhook'    = @('--help')
 }
 
 $projotFlagValues = @{
@@ -103,6 +108,15 @@ Register-ArgumentCompleter -CommandName projot -ScriptBlock {
             $completions | ForEach-Object {
                 [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
             }
+        }
+        return
+    }
+
+    # Positional status value for `status` (after --todo <ID>)
+    if ($subcommand -eq 'status' -and $previousElement -ne '--todo') {
+        $statuses = @('todo', 'in-progress', 'blocked', 'done') | Where-Object { $_ -like "$word*" }
+        $statuses | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
         }
     }
 }
