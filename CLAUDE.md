@@ -18,7 +18,7 @@ cmake -B build && cmake --build build && ctest --test-dir build --output-on-fail
 
 ## Language and Dependencies
 
-**C++17 is mandatory.** Do not use C++20 features (ranges, concepts, requires). Compiler must support C++17; build will fail on GCC < 7 or Clang < 5 by design.
+**C++17 is mandatory.** Do not use C++20 features (ranges, concepts, requires). Compiler must support C++17 with `std::filesystem` (GCC 8+, Clang 7+, MSVC 2017 15.7+); there is no explicit version check in CMake — older compilers simply fail to build.
 
 **No external dependencies.** projot forbids Boost, fmt, nlohmann/json, and other libraries. Use only `<filesystem>`, `<optional>`, `<string>`, `std::stringstream`, and standard library only. String parsing is manual; JSON is parsed with `std::string::find()` and `std::stringstream`. This is a hard constraint enforced in code review.
 
@@ -26,17 +26,17 @@ cmake -B build && cmake --build build && ctest --test-dir build --output-on-fail
 
 ## Command Architecture
 
-All 19 commands are split across three files for clarity:
+All 21 commands are split across three files for clarity:
 
-- `src/commands_project.cpp` — project operations (add-todo, list, complete, add-note, set-link)
-- `src/commands_config.cpp` — configuration (init, new, close, set-app-id, add-github/swagger/blizzard, add-azure)
+- `src/commands_project.cpp` — project operations (add-todo, list, complete, status, add-note, set-link)
+- `src/commands_config.cpp` — configuration (init, new, close, set-app-id, add-github/swagger/blizzard, add-azure, set-teams-webhook)
 - `src/commands_maint.cpp` — maintenance (render, install-hook, uninstall-hook, install-mcp-server, uninstall-mcp-server, set-global)
 
 **To add a new command:**
 
 1. Implement `int cmd_<name>(const Args& args)` in the appropriate file.
 2. Declare it in `src/commands.h`.
-3. Register in `src/main.cpp` in both the `commands` map (line ~75) and `valid_flags` map (lines ~100–110).
+3. Register in `src/main.cpp` in both the `valid_flags` map (line ~45) and the `commands` map (line ~87); if it takes positional arguments, also add it to the `positional_commands` set (line ~138).
 
 **Command pattern:** Most commands use one of two helpers:
 
@@ -67,7 +67,7 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Testing
 
-All 152 tests pass. Use the `TempRepo` helper in `tests/test_commands.cpp` to set up temporary git repos for testing. Test data lives in `tests/data/configs/` and `tests/data/notes/`. Reference it with the `PROJOT_TEST_DATA_DIR` macro (set at CMake time to an absolute path).
+All 212 tests pass. Use the `TempRepo` helper in `tests/test_commands.cpp` to set up temporary git repos for testing. Test data lives in `tests/data/configs/` and `tests/data/notes/`. Reference it with the `PROJOT_TEST_DATA_DIR` macro (set at CMake time to an absolute path).
 
 Tests verify config parsing, markdown I/O, command execution, versioning, error handling, and hooks. Coverage is comprehensive for the happy path; error cases (render failures, permission errors) have minimal coverage (noted in TECH_DEBT_AUDIT.md F008).
 

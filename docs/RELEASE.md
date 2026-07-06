@@ -84,4 +84,4 @@ cmake --build build
 - Release workflow: `.github/workflows/release.yml`
 - Linux packages built by: `scripts/package.sh`
 - Chocolatey config: `choco/projot.nuspec` and `choco/tools/`
-- CMake install rules: `CMakeLists.txt` (lines 37–49)
+- CMake install rules: `install(...)` commands in `CMakeLists.txt`

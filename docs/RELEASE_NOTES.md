@@ -38,19 +38,13 @@ cat CHANGELOG.md
 
 ## Release Process
 
-1. Ensure commits follow conventional commit format
-2. Create a tag: `git tag -a v0.2.0 -m "Release v0.2.0"`
-3. Push: `git push origin master v0.2.0`
-4. GitHub Actions automatically:
-   - Builds all platforms
-   - Generates changelog
-   - Creates GitHub Release with formatted notes
+See [RELEASE.md](RELEASE.md) for the full release checklist (branch prep, tagging, pre-release suffixes). Once a `v*` tag is pushed, GitHub Actions builds all platforms, generates the changelog, and creates the GitHub Release with formatted notes.
 
 ## Example Release Notes
 
 Generated notes are structured by commit type:
 
-```
+```text
 ## [0.1.8] - 2026-05-13
 
 ### Features
@@ -67,6 +61,7 @@ Generated notes are structured by commit type:
 ## Customization
 
 Edit `cliff.toml` to:
+
 - Add new commit types
 - Change the release notes format
 - Modify groupings or filtering

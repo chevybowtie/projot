@@ -58,14 +58,14 @@ The implementation uses **only the C++ standard library** and includes **unit te
 {repo_root}/.projot/{RPM}.md
 ```
 
-### 4.3 Todo Identity
+### 4.2 Todo Identity
 
 - Each todo is assigned a **stable numeric ID** at creation time (sequential, starting at 1).
 - IDs are **never reassigned or renumbered** — completed todos retain their original number.
 - Gaps in the sequence are possible in future versions if deletion is added.
 - `--todo <number>` always refers to this stable ID, not a display position.
 
-### 4.2 Project Content
+### 4.3 Project Content
 
 Each project file contains:
 
@@ -109,11 +109,13 @@ projot walks up from `$CWD` until it finds a directory containing `.git`. That d
 Two config files exist:
 
 **Repo-level config:**
+
 ```bash
 {repo_root}/.projot/config
 ```
 
 **Global config (optional):**
+
 ```bash
 ~/.config/projot/config          # Linux/macOS (XDG-compliant)
 %APPDATA%\projot\config           # Windows
@@ -173,7 +175,7 @@ Users may optionally specify `--config <path>` in later versions.
 | `link.<key>`     | Optional | URL value for a single-value link key (e.g. `link.teams = https://...`)      |
 
 > Repo-level fields (`app_id`, `github`, `swagger`, `blizzard`) are set once and shared across projects. They are rendered into the project markdown file by projot and should not be hand-edited there.
-
+>
 > Global-level fields can be set once per user via `projot set-global` and apply across all projects, but can be overridden at the repo level.
 
 ### 6.3 Config Examples
@@ -222,14 +224,6 @@ itrack = 67890
 # Date format used for display only; stored ISO always
 date_format = YYYY-MM-DD
 
-<!-- Date format clarification -->
-Date format tokens (display only):
-
-- Supported tokens: `YYYY` (4-digit year), `MM` (zero-padded month), `DD` (zero-padded day).
-- Examples: `YYYY-MM-DD` → 2026-05-15, `DD/MM/YYYY` → 15/05/2026, `MM-DD-YYYY` → 05-15-2026.
-- Behavior: if `date_format` is empty, projot falls back to ISO (`YYYY-MM-DD`). projot performs simple token replacement only — no locale-aware names, no time-of-day, and no timezone conversion.
-- Notes: named presets (e.g. `preset:US`) are not implemented in v0.1; rely on the token patterns above for predictable output.
-
 # Which single-value URLs to include in the Links section
 links = teams, itrack, rpm, other
 
@@ -246,6 +240,13 @@ link.rpm = https://rpm.example.com/project/12345
 link.other = https://wiki.example.com/project
 ```
 
+**Date format tokens** (display only):
+
+- Supported tokens: `YYYY` (4-digit year), `MM` (zero-padded month), `DD` (zero-padded day).
+- Examples: `YYYY-MM-DD` → 2026-05-15, `DD/MM/YYYY` → 15/05/2026, `MM-DD-YYYY` → 05-15-2026.
+- Behavior: if `date_format` is empty, projot falls back to ISO (`YYYY-MM-DD`). projot performs simple token replacement only — no locale-aware names, no time-of-day, and no timezone conversion.
+- Named presets (e.g. `preset:US`) are not implemented in v0.1; rely on the token patterns above for predictable output.
+
 ---
 
 ## 7. Markdown File Structure
@@ -257,16 +258,15 @@ Project markdown files use a strict structure with a **required section order**:
 
 - RPM: {RPM}
 - iTrack: {iTrack or "N/A"}
-- App ID: {App ID or "N/A"}  <!-- projot-managed: set via set-app-id -->
+- App ID: {App ID or "N/A"}
 - Created: {YYYY-MM-DD}
+- Last Updated: {YYYY-MM-DD}
 
 ## Links
 - Teams: {url or "N/A"}
 - iTrack: {url or "N/A"}
 - RPM: {url or "N/A"}
 - Other: {url or "N/A"}
-
-<!-- projot-managed: do not hand-edit sections below; use add-github/add-swagger/add-blizzard -->
 
 ## GitHub
 - https://github.com/org/repo-one
@@ -278,6 +278,12 @@ Project markdown files use a strict structure with a **required section order**:
 ## Blizzard
 - https://blizzard.example.com/project
 
+## Azure
+
+### Key Vaults
+- [MyVault](https://myvault.vault.azure.net/)
+
+<!-- projot-managed: content above is generated from .projot/config — edit using projot commands: add-github, add-swagger, add-blizzard, add-azure; edits here will be overwritten on next render -->
 ## Todos
 
 1. [ ] Todo text
@@ -293,7 +299,16 @@ Project markdown files use a strict structure with a **required section order**:
      - Completed successfully
 ```
 
-The section order **Links → GitHub → Swagger → Blizzard → Todos** is required and enforced by projot. Sections with no entries (GitHub, Swagger, Blizzard) are omitted from the rendered file.
+The section order **Links → GitHub → Swagger → Blizzard → Azure → Todos** is required and enforced by projot. Sections with no entries (GitHub, Swagger, Blizzard, Azure) are omitted from the rendered file. The `## Azure` section groups resources under `###` sub-headings by type (Subscriptions, Key Vaults, Resource Groups, AKS Clusters, Log Analytics, Storage Containers, Private DNS Zones).
+
+Each todo's checkbox marker encodes its status:
+
+| Marker | Status      |
+|--------|-------------|
+| `[ ]`  | Todo (open) |
+| `[>]`  | In progress |
+| `[~]`  | Blocked     |
+| `[x]`  | Done        |
 
 ---
 
@@ -303,7 +318,7 @@ The section order **Links → GitHub → Swagger → Blizzard → Todos** is req
 - Load `.projot/config` from the repo root. Exit with a clear error if it is missing or malformed.
 - Read `rpm` from config to locate the notes file at `.projot/{RPM}.md`.
 - Use line-based parsing to detect sections.
-- Section order is canonical and required: **Links → GitHub → Swagger → Blizzard → Todos**. Parsing assumes this order.
+- Section order is canonical and required: **Links → GitHub → Swagger → Blizzard → Azure → Todos**. Parsing assumes this order.
 - Identify `## Todos` and parse numbered items.
 - Represent todos internally as a structured model.
 - Modify in-memory data when adding, completing, or appending notes.
@@ -343,6 +358,7 @@ Project commands:
   add-todo      Append a new todo
   list          Show project summary and todos
   complete      Mark a todo completed
+  status        Set a todo's status (todo, in-progress, blocked, done)
   add-note      Add a note to a todo
   set-link      Set or update a single-value link URL
   set-app-id    Set the application ID
@@ -353,9 +369,12 @@ Project commands:
   render        Re-render the notes file and stage it
 
 Maintenance commands:
-  install-hook        Install the pre-commit git hook
-  install-mcp-server  Configure MCP server for Claude Code and VS Code
-  set-global          Set global defaults (rpm_base_url, itrack_base_url)
+  install-hook          Install the pre-commit git hook
+  uninstall-hook        Remove the projot pre-commit git hook
+  install-mcp-server    Configure MCP server for Claude Code and VS Code
+  uninstall-mcp-server  Remove MCP server configuration
+  set-global            Set global defaults (rpm_base_url, itrack_base_url)
+  set-teams-webhook     Set the Teams incoming webhook URL for Kanban sync
 
 Run 'projot <subcommand> --help' for subcommand options.
 ```
@@ -371,16 +390,16 @@ Print usage for that specific subcommand and exit 0. Each subcommand's help bloc
 Example — `projot add-todo --help`:
 
 ```sh
-Usage: projot add-todo --text "<description>"
+Usage: projot add-todo "<description>"
 
 Append a new todo to the project notes file. The todo is assigned the next
 available stable ID and written to .projot/{RPM}.md.
 
 Required:
-  --text "<description>"   Text of the new todo
+  "<description>"   Text of the new todo (positional argument)
 
 Example:
-  projot add-todo --text "Validate index rebuild plan"
+  projot add-todo "Validate index rebuild plan"
 ```
 
 - `--help` / `-h` are valid on every subcommand.
@@ -431,6 +450,7 @@ Archive the current project and reset the repository for the next one. Moves the
 No flags required.
 
 Example:
+
 ```sh
 projot close
 ```
@@ -445,7 +465,7 @@ Append a new todo to the project notes file. Assigned the next available stable 
 
 Required:
 
-- `--text "<description>"`
+- `"<description>"` — todo text as positional argument
 
 #### `list`
 
@@ -468,11 +488,26 @@ Optional:
 
 #### `complete`
 
-Mark a todo completed. Warns if already completed but does not error.
+Mark a todo completed (shorthand for `status --todo <ID> done`). Warns if already completed but does not error.
 
 Required:
 
 - `--todo <ID>`
+
+#### `status`
+
+Set a todo's status. The status is encoded in the rendered checkbox marker (see section 7).
+
+Required:
+
+- `--todo <ID>`
+- `<status>` — positional argument: `todo`, `in-progress`, `blocked`, or `done`
+
+Example:
+
+```sh
+projot status --todo 2 in-progress
+```
 
 #### `add-note`
 
@@ -564,6 +599,12 @@ Installs or re-installs the pre-commit git hook in the current repository. Follo
 
 No flags required.
 
+#### `uninstall-hook`
+
+Removes the projot block from the pre-commit git hook, leaving any other hook content in place.
+
+No flags required.
+
 #### `install-mcp-server`
 
 Configures the MCP server for use with Claude Code or VS Code Copilot. Creates/updates repo-local `.claude/settings.json` and `.vscode/mcp.json` to point to the bundled installed MCP server path (for example `/usr/local/share/projot/mcp/server.js`) and does not create a repo-local `mcp/` copy.
@@ -571,6 +612,14 @@ Configures the MCP server for use with Claude Code or VS Code Copilot. Creates/u
 Optional:
 
 - `--no-vscode` — skip VS Code configuration, only configure for Claude Code
+
+#### `uninstall-mcp-server`
+
+Removes the projot MCP server configuration: removes the projot entry from `.claude/settings.json` and deletes `.vscode/mcp.json` if it was created by projot.
+
+Optional:
+
+- `--no-vscode` — skip VS Code (`.vscode/mcp.json`) removal
 
 #### `set-global`
 
@@ -587,7 +636,23 @@ Example:
 projot set-global --rpm-base-url "https://rpm.example.com/" --itrack-base-url "https://itrack.example.com/record/"
 ```
 
-These base URLs are used by the MCP tools (e.g., `open_rpm`, `open_itrack`) to construct full project/ticket links automatically.
+These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`) to construct full project/ticket links automatically.
+
+#### `set-teams-webhook`
+
+Set the Teams incoming webhook URL used for Kanban sync. The URL is created in Teams channel settings (Connectors → Incoming Webhook) and stored as `teams_webhook` in `.projot/config`.
+
+Required:
+
+- `<URL>` — webhook URL as positional argument
+
+Example:
+
+```sh
+projot set-teams-webhook https://xxx.webhook.office.com/webhookb2/...
+```
+
+> **Security note:** `.projot/config` is git-tracked. For public repos, avoid committing a webhook URL, or gitignore `.projot/config`.
 
 ### 9.4 Git Hook
 
@@ -644,7 +709,7 @@ Tab completion is delivered as **generated shell scripts** — projot itself doe
 #### What is completed
 
 - **Subcommand names** after `projot` (e.g. `init`, `new`, `add-todo`, …)
-- **Flag names** for the current subcommand (e.g. after `projot add-todo`, complete `--text`)
+- **Flag names** for the current subcommand (e.g. after `projot complete`, complete `--todo`)
 - **`--key` values** for `set-link`: complete `teams`, `itrack`, `rpm`, `other`
 - **`--todo` values** for `complete` and `add-note`: read open todo IDs from `.projot/{RPM}.md` at completion time (best-effort; silently skip if no file found)
 - **`-h` / `--help`** on every subcommand
@@ -678,6 +743,8 @@ Run `make install-completion` after installing the binary (see section 14.3). Th
 ---
 
 ## 11. Testing
+
+> **Note:** Sections 11.3–11.11 are the original v0.1 test plan. The suite has since grown well beyond it (200+ test cases, including `status`, Azure, webhook, and MCP-install coverage). The test sources under `tests/` are canonical; these tables are kept as design rationale, not as an inventory.
 
 ### 11.1 Framework
 
@@ -972,6 +1039,7 @@ Since projot is repo-centric, the notes file and config are already inside the g
 Currently, Azure resources are stored per-repository. For teams managing multiple repositories under the same `app_id` (e.g., multiple API repos + UI repo for a single application), it would be more efficient to define Azure resources once at the app level in global config.
 
 **Proposed enhancement:**
+
 - Store app-specific Azure resources in global config, keyed by `app_id` (e.g., `MyApp.azure_key_vault`, `MyApp.azure_subscription`)
 - Add optional `--global` or `--app-level` flag to `add-azure` command
 - When loading a repo, automatically inherit Azure resources from global config matching the repo's `app_id`
@@ -1005,20 +1073,20 @@ projot targets Linux and Windows. The following guidelines apply to the implemen
 - Avoid ANSI color/escape codes in v0.1. They work on Linux terminals and modern Windows Terminal but not legacy `cmd.exe`.
 - Plain text output ensures compatibility everywhere.
 
-### 13.6 Git Hook — Cross-Platform
+### 13.5 Git Hook — Cross-Platform
 
 - On Linux/macOS, `new` must `chmod +x` the hook file after writing it. Use `std::filesystem::permissions()` with `std::filesystem::perms::owner_exec | group_exec | others_exec`.
 - On Windows, `.git/hooks/pre-commit` is a shell script and is not directly executable by `cmd.exe` or PowerShell. Git for Windows ships with Git Bash, which will run the hook. No `chmod` equivalent is needed on Windows; projot skips the `chmod` call on that platform (`#ifdef _WIN32`).
 - The guard `command -v projot >/dev/null 2>&1` is POSIX sh. The Windows Git Bash environment supports this syntax.
 
-### 13.7 Tab-Completion Scripts
+### 13.6 Tab-Completion Scripts
 
 - Bash and Zsh scripts use POSIX-compatible shell syntax and should work on macOS as well.
 - The Fish script requires Fish 3+.
 - The PowerShell script requires PowerShell 5.1+ (Windows) or PowerShell 7+ (cross-platform).
 - Dynamic `--todo` completion reads `.projot/{RPM}.md` using the shell's own file-reading primitives, not by calling projot. This avoids Windows path issues and works even when the binary is not on `PATH` in the completion context.
 
-### 13.5 Compiler Requirements
+### 13.7 Compiler Requirements
 
 - `std::filesystem` requires C++17. Minimum supported compilers:
   - GCC 8+
@@ -1028,6 +1096,8 @@ projot targets Linux and Windows. The following guidelines apply to the implemen
 ---
 
 ## 14. Build, Installation & Distribution
+
+> **Note:** This section is the original v0.1 design. For current, canonical instructions see [DEVELOPER.md](DEVELOPER.md) (building/testing), [BUILD.md](BUILD.md) (local packaging), [RELEASE.md](RELEASE.md) (release process), and [INSTALL-LINUX.md](INSTALL-LINUX.md) / [INSTALL-WINDOWS.md](INSTALL-WINDOWS.md) (installation). Details here are not updated when those change.
 
 ### 14.1 Build System
 
@@ -1161,14 +1231,8 @@ Steps:
 
 1. Run the same build matrix as `ci.yml`.
 2. Strip the Linux binary (`strip projot`).
-3. Upload release assets:
-   - `projot-linux-x86_64`
-   - `projot-windows-x86_64.exe`
-   - `completions/projot.bash`
-   - `completions/_projot`
-   - `completions/projot.fish`
-   - `completions/projot.ps1`
-4. Create a GitHub Release with all assets attached. Release notes are generated from the tag annotation.
+3. Build and upload release assets: `.deb` and `tar.gz` (Linux, with completions), `.nupkg` (Windows Chocolatey), the raw binaries, and individual completion scripts.
+4. Create a GitHub Release with all assets attached. Release notes are generated from conventional commits via git-cliff (see [RELEASE_NOTES.md](RELEASE_NOTES.md)).
 
 ### 14.5 Application Versioning
 

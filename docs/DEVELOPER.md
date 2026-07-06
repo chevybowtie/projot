@@ -4,7 +4,7 @@
 
 | Tool | Minimum version |
 |------|----------------|
-| C++ compiler | GCC 9+, Clang 10+, or MSVC 2019+ (C++17 required) |
+| C++ compiler | GCC 8+, Clang 7+, or MSVC 2017 15.7+ (C++17 with `std::filesystem` required) |
 | CMake | 3.16+ |
 
 No other dependencies are needed. The test framework ([doctest](https://github.com/doctest/doctest)) is vendored in `tests/doctest.h`.
@@ -124,11 +124,13 @@ Restart your shell after installing, or source the file directly.
 
 ## Project layout
 
-```
+```text
 src/          Core library + main entry point
 tests/        doctest test files and fixture data
 completions/  Shell completion scripts (bash, zsh, fish, powershell)
-scripts/      Developer helper scripts
+scripts/      Developer helper scripts (packaging, completions, changelog)
+mcp/          Node.js MCP server bundled with the install
+choco/        Chocolatey package definition (Windows releases)
 docs/         Design and developer documentation
 build/        CMake build output (not committed)
 ```
@@ -141,5 +143,6 @@ These are set by CMake and baked into the binary:
 
 | Definition | Value | Purpose |
 |---|---|---|
-| `PROJOT_VERSION` | `"0.1.0"` | Reported by `projot --version` |
+| `PROJOT_VERSION` | Project version from `CMakeLists.txt`, plus any `-DPROJOT_VERSION_SUFFIX` (e.g. `"0.1.15-beta1"`) | Reported by `projot --version` |
 | `PROJOT_CONFIG_VERSION` | `1` | Current `.projot/config` schema version |
+| `PROJOT_TEST_DATA_DIR` | Absolute path to `tests/data` (test binary only) | Lets tests locate fixture files; reconfigure CMake if the repo moves |

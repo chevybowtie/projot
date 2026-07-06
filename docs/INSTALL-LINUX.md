@@ -8,7 +8,7 @@ Download the latest release from the [GitHub Releases](../../releases/latest) pa
 
 ```sh
 # Download and install the .deb package
-wget https://github.com/ORG/projot/releases/latest/download/projot_*.deb
+wget https://github.com/chevybowtie/projot/releases/latest/download/projot_*.deb
 sudo apt install ./projot_*.deb
 ```
 
@@ -18,7 +18,7 @@ This installs the binary and shell completions for bash, zsh, and fish. Completi
 
 ```sh
 # Download and install the binary
-curl -Lo projot https://github.com/ORG/projot/releases/latest/download/projot-linux-x86_64
+curl -Lo projot https://github.com/chevybowtie/projot/releases/latest/download/projot-linux-x86_64
 chmod +x projot
 sudo mv projot /usr/local/bin/
 ```
@@ -35,11 +35,13 @@ For shell completions, see [Shell completion](#shell-completion-optional) below.
 Useful for non-Debian systems:
 
 ```sh
-wget https://github.com/ORG/projot/releases/latest/download/projot-*-linux-x86_64.tar.gz
+wget https://github.com/chevybowtie/projot/releases/latest/download/projot-*-linux-x86_64.tar.gz
 tar -xzf projot-*-linux-x86_64.tar.gz
-sudo cp -r bin/* /usr/local/bin/
-sudo cp -r share/* /usr/local/share/
+sudo cp -r usr/bin/* /usr/local/bin/
+sudo cp -r usr/share/* /usr/local/share/
 ```
+
+(The tarball unpacks to a `usr/` tree containing `bin/` and `share/`.)
 
 ## Shell completion (optional)
 
@@ -61,7 +63,7 @@ Example (Bash):
 ```sh
 mkdir -p ~/.local/share/bash-completion/completions
 curl -o ~/.local/share/bash-completion/completions/projot \
-  https://github.com/ORG/projot/releases/latest/download/projot.bash
+  https://github.com/chevybowtie/projot/releases/latest/download/projot.bash
 ```
 
 Restart your shell or source the completion file:
@@ -74,7 +76,7 @@ source ~/.local/share/bash-completion/completions/projot
 Requirements: C++17, CMake 3.16+, make
 
 ```sh
-git clone https://github.com/ORG/projot
+git clone https://github.com/chevybowtie/projot
 cd projot
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
@@ -101,7 +103,7 @@ projot set-global \
   --itrack-base-url "https://itrack.example.com/record/"
 ```
 
-These base URLs are automatically used by all projects in the MCP tools (e.g., `open_rpm`, `open_itrack`).
+These base URLs are automatically used by all projects in the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`).
 
 ## Troubleshooting
 
