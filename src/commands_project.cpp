@@ -148,6 +148,87 @@ int cmd_list(const Args& args) {
     return 0;
 }
 
+// links
+
+int cmd_links(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot links\n\n"
+            "Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal.\n\n"
+            "No flags required.\n\n"
+            "Example:\n"
+            "  projot links\n";
+        return 0;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    const Config& cfg = ctx.config;
+    bool any = false;
+
+    if (!cfg.links.empty()) {
+        std::cout << "Links:\n";
+        for (const auto& key : cfg.links) {
+            std::string label = key;
+            auto lab_it = cfg.labels.find(key);
+            if (lab_it != cfg.labels.end()) label = lab_it->second;
+
+            std::string url = "N/A";
+            auto url_it = cfg.link_urls.find(key);
+            if (url_it != cfg.link_urls.end() && !url_it->second.empty()) url = url_it->second;
+
+            std::cout << "  " << label << ": " << url << "\n";
+        }
+        any = true;
+    }
+
+    struct Section { const char* heading; const std::vector<std::string>& entries; };
+    const Section sections[] = {
+        {"GitHub",   cfg.github},
+        {"Swagger",  cfg.swagger},
+        {"Blizzard", cfg.blizzard},
+    };
+    for (const auto& sec : sections) {
+        const auto deduped = deduplicate(sec.entries);
+        if (deduped.empty()) continue;
+        if (any) std::cout << "\n";
+        std::cout << sec.heading << ":\n";
+        for (const auto& url : deduped) std::cout << "  " << url << "\n";
+        any = true;
+    }
+
+    const Section azure_sections[] = {
+        {"Azure Subscriptions",      cfg.azure_subscription},
+        {"Azure Key Vaults",         cfg.azure_key_vault},
+        {"Azure Resource Groups",    cfg.azure_resource_group},
+        {"Azure AKS Clusters",       cfg.azure_aks},
+        {"Azure Log Analytics",      cfg.azure_log_analytics},
+        {"Azure Storage Containers", cfg.azure_storage},
+        {"Azure Private DNS Zones",  cfg.azure_private_dns},
+    };
+    for (const auto& sec : azure_sections) {
+        const auto deduped = deduplicate(sec.entries);
+        if (deduped.empty()) continue;
+        if (any) std::cout << "\n";
+        std::cout << sec.heading << ":\n";
+        for (const auto& raw : deduped) {
+            AzureEntry e = parse_azure_entry(raw);
+            if (!e.name.empty() && !e.url.empty())
+                std::cout << "  " << e.name << ": " << e.url << "\n";
+            else if (!e.url.empty())
+                std::cout << "  " << e.url << "\n";
+            else if (!e.name.empty())
+                std::cout << "  " << e.name << "\n";
+        }
+        any = true;
+    }
+
+    if (!any) std::cout << "(no links configured)\n";
+    return 0;
+}
+
 // status
 
 int cmd_status(const Args& args) {
