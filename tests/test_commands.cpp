@@ -326,6 +326,27 @@ TEST_CASE("list_all_flag") {
     CHECK(cmd_list(make_args("list", {{"all", "true"}})) == 0);
 }
 
+// ── links ────────────────────────────────────────────────────────────────────
+
+TEST_CASE("links_prints_configured_urls") {
+    TempRepo repo("links_prints_configured_urls");
+    repo.init(); repo.new_project("8");
+    cmd_add_github(make_args("add-github", {{"url", "https://github.com/org/repo"}}));
+    CHECK(cmd_links(make_args("links")) == 0);
+}
+
+TEST_CASE("links_no_urls_configured") {
+    TempRepo repo("links_no_urls_configured");
+    repo.init(); repo.new_project("9");
+    CHECK(cmd_links(make_args("links")) == 0);
+}
+
+TEST_CASE("links_requires_project") {
+    TempRepo repo("links_requires_project");
+    repo.init();
+    CHECK(cmd_links(make_args("links")) == 1);
+}
+
 // ── complete ─────────────────────────────────────────────────────────────────
 
 TEST_CASE("complete_marks_done") {

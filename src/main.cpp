@@ -20,6 +20,7 @@ static void print_usage() {
         "Project commands:\n"
         "  add-todo      Append a new todo\n"
         "  list          Show project summary and todos\n"
+        "  links         Print all project URLs to the terminal\n"
         "  complete      Mark a todo completed\n"
         "  status        Set a todo's status (todo, in-progress, blocked, done)\n"
         "  add-note      Add a note to a todo\n"
@@ -49,6 +50,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"close",        {}},
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
+        {"links",        {}},
         {"complete",     {"todo"}},
         {"status",       {"todo"}},
         {"add-note",     {"todo"}},
@@ -90,6 +92,7 @@ int main(int argc, char* argv[]) {
         {"close",        cmd_close},
         {"add-todo",     cmd_add_todo},
         {"list",         cmd_list},
+        {"links",        cmd_links},
         {"complete",     cmd_complete},
         {"status",       cmd_status},
         {"add-note",     cmd_add_note},
