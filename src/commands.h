@@ -19,6 +19,9 @@ int cmd_add_todo(const Args& args);
 // Display project summary and todos (filtered by status).
 int cmd_list(const Args& args);
 
+// Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal.
+int cmd_links(const Args& args);
+
 // Mark a todo as completed.
 int cmd_complete(const Args& args);
 
