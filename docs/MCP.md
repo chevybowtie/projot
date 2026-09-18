@@ -65,7 +65,7 @@ After running `projot install-mcp-server`, Copilot Chat can call projot tools au
 Show me my open projot work items
 Add a projot todo: refactor the config parser
 Complete projot work item #2
-Open iTrack for this project
+Open Jira for this project
 ```
 
 The word **projot** in your request is enough to steer Copilot toward the right tools.
@@ -96,7 +96,7 @@ All tools are prefixed with `projot_` to avoid conflicts with built-in AI task m
 
 | Tool | What it does |
 |------|--------------|
-| `projot_open_itrack` | Open the iTrack timesheet URL |
+| `projot_open_itrack` | Open the Jira timesheet URL |
 | `projot_open_rpm` | Open the RPM project page |
 | `projot_open_github` | Open the GitHub repository |
 | `projot_open_swagger` | Open the Swagger/API docs |
