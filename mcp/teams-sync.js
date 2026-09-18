@@ -1,23 +1,14 @@
 #!/usr/bin/env node
-// teams-sync.js — post a Kanban Adaptive Card to a Teams incoming webhook.
-// Invoked by `projot render` when teams_webhook is configured.
-// Usage: node teams-sync.js <config_path> <notes_md_path> <webhook_url>
+// teams-sync.js — post a Kanban update to a Teams sync endpoint.
+// Invoked by `projot render` when teams_sync_url is configured.
+// Usage: node teams-sync.js <config_path> <notes_md_path> <sync_url>
 // Always exits 0; sync failure must never block a git commit.
 
 "use strict";
 
-const https = require("https");
-const fs = require("fs");
-const url = require("url");
-
-// ── arg parsing ───────────────────────────────────────────────────────────────
-
-const [configPath, notesPath, webhookUrl] = process.argv.slice(2);
-
-if (!configPath || !notesPath || !webhookUrl) {
-  process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> <webhook_url>\n");
-  process.exit(0);
-}
+import https from "https";
+import fs from "fs";
+import { URL } from "url";
 
 // ── config reader ─────────────────────────────────────────────────────────────
 
@@ -64,8 +55,8 @@ function kanbanColumn(title, items, color) {
   return { type: "Column", width: "stretch", items: cells };
 }
 
-function buildCard(projectName, rpm, buckets) {
-  const card = {
+function buildAdaptiveCard(projectName, rpm, buckets) {
+  return {
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
     type: "AdaptiveCard",
     version: "1.4",
@@ -82,7 +73,9 @@ function buildCard(projectName, rpm, buckets) {
       },
     ],
   };
+}
 
+function buildLegacyWebhookBody(card) {
   return {
     type: "message",
     attachments: [
@@ -94,11 +87,65 @@ function buildCard(projectName, rpm, buckets) {
   };
 }
 
+function renderSummary(projectName, rpm, buckets) {
+  const lines = [`Kanban: ${projectName} (RPM ${rpm})`, ""];
+  for (const [title, items] of [
+    ["TODO", buckets.todo],
+    ["In Progress", buckets.inProgress],
+    ["Blocked", buckets.blocked],
+    ["Done", buckets.done],
+  ]) {
+    lines.push(`${title}:`);
+    if (items.length === 0) {
+      lines.push("- —");
+    } else {
+      for (const item of items) lines.push(`- ${item}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n").trim();
+}
+
+function buildWorkflowBody(projectName, rpm, buckets, card) {
+  return {
+    source: "projot",
+    version: 1,
+    projectName,
+    rpm,
+    summary: renderSummary(projectName, rpm, buckets),
+    card,
+    kanban: {
+      todo: buckets.todo,
+      inProgress: buckets.inProgress,
+      blocked: buckets.blocked,
+      done: buckets.done,
+    },
+  };
+}
+
+function isLegacyTeamsWebhook(syncUrl) {
+  const parsed = new URL(syncUrl);
+  const host = parsed.hostname.toLowerCase();
+  return (
+    host.endsWith(".webhook.office.com") ||
+    host === "outlook.office.com" ||
+    host === "outlook.office365.com" ||
+    parsed.pathname.includes("/webhookb2/")
+  );
+}
+
+function buildSyncBody(syncUrl, projectName, rpm, buckets) {
+  const card = buildAdaptiveCard(projectName, rpm, buckets);
+  return isLegacyTeamsWebhook(syncUrl)
+    ? buildLegacyWebhookBody(card)
+    : buildWorkflowBody(projectName, rpm, buckets, card);
+}
+
 // ── http post ─────────────────────────────────────────────────────────────────
 
 function postJson(webhookUrl, body) {
   return new Promise((resolve, reject) => {
-    const parsed = new url.URL(webhookUrl);
+    const parsed = new URL(webhookUrl);
     const payload = JSON.stringify(body);
     const options = {
       hostname: parsed.hostname,
@@ -133,7 +180,13 @@ function postJson(webhookUrl, body) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
-async function main() {
+async function main(argv = process.argv.slice(2)) {
+  const [configPath, notesPath, webhookUrl] = argv;
+  if (!configPath || !notesPath || !webhookUrl) {
+    process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> <sync_url>\n");
+    return;
+  }
+
   let configText, notesText;
   try {
     configText = fs.readFileSync(configPath, "utf8");
@@ -146,15 +199,27 @@ async function main() {
   const projectName = readConfigValue(configText, "name") || "Unknown project";
   const rpm         = readConfigValue(configText, "rpm")  || "?";
   const buckets     = parseTodos(notesText);
-  const card        = buildCard(projectName, rpm, buckets);
+  const body        = buildSyncBody(webhookUrl, projectName, rpm, buckets);
 
   try {
-    await postJson(webhookUrl, card);
+    await postJson(webhookUrl, body);
   } catch (e) {
     process.stderr.write(`teams-sync: warning: Teams sync failed: ${e.message}\n`);
   }
 }
 
-main().catch((e) => {
-  process.stderr.write(`teams-sync: warning: unexpected error: ${e.message}\n`);
-});
+const isMainModule = process.argv[1] && new URL(`file://${process.argv[1]}`).href === import.meta.url;
+if (isMainModule) {
+  main().catch((e) => {
+    process.stderr.write(`teams-sync: warning: unexpected error: ${e.message}\n`);
+  });
+}
+
+export {
+  buildAdaptiveCard,
+  buildSyncBody,
+  buildWorkflowBody,
+  isLegacyTeamsWebhook,
+  parseTodos,
+  renderSummary,
+};
