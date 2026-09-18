@@ -182,6 +182,7 @@ teams_webhook = https://xxx.webhook.office.com/webhookb2/...
 | `status` | Set todo status (`--todo <ID> todo\|in-progress\|blocked\|done`) |
 | `complete` | Mark a todo done — shorthand for `status done` (`--todo <ID>`) |
 | `add-note` | Add a note to a todo (`--todo <ID> "note text"`) |
+| `links` | Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal |
 | `set-link` | Set a single-value link URL (`--key <key> --url <url>`) |
 | `set-app-id` | Update the app ID (`--force` required if already set) |
 | `add-github` | Add a GitHub URL to config |
