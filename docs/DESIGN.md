@@ -431,7 +431,7 @@ Required:
 
 - `--rpm <RPM>`
 - `--name "<Project Name>"`
-- `--itrack <iTrack>`
+- `--itrack <Jira>`
 
 Optional:
 
