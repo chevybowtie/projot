@@ -168,6 +168,23 @@ link.teams = https://teams.microsoft.com/...
 teams_webhook = https://xxx.webhook.office.com/webhookb2/...
 ```
 
+### Teams Webhook Setup
+
+To enable automatic Kanban sync on every commit, you'll need a Teams incoming webhook URL:
+
+1. **Open your Teams channel** where projot updates should be posted
+2. **Go to Channel Settings** → **Connectors** (gear icon in channel header)
+3. **Search for "Incoming Webhook"** and click Configure
+4. **Give it a name** (e.g., "projot") and optionally upload an image
+5. **Copy the webhook URL** — starts with `https://outlook.webhook.office.com/webhookb2/`
+6. **Set it in projot:**
+   ```bash
+   projot set-teams-webhook <URL>
+   ```
+7. **Optional:** If your repo is public, consider gitignoring `.projot/config` to avoid committing the webhook URL
+
+Once set, projot will post a Kanban summary to the channel on every commit.
+
 ---
 
 ## Commands
