@@ -127,7 +127,7 @@ int cmd_list(const Args& args) {
 
     std::cout << "Project: " << ctx.config.name
               << "  |  RPM: " << ctx.config.rpm
-              << "  |  iTrack: " << (ctx.config.itrack.empty() ? "N/A" : ctx.config.itrack)
+              << "  |  Jira: " << (ctx.config.itrack.empty() ? "N/A" : ctx.config.itrack)
               << "\n\n";
 
     auto todos = filter_todos(proj.todos, filter);
@@ -145,6 +145,9 @@ int cmd_list(const Args& args) {
             std::cout << t->id << ". " << marker << " " << t->text << "\n";
         }
     }
+
+    int open_count = static_cast<int>(filter_todos(proj.todos, TodoFilter::Open).size());
+    std::cout << "\n" << open_count << " of " << proj.todos.size() << " todos open\n";
     return 0;
 }
 

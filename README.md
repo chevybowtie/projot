@@ -28,9 +28,9 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 - Initialize a repo with app-level metadata (`init`) then start a project (`new`).
 - Track todos with stable numeric IDs and four states: **Todo**, **In Progress**, **Blocked**, **Done**.
 - Append notes under each todo.
-- Store project metadata: RPM number, iTrack, project name, app ID, created date.
+- Store project metadata: RPM number, Jira, project name, app ID, created date.
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
-- Configurable Links section with Teams, iTrack, RPM, and other single-value URLs.
+- Configurable Links section with Teams, Jira, RPM, and other single-value URLs.
 - List open, closed, or all todos.
 - Automatic Teams Kanban sync on every commit (via incoming webhook).
 - Cross-platform (Linux + Windows).
@@ -103,14 +103,14 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 # Project: Widget Redesign
 
 - RPM: 12345
-- iTrack: 67890
+- Jira: 67890
 - App ID: MyApp
 - Created: 2025-11-23
 - Last Updated: 2025-11-23
 
 ## Links
 - Teams: https://teams.microsoft.com/...
-- iTrack: https://itrack.example.com/67890
+- Jira: https://jira.example.com/browse/PROJ-67890
 - RPM: https://rpm.example.com/12345
 
 ## GitHub
@@ -247,7 +247,7 @@ With the MCP server configured, you can ask your AI assistant in your IDE to:
 - **Update status**: *"Mark TODO #3 as in-progress"* → Sets the Kanban state
 - **Complete TODOs**: *"Close TODO #2"* → Marks it done
 - **Set up projects**: *"Help me set up a new project"* → Creates branch, initializes projot metadata
-- **Open time tracking**: *"Open iTrack to charge time"* → Opens your iTrack URL in the browser
+- **Open time tracking**: *"Open Jira to charge time"* → Opens your Jira URL in the browser
 
 See [docs/MCP.md](docs/MCP.md) for installation, usage, and the full tool list, or [mcp/README.md](mcp/README.md) for manual IDE configuration and server internals.
 
