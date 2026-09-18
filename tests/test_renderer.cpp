@@ -22,7 +22,7 @@ static Config make_base_config() {
     cfg.created = "2025-11-23";
     cfg.links = {"teams", "itrack"};
     cfg.labels["teams"] = "Teams";
-    cfg.labels["itrack"] = "iTrack";
+    cfg.labels["itrack"] = "Jira";
     cfg.link_urls["teams"] = "https://teams.microsoft.com/channel";
     cfg.link_urls["itrack"] = "https://itrack.example.com/67890";
     return cfg;
@@ -39,7 +39,7 @@ TEST_CASE("render_header") {
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "# Project: Test Project"));
     CHECK(contains(output, "- RPM: 12345"));
-    CHECK(contains(output, "- iTrack: 67890"));
+    CHECK(contains(output, "- Jira: 67890"));
     CHECK(contains(output, "- App ID: MyApp"));
     CHECK(contains(output, "- Created: 2025-11-23"));  // from cfg.created
 }
@@ -51,7 +51,7 @@ TEST_CASE("render_links_from_config") {
     auto output = render_markdown(cfg, {});
     CHECK(contains(output, "## Links"));
     CHECK(contains(output, "- Teams: https://teams.microsoft.com/channel"));
-    CHECK(contains(output, "- iTrack: https://itrack.example.com/67890"));
+    CHECK(contains(output, "- Jira: https://itrack.example.com/67890"));
 }
 
 TEST_CASE("render_links_na_when_missing") {

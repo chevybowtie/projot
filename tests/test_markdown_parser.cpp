@@ -60,6 +60,28 @@ TEST_CASE("parse_missing_managed_sections") {
     CHECK(proj.blizzard_urls.empty());
 }
 
+TEST_CASE("parse_jira_label_new") {
+    const std::string content =
+        "# Project: Jira Test\n\n"
+        "- RPM: 1\n- Jira: 99999\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "## Links\n\n"
+        "## Todos\n";
+    Project proj;
+    parse_markdown_string(content, proj);
+    CHECK(proj.itrack == "99999");
+}
+
+TEST_CASE("parse_itrack_label_legacy") {
+    const std::string content =
+        "# Project: Legacy iTrack\n\n"
+        "- RPM: 1\n- iTrack: 88888\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+        "## Links\n\n"
+        "## Todos\n";
+    Project proj;
+    parse_markdown_string(content, proj);
+    CHECK(proj.itrack == "88888");
+}
+
 // ── Todo parsing ──────────────────────────────────────────────────────────────
 
 TEST_CASE("parse_todo_open") {
