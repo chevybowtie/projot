@@ -170,7 +170,7 @@ function handleRequest(request) {
         },
         {
           name: "projot_open_itrack",
-          description: "Open the iTrack URL in the default browser to charge time to this projot project.",
+          description: "Open the Jira URL in the default browser to charge time to this projot project.",
           inputSchema: {
             type: "object",
             properties: {},
@@ -197,7 +197,7 @@ function handleRequest(request) {
               },
               itrack_number: {
                 type: "string",
-                description: "The iTrack number for time tracking",
+                description: "The Jira number for time tracking",
               },
               branch_name: {
                 type: "string",
@@ -325,8 +325,8 @@ function handleRequest(request) {
           const number = getConfigValue("itrack");
           if (baseUrl && number) itrackUrl = baseUrl + number;
         }
-        if (!itrackUrl) return err("No iTrack URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'");
-        return openUrl(itrackUrl) || ok(`Opening iTrack: ${itrackUrl}`);
+        if (!itrackUrl) return err("No Jira URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'");
+        return openUrl(itrackUrl) || ok(`Opening Jira: ${itrackUrl}`);
       }
 
       if (name === "projot_open_rpm") {
@@ -372,7 +372,7 @@ function handleRequest(request) {
         const newArgs = ["new", "--rpm", project_number, "--name", description, "--itrack", itrack_number];
         if (teamsUrl) newArgs.push("--teams", teamsUrl);
         execArgs("projot", newArgs);
-        return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- iTrack: ${itrack_number}`);
+        return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- Jira: ${itrack_number}`);
       }
 
       if (name === "projot_set_teams_link") {
