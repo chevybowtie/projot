@@ -12,7 +12,7 @@ $projotSubcommands = @(
 
 $projotFlags = @{
     'init'                 = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
-    'new'                  = @('--rpm', '--name', '--itrack', '--teams', '--teams-webhook', '--rpm-url', '--itrack-url', '--other', '--no-hook', '--help')
+    'new'                  = @('--rpm', '--name', '--jira', '--teams', '--teams-webhook', '--rpm-url', '--jira-url', '--other', '--no-hook', '--help')
     'close'                = @('--help')
     'add-todo'             = @('--help')
     'list'                 = @('--open', '--closed', '--all', '--help')
@@ -30,12 +30,12 @@ $projotFlags = @{
     'uninstall-hook'       = @('--help')
     'install-mcp-server'   = @('--no-vscode', '--help')
     'uninstall-mcp-server' = @('--no-vscode', '--help')
-    'set-global'           = @('--rpm-base-url', '--itrack-base-url', '--help')
+    'set-global'           = @('--rpm-base-url', '--jira-base-url', '--help')
     'set-teams-webhook'    = @('--help')
 }
 
 $projotFlagValues = @{
-    '--key'   = @('teams', 'itrack', 'rpm', 'other')
+    '--key'   = @('teams', 'jira', 'rpm', 'other')
     '--type'  = @('subscription', 'key-vault', 'resource-group', 'aks', 'log-analytics', 'storage', 'private-dns')
     '--open'  = @()
     '--closed'= @()

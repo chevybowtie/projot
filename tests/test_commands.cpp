@@ -46,13 +46,13 @@ struct TempRepo {
     // Run new with required fields and return exit code.
     int new_project(const std::string& rpm = "12345",
                     const std::string& name = "Test Project",
-                    const std::string& itrack = "67890",
+                    const std::string& jira = "67890",
                     bool no_hook = true) {
         Args a;
         a.subcommand = "new";
         a.flags["rpm"].push_back(rpm);
         a.flags["name"].push_back(name);
-        a.flags["itrack"].push_back(itrack);
+        a.flags["jira"].push_back(jira);
         if (no_hook) a.flags["no-hook"].push_back("true");
         return cmd_new(a);
     }
@@ -131,7 +131,7 @@ TEST_CASE("new_writes_project_fields") {
     parse_config((repo.path / ".projot" / "config").string(), cfg);
     CHECK(cfg.rpm == "11111");
     CHECK(cfg.name == "My Proj");
-    CHECK(cfg.itrack == "22222");
+    CHECK(cfg.jira == "22222");
 }
 
 TEST_CASE("new_creates_notes_file") {
@@ -158,7 +158,7 @@ TEST_CASE("new_with_teams_url") {
     a.subcommand = "new";
     a.flags["rpm"].push_back("66666");
     a.flags["name"].push_back("T");
-    a.flags["itrack"].push_back("1");
+    a.flags["jira"].push_back("1");
     a.flags["teams"].push_back("https://teams.microsoft.com/t");
     a.flags["no-hook"].push_back("true");
     cmd_new(a);
@@ -174,7 +174,7 @@ TEST_CASE("new_with_teams_sync_url") {
     a.subcommand = "new";
     a.flags["rpm"].push_back("66667");
     a.flags["name"].push_back("T");
-    a.flags["itrack"].push_back("2");
+    a.flags["jira"].push_back("2");
     a.flags["teams-sync-url"].push_back("https://flow.example.com/invoke");
     a.flags["no-hook"].push_back("true");
     CHECK(cmd_new(a) == 0);
@@ -195,7 +195,7 @@ TEST_CASE("new_fails_if_rpm_set") {
 TEST_CASE("new_fails_without_required_flags") {
     TempRepo repo("new_fails_without_required_flags");
     repo.init();
-    // Missing --itrack
+    // Missing --jira
     Args a = make_args("new", {{"rpm", "1"}, {"name", "P"}});
     CHECK(cmd_new(a) != 0);
 }
@@ -227,7 +227,7 @@ TEST_CASE("close_clears_project_fields") {
     // Project fields cleared
     CHECK(cfg.rpm == "");
     CHECK(cfg.name == "");
-    CHECK(cfg.itrack == "");
+    CHECK(cfg.jira == "");
     CHECK(cfg.created == "");
     CHECK(cfg.links.empty());
     // Repo-level fields preserved
@@ -484,6 +484,39 @@ TEST_CASE("set_link_new_key") {
     Config cfg;
     parse_config((repo.path / ".projot" / "config").string(), cfg);
     CHECK(cfg.link_urls["teams"] == "https://teams.com/t");
+}
+
+TEST_CASE("set_link_legacy_itrack_key_maps_to_jira") {
+    TempRepo repo("set_link_itrack_alias");
+    repo.init(); repo.new_project("12");
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "itrack"}, {"url", "https://jira.example.com/1"}})) == 0);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.link_urls["jira"] == "https://jira.example.com/1");
+    CHECK(cfg.link_urls.count("itrack") == 0);
+}
+
+TEST_CASE("normalize_flag_aliases_maps_legacy_itrack_to_jira") {
+    Args a;
+    a.flags["itrack"].push_back("123");
+    a.flags["itrack-url"].push_back("https://jira.example.com/123");
+    a.flags["itrack-base-url"].push_back("https://jira.example.com/");
+    normalize_flag_aliases(a);
+    CHECK(a.get("jira") == "123");
+    CHECK(a.get("jira-url") == "https://jira.example.com/123");
+    CHECK(a.get("jira-base-url") == "https://jira.example.com/");
+    CHECK_FALSE(a.has("itrack"));
+    CHECK_FALSE(a.has("itrack-url"));
+    CHECK_FALSE(a.has("itrack-base-url"));
+}
+
+TEST_CASE("normalize_flag_aliases_prefers_jira_when_both_given") {
+    Args both;
+    both.flags["itrack"].push_back("1");
+    both.flags["jira"].push_back("2");
+    normalize_flag_aliases(both);
+    CHECK(both.get("jira") == "2");
+    CHECK_FALSE(both.has("itrack"));
 }
 
 TEST_CASE("set_link_update_key") {
@@ -931,24 +964,24 @@ TEST_CASE("set_global_writes_rpm_base_url") {
     CHECK(cfg.rpm_base_url == "https://rpm.example.com/");
 }
 
-TEST_CASE("set_global_writes_itrack_base_url") {
-    TempGlobalConfig global("set_global_itrack");
-    int ret = cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+TEST_CASE("set_global_writes_jira_base_url") {
+    TempGlobalConfig global("set_global_jira");
+    int ret = cmd_set_global(make_args("set-global", {{"jira-base-url", "https://jira.example.com/"}}));
     CHECK(ret == 0);
     Config cfg;
     REQUIRE(parse_config(global.config_path().string(), cfg).ok);
-    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+    CHECK(cfg.jira_base_url == "https://jira.example.com/");
 }
 
 TEST_CASE("set_global_preserves_existing_value") {
     TempGlobalConfig global("set_global_preserve");
-    // Set rpm first, then itrack — both should survive the second write.
+    // Set rpm first, then jira — both should survive the second write.
     cmd_set_global(make_args("set-global", {{"rpm-base-url",    "https://rpm.example.com/"}}));
-    cmd_set_global(make_args("set-global", {{"itrack-base-url", "https://itrack.example.com/"}}));
+    cmd_set_global(make_args("set-global", {{"jira-base-url", "https://jira.example.com/"}}));
     Config cfg;
     REQUIRE(parse_config(global.config_path().string(), cfg).ok);
     CHECK(cfg.rpm_base_url    == "https://rpm.example.com/");
-    CHECK(cfg.itrack_base_url == "https://itrack.example.com/");
+    CHECK(cfg.jira_base_url == "https://jira.example.com/");
 }
 
 TEST_CASE("set_global_requires_at_least_one_flag") {

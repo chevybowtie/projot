@@ -65,11 +65,11 @@ complete -c projot -n '__fish_seen_subcommand_from init' -l blizzard -d 'Blizzar
 # new
 complete -c projot -n '__fish_seen_subcommand_from new' -l rpm       -d 'RPM project number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l name      -d 'Project name' -r
-complete -c projot -n '__fish_seen_subcommand_from new' -l itrack    -d 'iTrack ticket number' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l jira      -d 'Jira ticket number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams     -d 'Teams channel URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams-webhook -d 'Teams incoming webhook URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l rpm-url   -d 'RPM system link' -r
-complete -c projot -n '__fish_seen_subcommand_from new' -l itrack-url -d 'iTrack link' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l jira-url -d 'Jira link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l other     -d 'Other URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l no-hook   -d 'Skip hook installation'
 
@@ -96,7 +96,7 @@ complete -c projot -n '__fish_seen_subcommand_from add-note' -l todo \
 
 # set-link
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l key \
-    -d 'Link key' -r -a 'teams itrack rpm other'
+    -d 'Link key' -r -a 'teams jira rpm other'
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l url -d 'URL' -r
 
 # set-app-id
@@ -120,4 +120,4 @@ complete -c projot -n '__fish_seen_subcommand_from uninstall-mcp-server' -l no-v
 
 # set-global
 complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r
-complete -c projot -n '__fish_seen_subcommand_from set-global' -l itrack-base-url -d 'Base URL for iTrack links' -r
+complete -c projot -n '__fish_seen_subcommand_from set-global' -l jira-base-url -d 'Base URL for Jira links' -r

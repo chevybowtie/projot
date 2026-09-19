@@ -54,7 +54,7 @@ projot init --app-id MyApp --github https://github.com/org/repo
 Run when assigned a new RPM project:
 
 ```sh
-projot new --rpm 12345 --name "Widget Redesign" --itrack 67890 --teams https://teams.microsoft.com/...
+projot new --rpm 12345 --name "Widget Redesign" --jira 67890 --teams https://teams.microsoft.com/...
 ```
 
 ### 3. Work with todos
@@ -161,8 +161,8 @@ blizzard = https://blizzard.example.com/project
 ```text
 rpm = 12345
 name = Widget Redesign
-itrack = 67890
-links = teams, itrack, rpm
+jira = 67890
+links = teams, jira, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
 teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
@@ -207,7 +207,7 @@ Once set, projot will post a Kanban summary to the channel on every commit.
 | `add-blizzard` | Add a Blizzard URL to config |
 | `add-azure` | Add an Azure resource URL (`--type <type> --url <url> [--name <label>]`) |
 | `render` | Re-render the notes file from config |
-| `set-global` | Set global defaults (`--rpm-base-url`, `--itrack-base-url`) |
+| `set-global` | Set global defaults (`--rpm-base-url`, `--jira-base-url`) |
 | `set-teams-webhook` | Set the Teams sync endpoint URL for Kanban sync |
 | `install-hook` | Install the pre-commit git hook |
 | `uninstall-hook` | Remove the pre-commit git hook |

@@ -96,7 +96,7 @@ All tools are prefixed with `projot_` to avoid conflicts with built-in AI task m
 
 | Tool | What it does |
 |------|--------------|
-| `projot_open_itrack` | Open the Jira timesheet URL |
+| `projot_open_jira` | Open the Jira timesheet URL |
 | `projot_open_rpm` | Open the RPM project page |
 | `projot_open_github` | Open the GitHub repository |
 | `projot_open_swagger` | Open the Swagger/API docs |

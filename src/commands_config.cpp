@@ -68,29 +68,29 @@ int cmd_init(const Args& args) {
 int cmd_new(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot new --rpm <RPM> --name \"<Name>\" --itrack <Jira> [options]\n\n"
+            "Usage: projot new --rpm <RPM> --name \"<Name>\" --jira <Jira> [options]\n\n"
             "Start a new RPM project in this repository.\n\n"
             "Required:\n"
             "  --rpm <RPM>               RPM project number\n"
             "  --name \"<Project Name>\"   Human-readable project name\n"
-            "  --itrack <Jira>           Jira ticket number\n\n"
+            "  --jira <Jira>             Jira ticket number\n\n"
             "Optional:\n"
             "  --teams <URL>             Teams channel URL\n"
             "  --teams-sync-url <URL>    Teams sync endpoint URL for Kanban updates\n"
             "  --teams-webhook <URL>     Backward-compatible alias for --teams-sync-url\n"
             "  --rpm-url <URL>           RPM system link\n"
-            "  --itrack-url <URL>        Jira link\n"
+            "  --jira-url <URL>          Jira link\n"
             "  --other <URL>             Other URL\n"
             "  --no-hook                 Skip pre-commit hook installation\n\n"
             "Open todos saved by the previous 'projot close' are carried into the\n"
             "new project (renumbered from 1) and the carryover file is removed.\n\n"
             "Example:\n"
-            "  projot new --rpm 12345 --name \"Widget Redesign\" --itrack 67890\n";
+            "  projot new --rpm 12345 --name \"Widget Redesign\" --jira 67890\n";
         return 0;
     }
 
-    if (!args.has("rpm") || !args.has("name") || !args.has("itrack")) {
-        std::cerr << "error: --rpm, --name, and --itrack are required. "
+    if (!args.has("rpm") || !args.has("name") || !args.has("jira")) {
+        std::cerr << "error: --rpm, --name, and --jira are required. "
                      "Run 'projot new --help' for usage.\n";
         return 1;
     }
@@ -106,14 +106,14 @@ int cmd_new(const Args& args) {
 
     ctx.config.rpm     = args.get("rpm");
     ctx.config.name    = args.get("name");
-    ctx.config.itrack  = args.get("itrack");
+    ctx.config.jira  = args.get("jira");
     ctx.config.created = date_today();
 
     // Build links list from provided optional flags
     struct LinkDef { std::string key, label, flag; };
     for (const auto& ld : std::vector<LinkDef>{
             {"teams",  "Teams",  "teams"},
-            {"itrack", "Jira", "itrack-url"},
+            {"jira", "Jira", "jira-url"},
             {"rpm",    "RPM",    "rpm-url"},
             {"other",  "Other",  "other"},
         }) {
@@ -380,16 +380,16 @@ int cmd_set_global(const Args& args) {
             "Values can be overridden at the repo level in .projot/config if needed.\n\n"
             "Options:\n"
             "  --rpm-base-url <url>    Base URL for RPM links (project number is appended)\n"
-            "  --itrack-base-url <url> Base URL for Jira links (ticket number is appended)\n\n"
+            "  --jira-base-url <url>   Base URL for Jira links (ticket number is appended)\n\n"
             "At least one of the above options is required.\n\n"
             "Examples:\n"
             "  projot set-global --rpm-base-url https://rpm.example.com/\n"
-            "  projot set-global --itrack-base-url https://yourcompany.atlassian.net/browse/\n";
+            "  projot set-global --jira-base-url https://yourcompany.atlassian.net/browse/\n";
         return 0;
     }
 
-    if (!args.has("rpm-base-url") && !args.has("itrack-base-url")) {
-        std::cerr << "error: --rpm-base-url or --itrack-base-url required.\n";
+    if (!args.has("rpm-base-url") && !args.has("jira-base-url")) {
+        std::cerr << "error: --rpm-base-url or --jira-base-url required.\n";
         return 1;
     }
 
@@ -404,8 +404,8 @@ int cmd_set_global(const Args& args) {
 
     if (args.has("rpm-base-url"))
         cfg.rpm_base_url = args.get("rpm-base-url");
-    if (args.has("itrack-base-url"))
-        cfg.itrack_base_url = args.get("itrack-base-url");
+    if (args.has("jira-base-url"))
+        cfg.jira_base_url = args.get("jira-base-url");
 
     auto result = write_global_config(path->string(), cfg);
     if (!result.ok) {

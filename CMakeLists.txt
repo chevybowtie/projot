@@ -15,7 +15,7 @@ endif()
 
 # Version string baked into binary
 add_compile_definitions(PROJOT_VERSION="${PROJOT_VERSION_FULL}")
-add_compile_definitions(PROJOT_CONFIG_VERSION=1)
+add_compile_definitions(PROJOT_CONFIG_VERSION=2)
 
 # Cross-platform warnings
 if(MSVC)

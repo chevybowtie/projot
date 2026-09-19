@@ -56,8 +56,8 @@ Context load_context() {
         if (parse_config(global_path->string(), global_cfg).ok) {
             if (ctx.config.rpm_base_url.empty())
                 ctx.config.rpm_base_url = global_cfg.rpm_base_url;
-            if (ctx.config.itrack_base_url.empty())
-                ctx.config.itrack_base_url = global_cfg.itrack_base_url;
+            if (ctx.config.jira_base_url.empty())
+                ctx.config.jira_base_url = global_cfg.jira_base_url;
         }
     }
 

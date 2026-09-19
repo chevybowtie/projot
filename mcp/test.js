@@ -29,8 +29,8 @@ writeFileSync(join(tmp, ".projot", "config"), [
   "app_id = TestApp",
   "rpm = 12345",
   "name = Test Project",
-  "itrack = 67890",
-  "link.itrack = https://itrack.example.com/67890",
+  "jira = 67890",
+  "link.jira = https://jira.example.com/67890",
   "link.teams = https://teams.example.com/channel",
   "link.rpm = https://rpm.example.com/12345",
   "github = https://github.com/example/repo",
@@ -121,12 +121,23 @@ test("setup_new_project: --rpm not --ranp", (assert) => {
   const { projotCalls } = runTool("projot_setup_project", {
     project_number: "99999",
     description: "test setup",
-    itrack_number: "11111",
+    jira_number: "11111",
   });
   assert("projot called", projotCalls.length > 0);
   const cmd = projotCalls[0];
   assert("subcommand is new", cmd.includes("new"));
   assert("--rpm used (not --ranp)", cmd.includes("--rpm") && !cmd.includes("--ranp"));
+  assert("--jira used", cmd.includes("--jira"));
+});
+
+test("setup_new_project: legacy itrack_number still accepted", (assert) => {
+  const { projotCalls } = runTool("projot_setup_project", {
+    project_number: "99999",
+    description: "test setup",
+    itrack_number: "22222",
+  });
+  assert("projot called", projotCalls.length > 0);
+  assert("--jira 22222 passed", projotCalls[0].includes("--jira") && projotCalls[0].includes("22222"));
 });
 
 // Regression guard: complete_todo must pass the todo ID via --todo.
@@ -149,16 +160,22 @@ test("get_open_todos: list --open (regression guard)", (assert) => {
 });
 
 // F023 regression: openUrl must pass URL as argument, not interpolate into a shell string.
-// Uses the link.itrack value from .projot/config ("https://itrack.example.com/67890").
+// Uses the link.jira value from .projot/config ("https://jira.example.com/67890").
 if (openCmd) {
-  test(`open_itrack: URL passed as argument to ${openCmd} (F023 regression)`, (assert) => {
-    const { allLines } = runTool("projot_open_itrack", {});
+  test(`open_jira: URL passed as argument to ${openCmd} (F023 regression)`, (assert) => {
+    const { allLines } = runTool("projot_open_jira", {});
     const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
     assert(`${openCmd} was called`, !!openLine);
-    assert("URL present in args", openLine && openLine.includes("https://itrack.example.com/67890"));
+    assert("URL present in args", openLine && openLine.includes("https://jira.example.com/67890"));
     // If the URL were shell-interpolated via execSync(`xdg-open "${url}"`),
     // the surrounding quotes would appear in the log. With execFileSync they don't.
     assert("URL not wrapped in quotes (no shell interpolation)", openLine && !openLine.includes('"https://'));
+  });
+
+  test(`open_itrack: legacy tool name still works`, (assert) => {
+    const { allLines } = runTool("projot_open_itrack", {});
+    const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
+    assert(`${openCmd} was called`, !!openLine);
   });
 }
 

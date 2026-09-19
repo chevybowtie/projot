@@ -10,7 +10,7 @@ TEST_CASE("parse_header_fields") {
     REQUIRE(result.ok);
     CHECK(proj.name == "Test Project");
     CHECK(proj.rpm == "12345");
-    CHECK(proj.itrack == "67890");
+    CHECK(proj.jira == "67890");
     CHECK(proj.app_id == "MyApp");
     CHECK(proj.created == "2025-11-23");
 }
@@ -18,7 +18,7 @@ TEST_CASE("parse_header_fields") {
 TEST_CASE("parse_header_na_values") {
     Project proj;
     parse_markdown(PROJOT_TEST_DATA_DIR "/notes/no_todos.md", proj);
-    CHECK(proj.itrack.empty()); // N/A -> empty string
+    CHECK(proj.jira.empty()); // N/A -> empty string
     CHECK(proj.app_id.empty()); // N/A -> empty string
 }
 
@@ -68,7 +68,7 @@ TEST_CASE("parse_jira_label_new") {
         "## Todos\n";
     Project proj;
     parse_markdown_string(content, proj);
-    CHECK(proj.itrack == "99999");
+    CHECK(proj.jira == "99999");
 }
 
 TEST_CASE("parse_itrack_label_legacy") {
@@ -79,7 +79,7 @@ TEST_CASE("parse_itrack_label_legacy") {
         "## Todos\n";
     Project proj;
     parse_markdown_string(content, proj);
-    CHECK(proj.itrack == "88888");
+    CHECK(proj.jira == "88888");
 }
 
 // ── Todo parsing ──────────────────────────────────────────────────────────────

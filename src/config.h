@@ -9,7 +9,7 @@
 // Increment only when the schema changes in a breaking way.
 // The value is set by CMakeLists.txt as PROJOT_CONFIG_VERSION.
 #ifndef PROJOT_CONFIG_VERSION
-#define PROJOT_CONFIG_VERSION 1
+#define PROJOT_CONFIG_VERSION 2
 #endif
 static constexpr int PROJOT_CONFIG_SCHEMA_VERSION = PROJOT_CONFIG_VERSION;
 
@@ -39,11 +39,11 @@ struct Config {
     // Project-level fields (set by `new`)
     std::string rpm;
     std::string name;
-    std::string itrack;
+    std::string jira;
 
     // Global-level fields (from ~/.config/projot/config; may be overridden per-repo)
     std::string rpm_base_url;
-    std::string itrack_base_url;
+    std::string jira_base_url;
 
     std::string date_format;
     std::string created;       // ISO date when project was created (YYYY-MM-DD)
@@ -68,7 +68,7 @@ struct Config {
     void clear_project() {
         rpm.clear();
         name.clear();
-        itrack.clear();
+        jira.clear();
         created.clear();
         date_format.clear();
         links.clear();
@@ -99,7 +99,7 @@ ParseResult parse_config(const std::string& path, Config& out);
 // Returns ok=false with an error message on failure.
 ParseResult write_config(const std::string& path, const Config& cfg);
 
-// Write only global config fields (rpm_base_url, itrack_base_url) to disk.
+// Write only global config fields (rpm_base_url, jira_base_url) to disk.
 ParseResult write_global_config(const std::string& path, const Config& cfg);
 
 // Split a comma-separated value string into trimmed tokens.
