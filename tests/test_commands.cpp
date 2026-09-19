@@ -238,8 +238,10 @@ TEST_CASE("close_carries_open_todos_to_next_project") {
     CHECK(cmd_add_todo(make_args("add-todo", {}, "Done item")) == 0);
     CHECK(cmd_add_todo(make_args("add-todo", {}, "Blocked item")) == 0);
     CHECK(cmd_add_todo(make_args("add-todo", {}, "Todo item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Active item")) == 0);
     CHECK(cmd_status(make_args("status", {{"todo", "1"}}, "done")) == 0);
     CHECK(cmd_status(make_args("status", {{"todo", "2"}}, "blocked")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "4"}}, "in-progress")) == 0);
 
     CHECK(cmd_close(make_args("close")) == 0);
     CHECK(repo.new_project("carry2", "Carry Two", "22222") == 0);
@@ -247,13 +249,16 @@ TEST_CASE("close_carries_open_todos_to_next_project") {
     Project next_proj;
     auto parse = parse_markdown((repo.path / ".projot" / "carry2.md").string(), next_proj);
     REQUIRE(parse.ok);
-    REQUIRE(next_proj.todos.size() == 2);
+    REQUIRE(next_proj.todos.size() == 3);
     CHECK(next_proj.todos[0].id == 1);
     CHECK(next_proj.todos[0].text == "Blocked item");
     CHECK(next_proj.todos[0].status == TodoStatus::Blocked);
     CHECK(next_proj.todos[1].id == 2);
     CHECK(next_proj.todos[1].text == "Todo item");
     CHECK(next_proj.todos[1].status == TodoStatus::Todo);
+    CHECK(next_proj.todos[2].id == 3);
+    CHECK(next_proj.todos[2].text == "Active item");
+    CHECK(next_proj.todos[2].status == TodoStatus::InProgress);
     CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
 }
 
