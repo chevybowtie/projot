@@ -297,6 +297,40 @@ TEST_CASE("close_without_open_todos_does_not_carry_over") {
     CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
 }
 
+TEST_CASE("close_leaves_project_open_when_carryover_write_fails") {
+    TempRepo repo("close_carryover_write_fails");
+    repo.init();
+    repo.new_project("carry6", "Carry Six", "66666");
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Still open")) == 0);
+
+    // A directory squatting on the carryover path makes the write fail.
+    fs::create_directory(repo.path / ".projot" / "carryover_todos.md");
+
+    CHECK(cmd_close(make_args("close")) == 1);
+
+    // Nothing should have been archived or cleared.
+    CHECK(fs::exists(repo.path / ".projot" / "carry6.md"));
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "archive" / "carry6.md"));
+    Config cfg;
+    REQUIRE(parse_config((repo.path / ".projot" / "config").string(), cfg).ok);
+    CHECK(cfg.rpm == "carry6");
+}
+
+TEST_CASE("quote_windows_arg_plain_and_spaces") {
+    CHECK(quote_windows_arg("abc") == "\"abc\"");
+    CHECK(quote_windows_arg("C:\\My Repo\\x") == "\"C:\\My Repo\\x\"");
+    CHECK(quote_windows_arg("") == "\"\"");
+}
+
+TEST_CASE("quote_windows_arg_escapes_quotes_and_trailing_backslashes") {
+    // Embedded quote gets a backslash.
+    CHECK(quote_windows_arg("a\"b") == "\"a\\\"b\"");
+    // Backslashes before a quote are doubled, plus one to escape the quote.
+    CHECK(quote_windows_arg("a\\\"b") == "\"a\\\\\\\"b\"");
+    // Trailing backslashes are doubled so they don't escape the closing quote.
+    CHECK(quote_windows_arg("C:\\dir\\") == "\"C:\\dir\\\\\"");
+}
+
 TEST_CASE("close_clears_azure_resources") {
     TempRepo repo("close_clears_azure_resources");
     repo.init();

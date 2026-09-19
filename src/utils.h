@@ -20,6 +20,31 @@ inline std::string date_today() {
     return std::string(buf);
 }
 
+// Quotes one argument for a Windows command line following the CommandLineToArgvW
+// rules: backslashes only need doubling when they precede a quote, and embedded
+// quotes are escaped. Platform-independent so it can be unit tested everywhere;
+// only the Windows CreateProcess paths use it.
+inline std::string quote_windows_arg(const std::string& arg) {
+    std::string out = "\"";
+    for (auto it = arg.begin();; ++it) {
+        size_t backslashes = 0;
+        while (it != arg.end() && *it == '\\') { ++it; ++backslashes; }
+        if (it == arg.end()) {
+            out.append(backslashes * 2, '\\'); // trailing backslashes precede the closing quote
+            break;
+        }
+        if (*it == '"') {
+            out.append(backslashes * 2 + 1, '\\');
+            out.push_back('"');
+        } else {
+            out.append(backslashes, '\\');
+            out.push_back(*it);
+        }
+    }
+    out.push_back('"');
+    return out;
+}
+
 // Format today's date according to a simple format string.
 // Supported tokens: YYYY, MM, DD
 inline std::string format_date(const std::string& fmt) {
