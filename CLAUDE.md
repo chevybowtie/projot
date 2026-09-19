@@ -57,13 +57,13 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Critical Gotchas
 
-**std::system() is fragile.** Git operations use `std::system("git -C ... add ...")` to stage files (src/commands_maint.cpp:91). The RPM is validated, but the path is trusted; shell injection is theoretically possible if `.projot/config` is malformed. Do not add new `std::system()` calls; prefer direct file operations or a git library (post-v0.1 planned in TECH_DEBT_AUDIT.md F005).
+**std::system() is fragile.** Git operations use `std::system("git -C ... add ...")` to stage files (src/commands_maint.cpp:91). The RPM is validated, but the path is trusted; shell injection is theoretically possible if `.projot/config` is malformed. Do not add new `std::system()` calls; prefer direct file operations or a git library.
 
 **MCP server requires Node.js.** The `install-mcp-server` command checks for Node.js with a shell invocation. Node must be on PATH. If missing, the tool warns but doesn't fail. Test locally with `which node` before relying on MCP integration.
 
 **Pre-commit hook uses string markers.** The hook is idempotent; it checks for a BEGIN/END marker to avoid duplication. If manually edited and markers are broken, the tool will re-append, creating duplicates. Do not hand-edit `.git/hooks/pre-commit`.
 
-**Config versioning is forward-compatible.** If a newer projot version writes `config_version=2`, older binaries will refuse to run (clear error). Downgrades to older binaries may fail silently. Document format changes in TECH_DEBT_AUDIT.md and increment `PROJOT_CONFIG_SCHEMA_VERSION` in CMakeLists.txt.
+**Config versioning is forward-compatible.** If a newer projot version writes `config_version=2`, older binaries will refuse to run (clear error). Downgrades to older binaries may fail silently. Document format changes in docs/DESIGN.md and increment `PROJOT_CONFIG_SCHEMA_VERSION` in CMakeLists.txt.
 
 **Azure resource types are hardcoded.** Adding a new Azure type (e.g., "vm", "container-registry") requires editing `src/commands_config.cpp` and recompiling. This is acceptable for v0.1 (types are stable); post-v0.1 could use a config file.
 
@@ -71,7 +71,7 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 All 212 tests pass. Use the `TempRepo` helper in `tests/test_commands.cpp` to set up temporary git repos for testing. Test data lives in `tests/data/configs/` and `tests/data/notes/`. Reference it with the `PROJOT_TEST_DATA_DIR` macro (set at CMake time to an absolute path).
 
-Tests verify config parsing, markdown I/O, command execution, versioning, error handling, and hooks. Coverage is comprehensive for the happy path; error cases (render failures, permission errors) have minimal coverage (noted in TECH_DEBT_AUDIT.md F008).
+Tests verify config parsing, markdown I/O, command execution, versioning, error handling, and hooks. Coverage is comprehensive for the happy path; error cases (render failures, permission errors) have minimal coverage.
 
 ## Documentation Consolidation
 
