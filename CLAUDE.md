@@ -57,9 +57,9 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Critical Gotchas
 
-**std::system() is fragile.** Git operations use `std::system("git -C ... add ...")` to stage files (src/commands_maint.cpp:91). The RPM is validated, but the path is trusted; shell injection is theoretically possible if `.projot/config` is malformed. Do not add new `std::system()` calls; prefer direct file operations or a git library.
+**No shell invocations.** Git staging goes through `git_stage_file()` in `src/commands_maint.cpp`, which uses `fork()`+`execvp()` (`CreateProcess` on Windows) with no shell. Do not add `std::system()` or other shell-string calls; extend the existing helpers instead. Windows builds the `CreateProcess` command line by string concatenation, so keep paths quoted.
 
-**MCP server requires Node.js.** The `install-mcp-server` command checks for Node.js with a shell invocation. Node must be on PATH. If missing, the tool warns but doesn't fail. Test locally with `which node` before relying on MCP integration.
+**MCP server requires Node.js.** The `install-mcp-server` command checks for Node.js by scanning `PATH` (`node_available()`, no shell). Node must be on PATH. If missing, the tool warns but doesn't fail. Test locally with `which node` before relying on MCP integration.
 
 **Pre-commit hook uses string markers.** The hook is idempotent; it checks for a BEGIN/END marker to avoid duplication. If manually edited and markers are broken, the tool will re-append, creating duplicates. Do not hand-edit `.git/hooks/pre-commit`.
 
