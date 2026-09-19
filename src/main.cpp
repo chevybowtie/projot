@@ -36,7 +36,7 @@ static void print_usage() {
         "  uninstall-hook        Remove the projot pre-commit git hook\n"
         "  install-mcp-server    Configure MCP server for Claude Code and VS Code\n"
         "  uninstall-mcp-server  Remove MCP server configuration\n"
-        "  set-global            Set global defaults (rpm_base_url, itrack_base_url)\n"
+        "  set-global            Set global defaults (RPM and Jira base URLs)\n"
         "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
@@ -73,6 +73,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
 
 int main(int argc, char* argv[]) {
     Args args = parse_args(argc, argv);
+    normalize_flag_aliases(args);
 
     if (args.version_requested) {
         std::cout << "projot " << PROJOT_VERSION << "\n";

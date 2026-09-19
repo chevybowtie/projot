@@ -34,7 +34,7 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--app-id --github --swagger --blizzard --help" -- "${cur}") )
                 ;;
             new)
-                COMPREPLY=( $(compgen -W "--rpm --name --itrack --teams --teams-webhook --rpm-url --itrack-url --other --no-hook --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--rpm --name --jira --teams --teams-webhook --rpm-url --jira-url --other --no-hook --help" -- "${cur}") )
                 ;;
             close)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
@@ -70,7 +70,7 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--no-vscode --help" -- "${cur}") )
                 ;;
             set-global)
-                COMPREPLY=( $(compgen -W "--rpm-base-url --itrack-base-url --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--rpm-base-url --jira-base-url --help" -- "${cur}") )
                 ;;
         esac
         return
@@ -85,7 +85,7 @@ _projot() {
             return
             ;;
         --key)
-            COMPREPLY=( $(compgen -W "teams itrack rpm other" -- "${cur}") )
+            COMPREPLY=( $(compgen -W "teams jira rpm other" -- "${cur}") )
             return
             ;;
     esac

@@ -486,6 +486,44 @@ TEST_CASE("set_link_new_key") {
     CHECK(cfg.link_urls["teams"] == "https://teams.com/t");
 }
 
+TEST_CASE("set_link_jira_key_is_alias_for_itrack") {
+    TempRepo repo("set_link_jira_alias");
+    repo.init(); repo.new_project("12");
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "jira"}, {"url", "https://jira.example.com/1"}})) == 0);
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.link_urls["itrack"] == "https://jira.example.com/1");
+    CHECK(cfg.link_urls.count("jira") == 0);
+}
+
+TEST_CASE("normalize_flag_aliases_maps_jira_to_itrack") {
+    Args a;
+    a.flags["jira"].push_back("123");
+    a.flags["jira-url"].push_back("https://jira.example.com/123");
+    a.flags["jira-base-url"].push_back("https://jira.example.com/");
+    normalize_flag_aliases(a);
+    CHECK(a.get("itrack") == "123");
+    CHECK(a.get("itrack-url") == "https://jira.example.com/123");
+    CHECK(a.get("itrack-base-url") == "https://jira.example.com/");
+    CHECK_FALSE(a.has("jira"));
+    CHECK_FALSE(a.has("jira-url"));
+    CHECK_FALSE(a.has("jira-base-url"));
+}
+
+TEST_CASE("normalize_flag_aliases_keeps_legacy_itrack_and_prefers_it") {
+    Args legacy;
+    legacy.flags["itrack"].push_back("1");
+    normalize_flag_aliases(legacy);
+    CHECK(legacy.get("itrack") == "1");
+
+    Args both;
+    both.flags["itrack"].push_back("1");
+    both.flags["jira"].push_back("2");
+    normalize_flag_aliases(both);
+    CHECK(both.get("itrack") == "1");
+    CHECK_FALSE(both.has("jira"));
+}
+
 TEST_CASE("set_link_update_key") {
     TempRepo repo("set_link_update_key");
     repo.init(); repo.new_project("11");

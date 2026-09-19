@@ -169,7 +169,7 @@ function handleRequest(request) {
           },
         },
         {
-          name: "projot_open_itrack",
+          name: "projot_open_jira",
           description: "Open the Jira URL in the default browser to charge time to this projot project.",
           inputSchema: {
             type: "object",
@@ -195,7 +195,7 @@ function handleRequest(request) {
                 type: "string",
                 description: "Short project description/title",
               },
-              itrack_number: {
+              jira_number: {
                 type: "string",
                 description: "The Jira number for time tracking",
               },
@@ -204,7 +204,7 @@ function handleRequest(request) {
                 description: "Optional: git branch name. If not provided, generates feat/{project_number}-{slugified_description}",
               },
             },
-            required: ["project_number", "description", "itrack_number"],
+            required: ["project_number", "description", "jira_number"],
           },
         },
         {
@@ -318,15 +318,17 @@ function handleRequest(request) {
         return ok(`Projot work item #${todo_id} status set to: ${status}`);
       }
 
-      if (name === "projot_open_itrack") {
-        let itrackUrl = getConfigValue("link.itrack");
-        if (!itrackUrl) {
+      // "projot_open_itrack" is the legacy tool name, still handled but no longer advertised.
+      if (name === "projot_open_jira" || name === "projot_open_itrack") {
+        // Config keys keep their historical "itrack" spelling on disk.
+        let jiraUrl = getConfigValue("link.itrack");
+        if (!jiraUrl) {
           const baseUrl = getConfigValue("itrack_base_url") || getGlobalConfigValue("itrack_base_url");
           const number = getConfigValue("itrack");
-          if (baseUrl && number) itrackUrl = baseUrl + number;
+          if (baseUrl && number) jiraUrl = baseUrl + number;
         }
-        if (!itrackUrl) return err("No Jira URL configured. Set link.itrack or run 'projot set-global --itrack-base-url <url>'");
-        return openUrl(itrackUrl) || ok(`Opening Jira: ${itrackUrl}`);
+        if (!jiraUrl) return err("No Jira URL configured. Run 'projot set-link --key jira --url <url>' or 'projot set-global --jira-base-url <url>'");
+        return openUrl(jiraUrl) || ok(`Opening Jira: ${jiraUrl}`);
       }
 
       if (name === "projot_open_rpm") {
@@ -365,14 +367,17 @@ function handleRequest(request) {
       }
 
       if (name === "projot_setup_project") {
-        const { project_number, description, itrack_number, branch_name } = args;
+        // itrack_number is the legacy parameter name, still accepted.
+        const { project_number, description, branch_name } = args;
+        const jira_number = args.jira_number || args.itrack_number;
+        if (!jira_number) return err("jira_number is required");
         const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
         execArgs("git", ["checkout", "-b", suggestedBranch]);
         const teamsUrl = getConfigValue("link.teams");
-        const newArgs = ["new", "--rpm", project_number, "--name", description, "--itrack", itrack_number];
+        const newArgs = ["new", "--rpm", project_number, "--name", description, "--jira", jira_number];
         if (teamsUrl) newArgs.push("--teams", teamsUrl);
         execArgs("projot", newArgs);
-        return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- Jira: ${itrack_number}`);
+        return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- Jira: ${jira_number}`);
       }
 
       if (name === "projot_set_teams_link") {
