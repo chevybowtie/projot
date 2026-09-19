@@ -89,7 +89,7 @@ int cmd_new(const Args& args) {
         return 0;
     }
 
-    if (!args.has("rpm") || !args.has("name") || !args.has("itrack")) {
+    if (!args.has("rpm") || !args.has("name") || !args.has("jira")) {
         std::cerr << "error: --rpm, --name, and --jira are required. "
                      "Run 'projot new --help' for usage.\n";
         return 1;
@@ -106,14 +106,14 @@ int cmd_new(const Args& args) {
 
     ctx.config.rpm     = args.get("rpm");
     ctx.config.name    = args.get("name");
-    ctx.config.itrack  = args.get("itrack");
+    ctx.config.jira  = args.get("jira");
     ctx.config.created = date_today();
 
     // Build links list from provided optional flags
     struct LinkDef { std::string key, label, flag; };
     for (const auto& ld : std::vector<LinkDef>{
             {"teams",  "Teams",  "teams"},
-            {"itrack", "Jira", "itrack-url"},
+            {"jira", "Jira", "jira-url"},
             {"rpm",    "RPM",    "rpm-url"},
             {"other",  "Other",  "other"},
         }) {
@@ -388,7 +388,7 @@ int cmd_set_global(const Args& args) {
         return 0;
     }
 
-    if (!args.has("rpm-base-url") && !args.has("itrack-base-url")) {
+    if (!args.has("rpm-base-url") && !args.has("jira-base-url")) {
         std::cerr << "error: --rpm-base-url or --jira-base-url required.\n";
         return 1;
     }
@@ -404,8 +404,8 @@ int cmd_set_global(const Args& args) {
 
     if (args.has("rpm-base-url"))
         cfg.rpm_base_url = args.get("rpm-base-url");
-    if (args.has("itrack-base-url"))
-        cfg.itrack_base_url = args.get("itrack-base-url");
+    if (args.has("jira-base-url"))
+        cfg.jira_base_url = args.get("jira-base-url");
 
     auto result = write_global_config(path->string(), cfg);
     if (!result.ok) {

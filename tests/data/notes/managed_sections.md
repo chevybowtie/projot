@@ -7,7 +7,7 @@
 
 ## Links
 - Teams: https://teams.microsoft.com/managed
-- iTrack: https://itrack.example.com/44444
+- iTrack: https://jira.example.com/44444
 
 <!-- projot-managed: do not hand-edit sections below; use add-github/add-swagger/add-blizzard -->
 

@@ -317,14 +317,15 @@ function handleRequest(request) {
         execArgs("projot", ["status", "--todo", String(todo_id), status]);
         return ok(`Projot work item #${todo_id} status set to: ${status}`);
       }
-
       // "projot_open_itrack" is the legacy tool name, still handled but no longer advertised.
+      // "projot_open_jira" is the legacy tool name, still handled but no longer advertised.
       if (name === "projot_open_jira" || name === "projot_open_itrack") {
-        // Config keys keep their historical "itrack" spelling on disk.
-        let jiraUrl = getConfigValue("link.itrack");
+        // Configs written before the rename use "itrack" keys, so fall back to those.
+        let jiraUrl = getConfigValue("link.jira") || getConfigValue("link.itrack");
         if (!jiraUrl) {
-          const baseUrl = getConfigValue("itrack_base_url") || getGlobalConfigValue("itrack_base_url");
-          const number = getConfigValue("itrack");
+          const baseUrl = getConfigValue("jira_base_url") || getConfigValue("itrack_base_url")
+            || getGlobalConfigValue("jira_base_url") || getGlobalConfigValue("itrack_base_url");
+          const number = getConfigValue("jira") || getConfigValue("itrack");
           if (baseUrl && number) jiraUrl = baseUrl + number;
         }
         if (!jiraUrl) return err("No Jira URL configured. Run 'projot set-link --key jira --url <url>' or 'projot set-global --jira-base-url <url>'");
@@ -367,7 +368,7 @@ function handleRequest(request) {
       }
 
       if (name === "projot_setup_project") {
-        // itrack_number is the legacy parameter name, still accepted.
+        // jira_number is the legacy parameter name, still accepted.
         const { project_number, description, branch_name } = args;
         const jira_number = args.jira_number || args.itrack_number;
         if (!jira_number) return err("jira_number is required");

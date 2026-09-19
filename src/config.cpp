@@ -91,12 +91,12 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.rpm = value;
         } else if (key == "name") {
             out.name = value;
-        } else if (key == "itrack") {
-            out.itrack = value;
+        } else if (key == "jira" || key == "itrack") {
+            out.jira = value;
         } else if (key == "rpm_base_url") {
             out.rpm_base_url = value;
-        } else if (key == "itrack_base_url") {
-            out.itrack_base_url = value;
+        } else if (key == "jira_base_url" || key == "itrack_base_url") {
+            out.jira_base_url = value;
         } else if (key == "date_format") {
             out.date_format = value;
         } else if (key == "created") {
@@ -122,6 +122,15 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.link_urls[key.substr(5)] = value;
         }
         // Unknown keys are silently ignored (future-proofing).
+    }
+
+    // Configs written before the iTrack -> Jira rename used "itrack" as the link key.
+    for (auto& k : out.links) if (k == "itrack") k = "jira";
+    for (auto* m : {&out.labels, &out.link_urls}) {
+        auto it = m->find("itrack");
+        if (it == m->end()) continue;
+        m->emplace("jira", it->second); // keeps an explicit jira entry if both exist
+        m->erase("itrack");
     }
 
     return {true, ""};
@@ -167,7 +176,7 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     file << "\n";
     file << "rpm = " << cfg.rpm << "\n";
     file << "name = " << cfg.name << "\n";
-    file << "itrack = " << cfg.itrack << "\n";
+    file << "jira = " << cfg.jira << "\n";
 
     if (!cfg.created.empty()) {
         file << "created = " << cfg.created << "\n";
@@ -259,8 +268,8 @@ ParseResult write_global_config(const std::string& path, const Config& cfg) {
     file << "# projot global config\n";
     if (!cfg.rpm_base_url.empty())
         file << "rpm_base_url = " << cfg.rpm_base_url << "\n";
-    if (!cfg.itrack_base_url.empty())
-        file << "itrack_base_url = " << cfg.itrack_base_url << "\n";
+    if (!cfg.jira_base_url.empty())
+        file << "jira_base_url = " << cfg.jira_base_url << "\n";
 
     return {true, ""};
 }

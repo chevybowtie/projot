@@ -60,9 +60,9 @@ Args parse_args(int argc, char* argv[]) {
 
 void normalize_flag_aliases(Args& args) {
     static const std::map<std::string, std::string> aliases{
-        {"jira",          "itrack"},
-        {"jira-url",      "itrack-url"},
-        {"jira-base-url", "itrack-base-url"},
+        {"itrack",          "jira"},
+        {"itrack-url",      "jira-url"},
+        {"itrack-base-url", "jira-base-url"},
     };
     for (const auto& [alias, canonical] : aliases) {
         auto it = args.flags.find(alias);
