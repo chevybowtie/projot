@@ -68,18 +68,18 @@ int cmd_init(const Args& args) {
 int cmd_new(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot new --rpm <RPM> --name \"<Name>\" --itrack <iTrack> [options]\n\n"
+            "Usage: projot new --rpm <RPM> --name \"<Name>\" --itrack <Jira> [options]\n\n"
             "Start a new RPM project in this repository.\n\n"
             "Required:\n"
             "  --rpm <RPM>               RPM project number\n"
             "  --name \"<Project Name>\"   Human-readable project name\n"
-            "  --itrack <iTrack>         iTrack ticket number\n\n"
+            "  --itrack <Jira>           Jira ticket number\n\n"
             "Optional:\n"
             "  --teams <URL>             Teams channel URL\n"
             "  --teams-sync-url <URL>    Teams sync endpoint URL for Kanban updates\n"
             "  --teams-webhook <URL>     Backward-compatible alias for --teams-sync-url\n"
             "  --rpm-url <URL>           RPM system link\n"
-            "  --itrack-url <URL>        iTrack link\n"
+            "  --itrack-url <URL>        Jira link\n"
             "  --other <URL>             Other URL\n"
             "  --no-hook                 Skip pre-commit hook installation\n\n"
             "Open todos saved by the previous 'projot close' are carried into the\n"
@@ -113,7 +113,7 @@ int cmd_new(const Args& args) {
     struct LinkDef { std::string key, label, flag; };
     for (const auto& ld : std::vector<LinkDef>{
             {"teams",  "Teams",  "teams"},
-            {"itrack", "iTrack", "itrack-url"},
+            {"itrack", "Jira", "itrack-url"},
             {"rpm",    "RPM",    "rpm-url"},
             {"other",  "Other",  "other"},
         }) {
@@ -380,11 +380,11 @@ int cmd_set_global(const Args& args) {
             "Values can be overridden at the repo level in .projot/config if needed.\n\n"
             "Options:\n"
             "  --rpm-base-url <url>    Base URL for RPM links (project number is appended)\n"
-            "  --itrack-base-url <url> Base URL for iTrack links (ticket number is appended)\n\n"
+            "  --itrack-base-url <url> Base URL for Jira links (ticket number is appended)\n\n"
             "At least one of the above options is required.\n\n"
             "Examples:\n"
             "  projot set-global --rpm-base-url https://rpm.example.com/\n"
-            "  projot set-global --itrack-base-url https://itrack.example.com/record/\n";
+            "  projot set-global --itrack-base-url https://yourcompany.atlassian.net/browse/\n";
         return 0;
     }
 
