@@ -4,6 +4,7 @@
 #include "markdown.h"
 #include "renderer.h"
 #include "repo.h"
+#include "utils.h"
 
 #include <iostream>
 #include <fstream>
@@ -43,7 +44,8 @@ static bool is_safe_rpm(const std::string& s) {
 // Returns true on success; staging failure is non-fatal (best-effort).
 static bool git_stage_file(const fs::path& repo_root, const std::string& rel_path) {
 #ifdef _WIN32
-    std::string cmd = "git -C \"" + repo_root.string() + "\" add \"" + rel_path + "\"";
+    std::string cmd = "git -C " + quote_windows_arg(repo_root.string())
+                      + " add " + quote_windows_arg(rel_path);
     STARTUPINFOA si{};
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
@@ -209,8 +211,8 @@ static void invoke_teams_sync(const Context& ctx) {
     std::string webhook     = ctx.config.teams_sync_url;
 
 #ifdef _WIN32
-    std::string cmd = "node \"" + script + "\" \"" + config_path + "\" \""
-                      + notes_path + "\" \"" + webhook + "\"";
+    std::string cmd = "node " + quote_windows_arg(script) + " " + quote_windows_arg(config_path)
+                      + " " + quote_windows_arg(notes_path) + " " + quote_windows_arg(webhook);
     STARTUPINFOA si{};
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
