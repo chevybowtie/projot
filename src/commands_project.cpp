@@ -20,7 +20,7 @@ int cmd_close(const Args& args) {
             "Usage: projot close\n\n"
             "Archive the current project and reset for the next one.\n\n"
             "Moves the project notes file to .projot/archive/ and clears all\n"
-            "project-level configuration (rpm, itrack, etc).\n"
+            "project-level configuration (rpm, Jira, etc).\n"
             "Open todos are carried forward to the next project.\n"
             "Repo-level settings (app_id, GitHub, Swagger, Blizzard) are preserved.\n\n"
             "No flags required.\n\n"
@@ -451,7 +451,7 @@ int cmd_set_link(const Args& args) {
             "Usage: projot set-link --key <key> --url <URL>\n\n"
             "Set or update a single-value link URL.\n\n"
             "Required:\n"
-            "  --key <key>   Link key (e.g. teams, itrack, rpm, other)\n"
+            "  --key <key>   Link key (e.g. teams, jira, rpm, other)\n"
             "  --url <URL>   URL value\n\n"
             "Example:\n"
             "  projot set-link --key teams --url https://teams.microsoft.com/...\n";
@@ -468,7 +468,9 @@ int cmd_set_link(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    const std::string key = args.get("key");
+    // "jira" is the user-facing name; the stored link key stays "itrack" for compatibility.
+    std::string key = args.get("key");
+    if (key == "jira") key = "itrack";
     const std::string url = args.get("url");
 
     return execute_config_command(ctx, [key, &url](Context& c) {

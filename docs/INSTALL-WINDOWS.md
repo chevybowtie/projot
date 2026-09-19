@@ -99,10 +99,10 @@ projot reads global configuration from `%APPDATA%\projot\config`. Set base URLs 
 ```powershell
 projot set-global `
   --rpm-base-url "https://rpm.example.com/" `
-  --itrack-base-url "https://yourcompany.atlassian.net/browse/"
+  --jira-base-url "https://yourcompany.atlassian.net/browse/"
 ```
 
-These base URLs are automatically used by all projects in the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`). The `itrack_base_url` is used for Jira integration.
+These base URLs are automatically used by all projects in the MCP tools (e.g., `projot_open_rpm`, `projot_open_jira`). The Jira base URL is used for Jira integration.
 
 ## Troubleshooting
 

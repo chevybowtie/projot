@@ -373,7 +373,7 @@ Maintenance commands:
   uninstall-hook        Remove the projot pre-commit git hook
   install-mcp-server    Configure MCP server for Claude Code and VS Code
   uninstall-mcp-server  Remove MCP server configuration
-  set-global            Set global defaults (rpm_base_url, itrack_base_url)
+  set-global            Set global defaults (RPM and Jira base URLs)
   set-teams-webhook     Set the Teams incoming webhook URL for Kanban sync
 
 Run 'projot <subcommand> --help' for subcommand options.
@@ -431,13 +431,13 @@ Required:
 
 - `--rpm <RPM>`
 - `--name "<Project Name>"`
-- `--itrack <Jira>`
+- `--jira <Jira>`
 
 Optional:
 
 - `--teams <URL>`
 - `--rpm-url <URL>` — the RPM system link for this project
-- `--itrack-url <URL>`
+- `--jira-url <URL>`
 - `--other <URL>`
 - `--no-hook` — skip git hook installation
 
@@ -447,7 +447,7 @@ If `.projot/carryover_todos.md` exists (written by the previous `close`), its op
 
 #### `close`
 
-Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, itrack/Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
+Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
 
 Open todos (any status other than `done`) are saved to `.projot/carryover_todos.md` before the project is archived, and the next `new` restores them. If no todos are open, any stale carryover file is removed. The carryover file is written first, so a failure there leaves the project open and unchanged.
 
@@ -528,7 +528,7 @@ Set or update a single-value link URL in `.projot/config`.
 
 Required:
 
-- `--key <key>` — e.g. `teams`, `itrack`, `rpm`, `other`
+- `--key <key>` — e.g. `teams`, `jira`, `rpm`, `other`
 - `--url <URL>`
 
 #### `set-app-id`
@@ -632,15 +632,15 @@ Set global defaults for base URLs that apply across all projects. Global configu
 Optional (at least one required):
 
 - `--rpm-base-url <URL>` — base URL for RPM project links (project number is appended)
-- `--itrack-base-url <URL>` — base URL for Jira ticket links (ticket number is appended)
+- `--jira-base-url <URL>` — base URL for Jira ticket links (ticket number is appended)
 
 Example:
 
 ```sh
-projot set-global --rpm-base-url "https://rpm.example.com/" --itrack-base-url "https://yourcompany.atlassian.net/browse/"
+projot set-global --rpm-base-url "https://rpm.example.com/" --jira-base-url "https://yourcompany.atlassian.net/browse/"
 ```
 
-These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`) to construct full project/ticket links automatically.
+These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_jira`) to construct full project/ticket links automatically.
 
 #### `set-teams-webhook`
 
@@ -714,7 +714,7 @@ Tab completion is delivered as **generated shell scripts** — projot itself doe
 
 - **Subcommand names** after `projot` (e.g. `init`, `new`, `add-todo`, …)
 - **Flag names** for the current subcommand (e.g. after `projot complete`, complete `--todo`)
-- **`--key` values** for `set-link`: complete `teams`, `itrack`, `rpm`, `other`
+- **`--key` values** for `set-link`: complete `teams`, `jira`, `rpm`, `other`
 - **`--todo` values** for `complete` and `add-note`: read open todo IDs from `.projot/{RPM}.md` at completion time (best-effort; silently skip if no file found)
 - **`-h` / `--help`** on every subcommand
 
