@@ -443,9 +443,13 @@ Optional:
 
 > Repo-level fields (`github`, `swagger`, `blizzard`) already in config from `init` are automatically included in the new project file.
 
+If `.projot/carryover_todos.md` exists (written by the previous `close`), its open todos are added to the new notes file, renumbered from 1, and the carryover file is then deleted. `new` reports how many todos were carried forward.
+
 #### `close`
 
 Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, itrack/Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
+
+Open todos (any status other than `done`) are saved to `.projot/carryover_todos.md` before the project is archived, and the next `new` restores them. If no todos are open, any stale carryover file is removed. The carryover file is written first, so a failure there leaves the project open and unchanged.
 
 No flags required.
 
