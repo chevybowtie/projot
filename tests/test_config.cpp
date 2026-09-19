@@ -5,6 +5,7 @@
 #include <fstream>
 #include <filesystem>
 #include <cstdio>
+#include <sstream>
 
 // Helper: write a string to a temp file and return path
 static std::string write_temp(const std::string& content) {
@@ -126,6 +127,20 @@ TEST_CASE("parse_label_dotted_key") {
     CHECK(cfg.labels["teams"] == "My Teams");
 }
 
+TEST_CASE("parse_teams_sync_url_key") {
+    auto path = write_temp("teams_sync_url = https://flow.example.com/invoke\n");
+    Config cfg;
+    parse_config(path, cfg);
+    CHECK(cfg.teams_sync_url == "https://flow.example.com/invoke");
+}
+
+TEST_CASE("parse_legacy_teams_webhook_key") {
+    auto path = write_temp("teams_webhook = https://legacy.example.com/webhook\n");
+    Config cfg;
+    parse_config(path, cfg);
+    CHECK(cfg.teams_sync_url == "https://legacy.example.com/webhook");
+}
+
 TEST_CASE("parse_unknown_keys_ignored") {
     auto path = write_temp("unknown_future_key = some_value\napp_id = KnownApp\n");
     Config cfg;
@@ -201,6 +216,22 @@ TEST_CASE("write_comments_header") {
     std::string first_line;
     std::getline(f, first_line);
     CHECK(first_line[0] == '#');
+}
+
+TEST_CASE("write_uses_teams_sync_url_key") {
+    Config cfg;
+    cfg.app_id = "SyncApp";
+    cfg.teams_sync_url = "https://flow.example.com/invoke";
+    auto out_path = (std::filesystem::temp_directory_path() / "projot_teams_sync.cfg").string();
+    auto write_res = write_config(out_path, cfg);
+    REQUIRE(write_res.ok);
+
+    std::ifstream f(out_path);
+    std::stringstream buffer;
+    buffer << f.rdbuf();
+    const std::string text = buffer.str();
+    CHECK(text.find("teams_sync_url = https://flow.example.com/invoke") != std::string::npos);
+    CHECK(text.find("teams_webhook = ") == std::string::npos);
 }
 
 // ── Azure entry helpers ───────────────────────────────────────────────────────

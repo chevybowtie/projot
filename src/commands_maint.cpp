@@ -206,7 +206,7 @@ static void invoke_teams_sync(const Context& ctx) {
     std::string config_path = projot_file_path(ctx, "config");
     std::string notes_path  = projot_file_path(ctx, ctx.config.rpm + ".md");
     std::string script      = sync_script.string();
-    std::string webhook     = ctx.config.teams_webhook;
+    std::string webhook     = ctx.config.teams_sync_url;
 
 #ifdef _WIN32
     std::string cmd = "node \"" + script + "\" \"" + config_path + "\" \""
@@ -266,7 +266,7 @@ int cmd_render(const Args& args) {
         git_stage_file(ctx.repo_root, ".projot/" + ctx.config.rpm + ".md");
     }
 
-    if (!ctx.config.teams_webhook.empty()) {
+    if (!ctx.config.teams_sync_url.empty()) {
         invoke_teams_sync(ctx);
     }
 

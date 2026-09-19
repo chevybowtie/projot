@@ -167,6 +167,23 @@ TEST_CASE("new_with_teams_url") {
     CHECK(cfg.link_urls["teams"] == "https://teams.microsoft.com/t");
 }
 
+TEST_CASE("new_with_teams_sync_url") {
+    TempRepo repo("new_with_teams_sync_url");
+    repo.init();
+    Args a;
+    a.subcommand = "new";
+    a.flags["rpm"].push_back("66667");
+    a.flags["name"].push_back("T");
+    a.flags["itrack"].push_back("2");
+    a.flags["teams-sync-url"].push_back("https://flow.example.com/invoke");
+    a.flags["no-hook"].push_back("true");
+    CHECK(cmd_new(a) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.teams_sync_url == "https://flow.example.com/invoke");
+}
+
 TEST_CASE("new_fails_if_rpm_set") {
     TempRepo repo("new_fails_if_rpm_set");
     repo.init();
@@ -228,6 +245,56 @@ TEST_CASE("close_archives_notes_file") {
     // Verify archived exists, original gone
     CHECK(fs::exists(repo.path / ".projot" / "archive" / "54321.md"));
     CHECK(!fs::exists(repo.path / ".projot" / "54321.md"));
+}
+
+TEST_CASE("close_carries_open_todos_to_next_project") {
+    TempRepo repo("close_carries_open_todos_to_next_project");
+    repo.init();
+    repo.new_project("carry1", "Carry One", "11111");
+
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Done item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Blocked item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Todo item")) == 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Active item")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "1"}}, "done")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "2"}}, "blocked")) == 0);
+    CHECK(cmd_status(make_args("status", {{"todo", "4"}}, "in-progress")) == 0);
+
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(repo.new_project("carry2", "Carry Two", "22222") == 0);
+
+    Project next_proj;
+    auto parse = parse_markdown((repo.path / ".projot" / "carry2.md").string(), next_proj);
+    REQUIRE(parse.ok);
+    REQUIRE(next_proj.todos.size() == 3);
+    CHECK(next_proj.todos[0].id == 1);
+    CHECK(next_proj.todos[0].text == "Blocked item");
+    CHECK(next_proj.todos[0].status == TodoStatus::Blocked);
+    CHECK(next_proj.todos[1].id == 2);
+    CHECK(next_proj.todos[1].text == "Todo item");
+    CHECK(next_proj.todos[1].status == TodoStatus::Todo);
+    CHECK(next_proj.todos[2].id == 3);
+    CHECK(next_proj.todos[2].text == "Active item");
+    CHECK(next_proj.todos[2].status == TodoStatus::InProgress);
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
+}
+
+TEST_CASE("close_without_open_todos_does_not_carry_over") {
+    TempRepo repo("close_without_open_todos_does_not_carry_over");
+    repo.init();
+    repo.new_project("carry3", "Carry Three", "33333");
+
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Only done item")) == 0);
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
+
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(repo.new_project("carry4", "Carry Four", "44444") == 0);
+
+    Project next_proj;
+    auto parse = parse_markdown((repo.path / ".projot" / "carry4.md").string(), next_proj);
+    REQUIRE(parse.ok);
+    CHECK(next_proj.todos.empty());
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "carryover_todos.md"));
 }
 
 TEST_CASE("close_clears_azure_resources") {
@@ -431,6 +498,21 @@ TEST_CASE("set_link_update_key") {
     int count = 0;
     for (const auto& k : cfg.links) if (k == "teams") ++count;
     CHECK(count == 1);
+}
+
+TEST_CASE("set_teams_webhook_writes_sync_url_key") {
+    TempRepo repo("set_teams_webhook_writes_sync_url_key");
+    repo.init(); repo.new_project("11a");
+    CHECK(cmd_set_teams_webhook(make_args("set-teams-webhook", {}, "https://flow.example.com/invoke")) == 0);
+
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    CHECK(cfg.teams_sync_url == "https://flow.example.com/invoke");
+
+    std::ifstream f((repo.path / ".projot" / "config").string());
+    std::stringstream buffer;
+    buffer << f.rdbuf();
+    CHECK(buffer.str().find("teams_sync_url = https://flow.example.com/invoke") != std::string::npos);
 }
 
 // ── set-app-id ───────────────────────────────────────────────────────────────
