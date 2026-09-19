@@ -10,7 +10,7 @@ struct Project {
     // Header fields
     std::string name;
     std::string rpm;
-    std::string itrack;
+    std::string jira;
     std::string app_id;
     std::string created;
 

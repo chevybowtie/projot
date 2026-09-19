@@ -31,7 +31,7 @@ int cmd_add_note(const Args& args);
 // Set the status of a todo (todo, in-progress, blocked, done).
 int cmd_status(const Args& args);
 
-// Set or update a single-value link URL (teams, itrack, rpm, other).
+// Set or update a single-value link URL (teams, jira, rpm, other).
 int cmd_set_link(const Args& args);
 
 // Set or update the application ID in config.

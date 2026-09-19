@@ -35,6 +35,11 @@ struct Args {
     }
 };
 
+// Rewrites legacy synonym flags to their canonical names (--itrack -> --jira, etc.)
+// so commands only ever look at one spelling. The legacy spellings stay accepted for
+// backwards compatibility. An explicit canonical flag wins if both are given.
+void normalize_flag_aliases(Args& args);
+
 // Known boolean flags that take no value argument.
 inline const std::set<std::string>& boolean_flags() {
     static const std::set<std::string> s{

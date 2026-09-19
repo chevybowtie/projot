@@ -20,11 +20,11 @@ TEST_CASE("parse_valid_full") {
     Config cfg;
     auto result = parse_config(PROJOT_TEST_DATA_DIR "/configs/valid_full.cfg", cfg);
     REQUIRE(result.ok);
-    CHECK(cfg.config_version == 1);
+    CHECK(cfg.config_version == 1); // fixture is a version-1 file
     CHECK(cfg.app_id == "MyApp");
     CHECK(cfg.rpm == "12345");
     CHECK(cfg.name == "My Project");
-    CHECK(cfg.itrack == "67890");
+    CHECK(cfg.jira == "67890");
     REQUIRE(cfg.github.size() == 2);
     CHECK(cfg.github[0] == "https://github.com/org/repo-one");
     CHECK(cfg.github[1] == "https://github.com/org/repo-two");
@@ -40,19 +40,19 @@ TEST_CASE("parse_repo_only") {
     Config cfg;
     auto result = parse_config(PROJOT_TEST_DATA_DIR "/configs/repo_only.cfg", cfg);
     REQUIRE(result.ok);
-    CHECK(cfg.config_version == 1);
+    CHECK(cfg.config_version == 1); // fixture is a version-1 file
     CHECK(cfg.app_id == "RepoApp");
     CHECK(cfg.github.size() == 1);
     CHECK(cfg.rpm.empty());
     CHECK(cfg.name.empty());
-    CHECK(cfg.itrack.empty());
+    CHECK(cfg.jira.empty());
     CHECK(cfg.links.empty());
 }
 
 TEST_CASE("parse_config_version_present") {
     Config cfg;
     parse_config(PROJOT_TEST_DATA_DIR "/configs/valid_full.cfg", cfg);
-    CHECK(cfg.config_version == 1);
+    CHECK(cfg.config_version == 1); // fixture is a version-1 file
 }
 
 TEST_CASE("parse_config_version_missing") {
@@ -168,7 +168,7 @@ TEST_CASE("parse_malformed_no_equals") {
     auto result = parse_config(PROJOT_TEST_DATA_DIR "/configs/malformed.cfg", cfg);
     REQUIRE(result.ok); // malformed lines are ignored, not errors
     CHECK(cfg.app_id == "GoodApp");
-    CHECK(cfg.config_version == 1);
+    CHECK(cfg.config_version == 1); // fixture is a version-1 file
 }
 
 TEST_CASE("write_round_trip") {
@@ -186,7 +186,7 @@ TEST_CASE("write_round_trip") {
     CHECK(reparsed.app_id == orig.app_id);
     CHECK(reparsed.rpm == orig.rpm);
     CHECK(reparsed.name == orig.name);
-    CHECK(reparsed.itrack == orig.itrack);
+    CHECK(reparsed.jira == orig.jira);
     CHECK(reparsed.github == orig.github);
     CHECK(reparsed.swagger == orig.swagger);
     CHECK(reparsed.blizzard == orig.blizzard);
@@ -320,4 +320,20 @@ TEST_CASE("azure_absent_when_empty") {
     std::ifstream f(path);
     std::string content((std::istreambuf_iterator<char>(f)), {});
     CHECK(content.find("azure_") == std::string::npos);
+}
+
+TEST_CASE("parse_legacy_itrack_keys") {
+    auto path = write_temp(
+        "config_version = 1\n"
+        "rpm = 1\nitrack = 555\nitrack_base_url = https://j.example.com/\n"
+        "links = teams, itrack\nlabel.itrack = Jira\nlink.itrack = https://j.example.com/555\n");
+    Config cfg;
+    REQUIRE(parse_config(path, cfg).ok);
+    CHECK(cfg.jira == "555");
+    CHECK(cfg.jira_base_url == "https://j.example.com/");
+    REQUIRE(cfg.links.size() == 2);
+    CHECK(cfg.links[1] == "jira");
+    CHECK(cfg.labels["jira"] == "Jira");
+    CHECK(cfg.link_urls["jira"] == "https://j.example.com/555");
+    CHECK(cfg.link_urls.count("itrack") == 0);
 }

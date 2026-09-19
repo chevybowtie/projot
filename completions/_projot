@@ -63,11 +63,11 @@ _projot() {
                     _arguments \
                         '--rpm[RPM project number]:rpm' \
                         '--name[project name]:name' \
-                        '--itrack[iTrack ticket number]:itrack' \
+                        '--jira[Jira ticket number]:jira' \
                         '--teams[Teams channel URL]:url' \
                         '--teams-webhook[Teams incoming webhook URL]:url' \
                         '--rpm-url[RPM system link]:url' \
-                        '--itrack-url[iTrack link]:url' \
+                        '--jira-url[Jira link]:url' \
                         '--other[other URL]:url' \
                         '--no-hook[skip hook installation]' \
                         '--help[show help]'
@@ -112,7 +112,7 @@ _projot() {
                     ;;
                 set-link)
                     _arguments \
-                '--key[link key]:key:(teams itrack rpm other)' \
+                '--key[link key]:key:(teams jira rpm other)' \
                         '--url[URL]:url' \
                         '--help[show help]'
                     ;;
@@ -155,7 +155,7 @@ _projot() {
                 set-global)
                     _arguments \
                         '--rpm-base-url[base URL for RPM links]:url' \
-                        '--itrack-base-url[base URL for iTrack links]:url' \
+                        '--jira-base-url[base URL for Jira links]:url' \
                         '--help[show help]'
                     ;;
             esac
