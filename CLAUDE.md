@@ -81,72 +81,114 @@ This file (`CLAUDE.md`) is the canonical source for operational guidance; the le
 <!-- Updated by gen-context.js -->
 # Code signatures
 
+## SigMap commands
+
+| When | Command |
+|------|---------|
+| Before answering a question about code | `sigmap ask "<your question>"` |
+| To rank files by topic | `sigmap --query "<topic>"` |
+| After changing config or source dirs | `sigmap validate` |
+| To verify an AI answer is grounded | `sigmap judge --response <file>` |
+
+Always run `sigmap ask` (or `sigmap --query`) before searching for files relevant to a task.
+
 ## todos
 ```
-tests/doctest.h:885  # TODO: :
-tests/doctest.h:1818  # TODO: Why do we need this? (To remove NOLINT)
-tests/doctest.h:4293  # TODO: figure out if this is indeed necessary/correct - seems like either the
-tests/doctest.h:5284  # TODO: :
-tests/doctest.h:5612  # TODO: change this to use std::stoi or something else! currently it uses unde
-tests/doctest.h:5926  # TODO: check if there is nothing in reporters_currently_used
-tests/doctest.h:6690  # TODO: under DOCTEST_MSVC: does the comparison need strnicmp() to work with d
-.github/copilot-instructions.md:19  # TODO: s
-.github/copilot-instructions.md:21  # TODO: :
-.github/copilot-instructions.md:22  # TODO: Why do we need this? (To remove NOLINT)
-.github/copilot-instructions.md:23  # TODO: figure out if this is indeed necessary/correct - seems like either the
-.github/copilot-instructions.md:24  # TODO: :
-.github/copilot-instructions.md:25  # TODO: change this to use std::stoi or something else! currently it uses unde
-.github/copilot-instructions.md:26  # TODO: check if there is nothing in reporters_currently_used
-.github/copilot-instructions.md:27  # TODO: under DOCTEST_MSVC: does the comparison need strnicmp() to work with d
-.github/copilot-instructions.md:28  # TODO: s
-.github/copilot-instructions.md:29  # TODO: s\n\n";
-.github/copilot-instructions.md:30  # TODO: s
-.github/copilot-instructions.md:31  # XXX: .webhook.office.com/webhookb2/...\n";
-.github/copilot-instructions.md:32  # TODO: s")) {
+tests/test_commands.cpp:1102  # TODO: is already in Todo state
+.github/copilot-instructions.md:22  # TODO: s
+.github/copilot-instructions.md:24  # TODO: s")) {
+.github/copilot-instructions.md:25  # TODO: s section
+.github/copilot-instructions.md:26  # TODO: s
+.github/copilot-instructions.md:27  # TODO: s
+.github/copilot-instructions.md:28  # TODO: s\n";
+.github/copilot-instructions.md:29  # TODO: s\n\n"
+.github/copilot-instructions.md:30  # TODO: s\n\n";
+.github/copilot-instructions.md:31  # TODO: s\n";
+.github/copilot-instructions.md:32  # TODO: s\n";
+.github/copilot-instructions.md:33  # TODO: 1 has empty notes block
+.github/copilot-instructions.md:34  # TODO: s\n\n"
+.github/copilot-instructions.md:35  # TODO: s\r\n"
+.github/copilot-instructions.md:36  # TODO: s\n\n"
+.github/copilot-instructions.md:37  # TODO: s\n\n"
+.github/copilot-instructions.md:38  # TODO: s.
+.github/copilot-instructions.md:39  # TODO: s");
+.github/copilot-instructions.md:40  # TODO: s heading.
+.github/copilot-instructions.md:41  # TODO: s");
 ```
 
-## changes (last 10 commits — 11 minutes ago)
+## changes (last 10 commits — 6 seconds ago)
 ```
-mcp/teams-sync.js                             +buildAdaptiveCard  +buildLegacyWebhookBody  +renderSummary  +buildWorkflowBody
+.github/copilot-instructions.md               +execArgs  +getConfigValue  +getGlobalConfigValue  +slugifyBranchName
 mcp/server.js                                 ~handleRequest
+mcp/teams-sync.js                             +buildAdaptiveCard  +buildLegacyWebhookBody  +renderSummary  +buildWorkflowBody
+```
+
+## .claude
+
+### .claude/skills/projot-new-command/SKILL.md
+```
+h1 Add a New Command to projot
+h2 Step 1: Decide the Category
+h2 Step 2: Write the Command Implementation
+h3 Pattern A: Project Modifier (modifies todos)
+h3 Pattern B: Config Modifier (modifies config)
+h3 Pattern C: Stateless Command (no modification)
+h2 Step 3: Declare the Function in commands.h
+h2 Step 4: Register in main.cpp
+h2 Step 5: Test
+h2 Common Patterns
+h3 Argument Validation
+h3 Handling "Already Present" (idempotent)
+h3 Parsing Integer Arguments
+h2 Do Not
+h2 Example: Add "set-color" Config Command
+code-fence cpp
+code-fence plain
+code-fence bash
 ```
 
 ## .github
+
+### .github/copilot-instructions.md
+```
+h2 Auto-generated signatures
+h1 Code signatures
+h2 SigMap commands
+h2 todos
+h2 changes (last 10 commits — 3 minutes ago)
+h2 .claude
+h3 .claude/skills/projot-new-command/SKILL.md
+h2 .github
+h3 .github/copilot-instructions.md
+h3 .github/workflows/ci.yml
+h3 .github/workflows/release.yml
+h2 mcp
+h3 mcp/server.js
+h3 mcp/test.js
+h3 mcp/README.md
+h3 mcp/teams-sync.js
+h2 src
+h3 src/CLAUDE.md
+h3 src/cli.cpp
+h3 src/cli.h
+h3 src/commands_config.cpp
+h3 src/commands_maint.cpp
+h3 src/commands_project.cpp
+h3 src/commands_shared.cpp
+h3 src/config.cpp
+```
+
+### .github/workflows/ci.yml
+```
+keys: [name, on, jobs]
+job: build-and-test
+```
 
 ### .github/workflows/release.yml
 ```
 keys: [name, on, jobs]
 job: build
 job: release
-```
-
-### .github/copilot-instructions.md
-```
-h2 Auto-generated signatures
-h2 SigMap commands
-h1 Code signatures
-h2 todos
-h2 changes (last 10 commits — 11 minutes ago)
-h2 .github
-h3 .github/workflows/release.yml
-h3 .github/copilot-instructions.md
-h2 mcp
-h3 mcp/README.md
-h3 mcp/teams-sync.js
-h3 mcp/server.js
-h3 mcp/test.js
-h2 src
-h3 src/renderer.h
-h3 src/repo.cpp
-h3 src/todo.cpp
-h3 src/todo.h
-h3 src/commands_internal.h
-h3 src/commands_maint.cpp
-h3 src/utils.h
-h3 src/CLAUDE.md
-h3 src/cli.cpp
-h3 src/cli.h
-h3 src/commands_config.cpp
 ```
 
 ## mcp
@@ -174,82 +216,39 @@ code-fence plain
 code-fence json
 ```
 
-### mcp/teams-sync.js
-```
-function readConfigValue(text, key)
-function parseTodos(mdText)
-function textBlock(text, options)
-function kanbanColumn(title, items, color)
-function buildAdaptiveCard(projectName, rpm, buckets)
-function buildLegacyWebhookBody(card)
-function renderSummary(projectName, rpm, buckets)
-function buildWorkflowBody(projectName, rpm, buckets, card)
-function isLegacyTeamsWebhook(syncUrl)
-function buildSyncBody(syncUrl, projectName, rpm, buckets)
-function postJson(webhookUrl, body)
-async function main(argv = process.argv.slice(2)
-```
-
 ### mcp/server.js
 ```
-function execArgs(cmd, args)
-function getConfigValue(key)
-function getGlobalConfigValue(key)
-function slugifyBranchName(str)
-function handleRequest(request)
+function execArgs(cmd, args)  :44-50
+function getConfigValue(key)  :52-61
+function getGlobalConfigValue(key)  :63-80
+function slugifyBranchName(str)  :82-90
+function handleRequest(request)  :92-426
+```
+
+### mcp/teams-sync.js
+```
+function readConfigValue(text, key)  :15-18
+function parseTodos(mdText)  :25-38
+function textBlock(text, options)  :42-44
+function kanbanColumn(title, items, color)  :46-56
+function buildAdaptiveCard(projectName, rpm, buckets)  :58-76
+function buildLegacyWebhookBody(card)  :78-88
+function renderSummary(projectName, rpm, buckets)  :90-107
+function buildWorkflowBody(projectName, rpm, buckets, card)  :109-124
+function isLegacyTeamsWebhook(syncUrl)  :126-135
+function buildSyncBody(syncUrl, projectName, rpm, buckets)  :137-142
+function postJson(webhookUrl, body)  :146-179
+async function main(argv = process.argv.slice(2))  :183-209
 ```
 
 ### mcp/test.js
 ```
-function runTool(toolName, toolArgs)
-function test(name, fn)
-function runInitialize(protocolVersion)
+function runTool(toolName, toolArgs)  :54-77
+function test(name, fn)  :81-92
+function runInitialize(protocolVersion)  :269-284
 ```
 
 ## src
-
-### src/renderer.h
-```
-struct RenderResult
-```
-
-### src/repo.cpp
-```
-find_repo_root(const std::filesystem::path& start) → std::optional<std::filesystem:
-while(true)
-if(parent == current)
-global_config_path() → std::optional<std::filesystem:
-```
-
-### src/todo.cpp
-```
-next_todo_id(const std::vector<Todo>& todos) → int
-for(const auto& t : todos)
-find_todo(std::vector<Todo>& todos, int id) → Todo*
-for(auto& t : todos)
-find_todo(const std::vector<Todo>& todos, int id) → const Todo*
-for(const auto& t : todos)
-filter_todos(const std::vector<Todo>& todos, TodoFilter filter) → std::vector<const Todo*>
-for(const auto& t : todos)
-complete_todo(std::vector<Todo>& todos, int id, const std::string& date) → TodoResult
-if(t->status == TodoStatus::Done)
-set_todo_status(std::vector<Todo>& todos, int id, TodoStatus status, const std::string& date) → TodoResult
-if(t->status == status)
-if(status == TodoStatus::Done)
-add_note(std::vector<Todo>& todos, int id, const std::string& note) → TodoResult
-if(t->status == TodoStatus::Done)
-```
-
-### src/todo.h
-```
-struct Todo
-struct TodoResult
-```
-
-### src/commands_internal.h
-```
-struct Context
-```
 
 ### src/commands_maint.cpp
 ```
@@ -321,6 +320,15 @@ normalize_flag_aliases(Args& args) → void
 for(const auto& [alias, canonical] : aliases)
 ```
 
+### src/cli.h
+```
+struct Args
+has(const std::string& key) → bool
+get(const std::string& key, const std::string& def = "") → std::string
+get_all(const std::string& key) → std::vector<std::string>
+boolean_flags() → inline const std::set<std::str
+```
+
 ### src/commands_config.cpp
 ```
 struct UrlListDef
@@ -350,13 +358,9 @@ if(!ctx.ok)
 execute_config_command(ctx, [tdef, &url, &kind](Context& c) → return
 ```
 
-### src/cli.h
+### src/commands_internal.h
 ```
-struct Args
-has(const std::string& key) → bool
-get(const std::string& key, const std::string& def = "") → std::string
-get_all(const std::string& key) → std::vector<std::string>
-boolean_flags() → inline const std::set<std::str
+struct Context
 ```
 
 ### src/commands_project.cpp
@@ -388,45 +392,6 @@ for(const auto& sec : sections)
 for(const auto& sec : azure_sections)
 ```
 
-### src/config.h
-```
-struct AzureEntry
-struct Config
-struct ParseResult
-clear_project() → void
-```
-
-### src/main.cpp
-```
-print_usage() → static void
-main(int argc, char* argv[]) → int
-if(args.version_requested)
-if(args.help_requested)
-if(!args.help_requested)
-for(const auto& [flag, _] : args.flags)
-```
-
-### src/config.cpp
-```
-trim(const std::string& s) → std::string
-split_list(const std::string& value) → std::vector<std::string>
-join_list(const std::vector<std::string>& items) → std::string
-parse_azure_entry(const std::string& s) → AzureEntry
-format_azure_entry(const AzureEntry& e) → std::string
-is_list_key(const std::string& key) → static bool
-parse_config(const std::string& path, Config& out) → ParseResult
-if(key == "config_version")
-catch(...)
-for(auto* m : {&out.labels, &out.link_urls})
-write_config(const std::string& path, const Config& cfg) → ParseResult
-for(const auto& key : cfg.links)
-for(const auto& [k, v] : cfg.labels)
-for(const auto& key : cfg.links)
-for(const auto& [k, v] : cfg.link_urls)
-if(has_azure)
-write_global_config(const std::string& path, const Config& cfg) → ParseResult
-```
-
 ### src/commands_shared.cpp
 ```
 load_context() → Context
@@ -452,10 +417,43 @@ if(exists)
 if(ec)
 ```
 
-### src/markdown.h
+### src/config.cpp
 ```
-struct Project
-struct MarkdownParseResult
+trim(const std::string& s) → std::string
+split_list(const std::string& value) → std::vector<std::string>
+join_list(const std::vector<std::string>& items) → std::string
+parse_azure_entry(const std::string& s) → AzureEntry
+format_azure_entry(const AzureEntry& e) → std::string
+is_list_key(const std::string& key) → static bool
+parse_config(const std::string& path, Config& out) → ParseResult
+if(key == "config_version")
+catch(...)
+for(auto* m : {&out.labels, &out.link_urls})
+write_config(const std::string& path, const Config& cfg) → ParseResult
+for(const auto& key : cfg.links)
+for(const auto& [k, v] : cfg.labels)
+for(const auto& key : cfg.links)
+for(const auto& [k, v] : cfg.link_urls)
+if(has_azure)
+write_global_config(const std::string& path, const Config& cfg) → ParseResult
+```
+
+### src/config.h
+```
+struct AzureEntry
+struct Config
+struct ParseResult
+clear_project() → void
+```
+
+### src/main.cpp
+```
+print_usage() → static void
+main(int argc, char* argv[]) → int
+if(args.version_requested)
+if(args.help_requested)
+if(!args.help_requested)
+for(const auto& [flag, _] : args.flags)
 ```
 
 ### src/markdown.cpp
@@ -474,6 +472,12 @@ parse_markdown(const std::string& path, Project& out) → MarkdownParseResult
 parse_markdown_string(const std::string& content, Project& out) → MarkdownParseResult
 ```
 
+### src/markdown.h
+```
+struct Project
+struct MarkdownParseResult
+```
+
 ### src/renderer.cpp
 ```
 render_markdown(const Config& cfg, const std::vector<Todo>& todos) → std::string
@@ -488,65 +492,45 @@ for(const auto& note : todo.notes)
 render_to_file(const std::string& path, const Config& cfg, const std::vector<Todo>& todos) → RenderResult
 ```
 
+### src/renderer.h
+```
+struct RenderResult
+```
+
+### src/repo.cpp
+```
+find_repo_root(const std::filesystem::path& start) → std::optional<std::filesystem:
+while(true)
+if(parent == current)
+global_config_path() → std::optional<std::filesystem:
+```
+
+### src/todo.cpp
+```
+next_todo_id(const std::vector<Todo>& todos) → int
+for(const auto& t : todos)
+find_todo(std::vector<Todo>& todos, int id) → Todo*
+for(auto& t : todos)
+find_todo(const std::vector<Todo>& todos, int id) → const Todo*
+for(const auto& t : todos)
+filter_todos(const std::vector<Todo>& todos, TodoFilter filter) → std::vector<const Todo*>
+for(const auto& t : todos)
+complete_todo(std::vector<Todo>& todos, int id, const std::string& date) → TodoResult
+if(t->status == TodoStatus::Done)
+set_todo_status(std::vector<Todo>& todos, int id, TodoStatus status, const std::string& date) → TodoResult
+if(t->status == status)
+if(status == TodoStatus::Done)
+add_note(std::vector<Todo>& todos, int id, const std::string& note) → TodoResult
+if(t->status == TodoStatus::Done)
+```
+
+### src/todo.h
+```
+struct Todo
+struct TodoResult
+```
+
 ## tests
-
-### tests/test_todo_model.cpp
-```
-make_todos() → static std::vector<Todo>
-```
-
-### tests/doctest.h
-```
-struct enable_if
-struct true_type
-struct false_type
-struct remove_reference
-struct remove_const
-struct is_enum
-struct underlying_type
-struct has_insertion_operator
-struct should_stringify_as_underlying_type
-struct StringMakerBase
-  static_assert(deferred_false<T>::value, "No stringification detected for type T. See string conversion manual")
-struct filldata
-struct ContextOptions
-struct Expression_lhs
-class ExceptionTranslator
-class ContextScope
-  lambda_(s)
-  destroy()
-struct QueryData
-struct Timer
-  start() → void
-  getElapsedMicroseconds() → unsigned int
-  getElapsedSeconds() → double
-class MultiLaneAtomic
-  fetch_add(1) → return
-```
-
-### tests/data/notes/basic.md
-```
-h1 Project: Test Project
-h2 Links
-h2 Todos
-```
-
-### tests/data/notes/managed_sections.md
-```
-h1 Project: Managed Sections Project
-h2 Links
-h2 GitHub
-h2 Swagger
-h2 Blizzard
-h2 Todos
-```
-
-### tests/test_errors.cpp
-```
-struct ErrorTempRepo
-ErrorTempRepo(const std::string& name, bool with_git = true) → explicit
-make_err_args(const std::string& sub, std::initializer_list<std::pair<std::string,std::string>> flags = {}) → static Args
-```
 
 ### tests/test_commands.cpp
 ```
@@ -577,54 +561,12 @@ CHECK(cfg.rpm_base_url == "https: } TEST_CASE("set_global_writes_jira_base_url")
 CHECK(cfg.jira_base_url == "https: } TEST_CASE("set_global_preserves_existing_value")
 ```
 
-### tests/test_config.cpp
+### tests/test_errors.cpp
 ```
-write_temp(const std::string& content) → static std::string
-CHECK(cfg.link_urls["teams"] == "https: } TEST_CASE("parse_repo_only")
-CHECK(cfg.github[0] == "https: CHECK(cfg.github[2] == "https: } TEST_CASE("parse_list_single")
-CHECK(cfg.github[0] == "https: } TEST_CASE("parse_list_empty")
-CHECK(cfg.link_urls["teams"] == "https: } TEST_CASE("parse_label_dotted_key")
-CHECK(cfg.teams_sync_url == "https: } TEST_CASE("parse_legacy_teams_webhook_key")
-CHECK(cfg.teams_sync_url == "https: } TEST_CASE("parse_unknown_keys_ignored")
-CHECK(e.url == "https: } TEST_CASE("parse_azure_entry_url_only")
-CHECK(e.url == "https: } TEST_CASE("parse_azure_entry_whitespace_trimmed")
-CHECK(e.url == "https: } TEST_CASE("format_azure_entry_with_name")
-CHECK(cfg.azure_private_dns[0] == "https: } TEST_CASE("write_azure_round_trip")
+struct ErrorTempRepo
+ErrorTempRepo(const std::string& name, bool with_git = true) → explicit
+make_err_args(const std::string& sub, std::initializer_list<std::pair<std::string,std::string>> flags = {}) → static Args
 ```
 
-### tests/test_markdown_parser.cpp
-```
-CHECK(proj.link_entries[0].second == "https: } TEST_CASE("parse_github_section")
-CHECK(proj.github_urls[0] == "https: CHECK(proj.github_urls[1] == "https: } TEST_CASE("parse_swagger_section")
-CHECK(proj.swagger_urls[0] == "https: } TEST_CASE("parse_blizzard_section")
-CHECK(proj.blizzard_urls[0] == "https: } TEST_CASE("parse_missing_managed_sections")
-```
 
-### tests/test_renderer.cpp
-```
-make_base_config() → static Config
-contains(const std::string& haystack, const std::string& needle) → static bool
-CHECK(contains(output, "- Teams: https: CHECK(contains(output, "- Jira: https: } TEST_CASE("render_links_na_when_missing")
-CHECK(contains(output, "- https: } TEST_CASE("render_swagger_section")
-CHECK(contains(output, "- https: } TEST_CASE("render_blizzard_section")
-CHECK(contains(output, "- https: } TEST_CASE("render_omits_empty_github")
-CHECK(contains(output, "[MySub](https: } TEST_CASE("render_azure_section_url_only")
-CHECK(contains(output, "- https: } TEST_CASE("render_azure_all_types")
-```
-
-### tests/test_hook.cpp
-```
-struct HookTempRepo
-  cfg(path / ".projot" / "config") → std::ofstream
-  notes(path / ".projot" / "1.md") → std::ofstream
-  f(p) → std::ifstream
-struct McpTempRepo
-  f(p) → std::ifstream
-HookTempRepo(const std::string& name) → explicit
-hook_path() → fs::path
-read_file(const fs::path& p) → static std::string
-make_hook_args(const std::string& sub) → static Args
-McpTempRepo(const std::string& name) → explicit
-read_file(const fs::path& p) → static std::string
-make_mcp_args(const std::string& sub, std::initializer_list<std::pair<std::string,std::string>> flags = {}) → static Args
-```
+> **Not everything is here.** 13 file(s) omitted to stay under the 4000-token budget (tests and configs go first). The retrieval index still has them all — run `sigmap ask "<question>"` to pull in anything missing.
