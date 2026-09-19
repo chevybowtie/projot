@@ -176,7 +176,7 @@ teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 |---|---|
 | `init` | Initialize projot for this repo (repo-level setup) |
 | `new` | Start a new RPM project in this repo |
-| `close` | Close the current project (clears project-level config) |
+| `close` | Close the current project (clears project-level config, carries open todos to next project) |
 | `add-todo` | Append a todo (`projot add-todo "message"`) |
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
 | `status` | Set todo status (`--todo <ID> todo\|in-progress\|blocked\|done`) |
