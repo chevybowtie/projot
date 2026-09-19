@@ -10,7 +10,7 @@ Each **project** is stored as a **single markdown file** with a strict, machine-
 
 - Create and manage a project notes file identified by a **RPM project number**.
 - Track todos, completion dates, and notes.
-- Store relevant URLs (Teams channel, iTrack, RPM link, etc.).
+- Store relevant URLs (Teams channel, Jira, RPM link, etc.).
 - Generate consistent, human-readable files that can be shared with supervisors or project managers.
 
 The initial version focuses on **one-shot CLI subcommands** (no TUI yet).  
@@ -70,11 +70,11 @@ The implementation uses **only the C++ standard library** and includes **unit te
 Each project file contains:
 
 - RPM number
-- iTrack number (optional)
+- Jira number (optional)
 - App ID (optional) — stored in `.projot/config`; rendered into the document by projot
 - Project name
 - Date created
-- A configurable list of URLs (Teams, iTrack, RPM, Other — single values)
+- A configurable list of URLs (Teams, Jira, RPM, Other — single values)
 - Zero or more GitHub repository URLs — stored in `.projot/config`; projot-managed section in the document
 - Zero or more Swagger/OpenAPI URLs — stored in `.projot/config`; projot-managed section in the document
 - Zero or more Blizzard URLs — stored in `.projot/config`; projot-managed section in the document
@@ -121,7 +121,7 @@ Two config files exist:
 %APPDATA%\projot\config           # Windows
 ```
 
-Global config provides defaults for base URLs (`rpm_base_url`, `itrack_base_url`) that apply across all projects. Repo-level config can override these values.
+Global config provides defaults for base URLs (`rpm_base_url`, `itrack_base_url`) that apply across all projects. Repo-level config can override these values. (Field names stay as `itrack_base_url` for backward compatibility; display text uses "Jira".)
 
 Users may optionally specify `--config <path>` in later versions.
 
@@ -160,7 +160,7 @@ Users may optionally specify `--config <path>` in later versions.
 | Field                | Required | Description                                                                                         |
 |----------------------|----------|-----------------------------------------------------------------------------------------------------|
 | `rpm_base_url`       | Optional | Base URL for RPM project links; project number is appended (e.g. `https://rpm.example.com/`)       |
-| `itrack_base_url`    | Optional | Base URL for iTrack ticket links; ticket number is appended (e.g. `https://itrack.example.com/ticket/`) |
+| `itrack_base_url`    | Optional | Base URL for Jira ticket links; ticket number is appended (e.g. `https://yourcompany.atlassian.net/browse/`) |
 
 **Project-level** (set by `new`, specific to the RPM project):
 
@@ -168,7 +168,7 @@ Users may optionally specify `--config <path>` in later versions.
 |------------------|----------|------------------------------------------------------------------------------|
 | `rpm`            | Required | The RPM project number                                                       |
 | `name`           | Required | Human-readable project name                                                  |
-| `itrack`         | Required | iTrack ticket number                                                         |
+| `itrack`         | Required | Jira ticket number                                                           |
 | `date_format`    | Optional | Display-only date format (stored ISO always)                                 |
 | `links`          | Optional | Ordered list of single-value link keys to include                            |
 | `label.<key>`    | Optional | Human-friendly label for a link key                                          |
@@ -184,10 +184,10 @@ Users may optionally specify `--config <path>` in later versions.
 
 ```sh
 # projot global config
-# Base URLs for RPM and iTrack links (used across all projects)
+# Base URLs for RPM and Jira links (used across all projects)
 
 rpm_base_url = https://rpm.example.com/
-itrack_base_url = https://itrack.example.com/record/
+itrack_base_url = https://yourcompany.atlassian.net/browse/
 ```
 
 #### Repo Config Example (`.projot/config`)
@@ -218,7 +218,7 @@ rpm = 12345
 # Project name
 name = My Project
 
-# iTrack ticket number
+# Jira ticket number
 itrack = 67890
 
 # Date format used for display only; stored ISO always
@@ -229,13 +229,13 @@ links = teams, itrack, rpm, other
 
 # Human-friendly labels
 label.teams = Teams
-label.itrack = iTrack
+label.itrack = Jira
 label.rpm = RPM
 label.other = Other
 
 # Single-value link URLs
 link.teams = https://teams.microsoft.com/l/channel/...
-link.itrack = https://itrack.example.com/ticket/67890
+link.itrack = https://yourcompany.atlassian.net/browse/PROJ-67890
 link.rpm = https://rpm.example.com/project/12345
 link.other = https://wiki.example.com/project
 ```
@@ -257,14 +257,14 @@ Project markdown files use a strict structure with a **required section order**:
 # Project: {Project Name}
 
 - RPM: {RPM}
-- iTrack: {iTrack or "N/A"}
+- Jira: {Jira or "N/A"}
 - App ID: {App ID or "N/A"}
 - Created: {YYYY-MM-DD}
 - Last Updated: {YYYY-MM-DD}
 
 ## Links
 - Teams: {url or "N/A"}
-- iTrack: {url or "N/A"}
+- Jira: {url or "N/A"}
 - RPM: {url or "N/A"}
 - Other: {url or "N/A"}
 
@@ -431,7 +431,7 @@ Required:
 
 - `--rpm <RPM>`
 - `--name "<Project Name>"`
-- `--itrack <iTrack>`
+- `--itrack <Jira>`
 
 Optional:
 
@@ -447,7 +447,7 @@ If `.projot/carryover_todos.md` exists (written by the previous `close`), its op
 
 #### `close`
 
-Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, itrack, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
+Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, itrack/Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
 
 Open todos (any status other than `done`) are saved to `.projot/carryover_todos.md` before the project is archived, and the next `new` restores them. If no todos are open, any stale carryover file is removed. The carryover file is written first, so a failure there leaves the project open and unchanged.
 
@@ -478,7 +478,7 @@ Display a project summary and todos.
 Default output:
 
 ```sh
-Project: {Project Name}  |  RPM: {RPM}  |  iTrack: {iTrack}
+Project: {Project Name}  |  RPM: {RPM}  |  Jira: {Jira}
 
 1. First open todo
 2. Second open todo
@@ -632,12 +632,12 @@ Set global defaults for base URLs that apply across all projects. Global configu
 Optional (at least one required):
 
 - `--rpm-base-url <URL>` — base URL for RPM project links (project number is appended)
-- `--itrack-base-url <URL>` — base URL for iTrack ticket links (ticket number is appended)
+- `--itrack-base-url <URL>` — base URL for Jira ticket links (ticket number is appended)
 
 Example:
 
 ```sh
-projot set-global --rpm-base-url "https://rpm.example.com/" --itrack-base-url "https://itrack.example.com/record/"
+projot set-global --rpm-base-url "https://rpm.example.com/" --itrack-base-url "https://yourcompany.atlassian.net/browse/"
 ```
 
 These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_itrack`) to construct full project/ticket links automatically.
@@ -830,7 +830,7 @@ tests/
 
 | Test                            | Description                                                                  |
 |---------------------------------|------------------------------------------------------------------------------|
-| `parse_header_fields`           | Project name, RPM, iTrack, App ID, Created date all parsed correctly from header |
+| `parse_header_fields`           | Project name, RPM, Jira, App ID, Created date all parsed correctly from header |
 | `parse_header_na_values`        | `N/A` values for optional fields → stored as empty string                   |
 | `parse_links_section`           | All configured link keys and URLs extracted                                 |
 | `parse_github_section`          | Multiple GitHub URLs extracted as list                                      |
@@ -905,19 +905,19 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `init_with_multiple_github`       | `--github` repeated twice → both URLs in config                                                |
 | `init_fails_if_already_init`      | Second `init` on same repo → non-zero exit                                                     |
 | `init_requires_app_id`            | `init` without `--app-id` → non-zero exit                                                      |
-| `new_writes_project_fields`       | `new` writes `rpm`, `name`, `itrack` to config                                                 |
+| `new_writes_project_fields`       | `new` writes `rpm`, `name`, Jira to config                                                     |
 | `new_creates_notes_file`          | `new` creates `.projot/{RPM}.md`                                                               |
 | `new_notes_file_has_correct_header`| Notes file has `# Project:` with correct name                                                 |
 | `new_with_teams_url`              | `--teams <url>` → `link.teams` in config, Teams in Links section                               |
 | `new_fails_if_rpm_set`            | `rpm` already in config → non-zero exit                                                        |
-| `new_fails_without_required_flags`| Missing `--rpm`, `--name`, or `--itrack` → non-zero exit                                        |
+| `new_fails_without_required_flags`| Missing `--rpm`, `--name`, or Jira → non-zero exit                                              |
 | `new_inherits_repo_fields`        | GitHub URL set by `init` appears in rendered notes file                                        |
 | `add_todo_appends`                | `add-todo` adds entry with next ID, `Created` date                                             |
 | `add_todo_stable_id`              | Two `add-todo` calls → IDs 1 and 2                                                             |
 | `list_default_shows_open`         | `list` with no flag → only open todos shown                                                    |
 | `list_closed_flag`                | `list --closed` → only closed todos                                                            |
 | `list_all_flag`                   | `list --all` → all todos                                                                       |
-| `list_shows_header`               | Output includes project name, RPM, iTrack line                                                 |
+| `list_shows_header`               | Output includes project name, RPM, Jira line                                                   |
 | `complete_marks_done`             | `complete --todo 1` → re-parsed file shows `[x]`, `Completed:` date                            |
 | `complete_warns_if_already_done`  | Re-completing → warning on stderr, exit 0, file unchanged                                      |
 | `add_note_appends`                | `add-note --todo 1 "note"` → note appears in re-parsed file                                    |

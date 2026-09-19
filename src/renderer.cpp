@@ -13,7 +13,7 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
     out << "# Project: " << cfg.name << "\n";
     out << "\n";
     out << "- RPM: " << cfg.rpm << "\n";
-    out << "- iTrack: " << (cfg.itrack.empty() ? "N/A" : cfg.itrack) << "\n";
+    out << "- Jira: " << (cfg.itrack.empty() ? "N/A" : cfg.itrack) << "\n";
     out << "- App ID: " << (cfg.app_id.empty() ? "N/A" : cfg.app_id) << "\n";
     out << "- Created: " << (cfg.created.empty() ? "N/A" : cfg.created) << "\n";
     out << "- Last Updated: " << date_today() << "\n";

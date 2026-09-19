@@ -28,9 +28,9 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 - Initialize a repo with app-level metadata (`init`) then start a project (`new`).
 - Track todos with stable numeric IDs and four states: **Todo**, **In Progress**, **Blocked**, **Done**.
 - Append notes under each todo.
-- Store project metadata: RPM number, iTrack, project name, app ID, created date.
+- Store project metadata: RPM number, Jira, project name, app ID, created date.
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
-- Configurable Links section with Teams, iTrack, RPM, and other single-value URLs.
+- Configurable Links section with Teams, Jira, RPM, and other single-value URLs.
 - List open, closed, or all todos.
 - Automatic Teams Kanban sync on every commit (via legacy webhook or Workflows/Power Automate endpoint).
 - Cross-platform (Linux + Windows).
@@ -103,14 +103,14 @@ projot set-link --key teams --url https://teams.microsoft.com/new-channel
 # Project: Widget Redesign
 
 - RPM: 12345
-- iTrack: 67890
+- Jira: 67890
 - App ID: MyApp
 - Created: 2025-11-23
 - Last Updated: 2025-11-23
 
 ## Links
 - Teams: https://teams.microsoft.com/...
-- iTrack: https://itrack.example.com/67890
+- Jira: https://jira.example.com/browse/PROJ-67890
 - RPM: https://rpm.example.com/12345
 
 ## GitHub
@@ -168,6 +168,23 @@ link.teams = https://teams.microsoft.com/...
 teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 ```
 
+### Teams Webhook Setup
+
+To enable automatic Kanban sync on every commit, you'll need a Teams incoming webhook URL:
+
+1. **Open your Teams channel** where projot updates should be posted
+2. **Go to Channel Settings** → **Connectors** (gear icon in channel header)
+3. **Search for "Incoming Webhook"** and click Configure
+4. **Give it a name** (e.g., "projot") and optionally upload an image
+5. **Copy the webhook URL** — starts with `https://outlook.webhook.office.com/webhookb2/`
+6. **Set it in projot:**
+   ```bash
+   projot set-teams-webhook <URL>
+   ```
+7. **Optional:** If your repo is public, consider gitignoring `.projot/config` to avoid committing the webhook URL
+
+Once set, projot will post a Kanban summary to the channel on every commit.
+
 ---
 
 ## Commands
@@ -182,6 +199,7 @@ teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 | `status` | Set todo status (`--todo <ID> todo\|in-progress\|blocked\|done`) |
 | `complete` | Mark a todo done — shorthand for `status done` (`--todo <ID>`) |
 | `add-note` | Add a note to a todo (`--todo <ID> "note text"`) |
+| `links` | Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal |
 | `set-link` | Set a single-value link URL (`--key <key> --url <url>`) |
 | `set-app-id` | Update the app ID (`--force` required if already set) |
 | `add-github` | Add a GitHub URL to config |
@@ -287,7 +305,7 @@ With the MCP server configured, you can ask your AI assistant in your IDE to:
 - **Update status**: *"Mark TODO #3 as in-progress"* → Sets the Kanban state
 - **Complete TODOs**: *"Close TODO #2"* → Marks it done
 - **Set up projects**: *"Help me set up a new project"* → Creates branch, initializes projot metadata
-- **Open time tracking**: *"Open iTrack to charge time"* → Opens your iTrack URL in the browser
+- **Open time tracking**: *"Open Jira to charge time"* → Opens your Jira URL in the browser
 
 See [docs/MCP.md](docs/MCP.md) for installation, usage, and the full tool list, or [mcp/README.md](mcp/README.md) for manual IDE configuration and server internals.
 
