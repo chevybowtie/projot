@@ -81,6 +81,8 @@ int cmd_new(const Args& args) {
             "  --itrack-url <URL>        iTrack link\n"
             "  --other <URL>             Other URL\n"
             "  --no-hook                 Skip pre-commit hook installation\n\n"
+            "Open todos saved by the previous 'projot close' are carried into the\n"
+            "new project (renumbered from 1) and the carryover file is removed.\n\n"
             "Example:\n"
             "  projot new --rpm 12345 --name \"Widget Redesign\" --itrack 67890\n";
         return 0;
@@ -154,6 +156,10 @@ int cmd_new(const Args& args) {
     if (ec && ec != std::errc::no_such_file_or_directory) {
         std::cerr << "warning: failed to clear carryover todos file: " << ec.message() << "\n";
     }
+
+    if (!carryover_todos.empty())
+        std::cout << "Carried forward " << carryover_todos.size()
+                  << " open todo(s) from the previous project.\n";
 
     std::cout << "Created project " << ctx.config.name
               << " (RPM " << ctx.config.rpm << ")\n";

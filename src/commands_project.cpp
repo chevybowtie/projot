@@ -56,7 +56,21 @@ int cmd_close(const Args& args) {
         carryover_todos.push_back(*todo);
     }
 
-    Config closing_config = ctx.config;
+    // Write the carryover file before archiving so a failure here leaves the
+    // project open rather than closed with its open todos only in the archive.
+    if (carryover_todos.empty()) {
+        fs::remove(carryover_notes, ec);
+        if (ec) {
+            std::cerr << "error: cannot clear carryover todos: " << ec.message() << "\n";
+            return 1;
+        }
+    } else {
+        auto carryover_render = render_to_file(carryover_notes.string(), ctx.config, carryover_todos);
+        if (!carryover_render.ok) {
+            std::cerr << "error: " << carryover_render.error << "\n";
+            return 1;
+        }
+    }
 
     fs::path archived_notes = archive_dir / (ctx.config.rpm + ".md");
     fs::rename(old_notes, archived_notes, ec);
@@ -74,19 +88,9 @@ int cmd_close(const Args& args) {
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
-    if (carryover_todos.empty()) {
-        fs::remove(carryover_notes, ec);
-        if (ec && ec != std::errc::no_such_file_or_directory) {
-            std::cerr << "error: cannot clear carryover todos: " << ec.message() << "\n";
-            return 1;
-        }
-    } else {
-        auto carryover_render = render_to_file(carryover_notes.string(), closing_config, carryover_todos);
-        if (!carryover_render.ok) {
-            std::cerr << "error: " << carryover_render.error << "\n";
-            return 1;
-        }
-    }
+    if (!carryover_todos.empty())
+        std::cout << "Saved " << carryover_todos.size()
+                  << " open todo(s) to carry forward to the next project.\n";
 
     std::cout << "Closed. Run 'projot new' to start the next project.\n"
               << "Note: pre-commit hook is still installed — run 'projot uninstall-hook' if you don't want it active between projects.\n";
