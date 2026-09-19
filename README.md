@@ -161,8 +161,8 @@ blizzard = https://blizzard.example.com/project
 ```text
 rpm = 12345
 name = Widget Redesign
-itrack = 67890
-links = teams, itrack, rpm
+jira = 67890
+links = teams, jira, rpm
 label.teams = Teams
 link.teams = https://teams.microsoft.com/...
 teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...

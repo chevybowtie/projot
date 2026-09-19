@@ -45,8 +45,8 @@ static void print_usage() {
 static const std::map<std::string, std::set<std::string>>& valid_flags() {
     static const std::map<std::string, std::set<std::string>> m{
         {"init",         {"app-id", "github", "swagger", "blizzard"}},
-        {"new",          {"rpm", "name", "itrack", "teams", "teams-sync-url", "teams-webhook",
-                          "rpm-url", "itrack-url", "other", "no-hook"}},
+        {"new",          {"rpm", "name", "jira", "teams", "teams-sync-url", "teams-webhook",
+                          "rpm-url", "jira-url", "other", "no-hook"}},
         {"close",        {}},
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
@@ -65,7 +65,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-hook",        {}},
         {"install-mcp-server",    {"no-vscode"}},
         {"uninstall-mcp-server",  {"no-vscode"}},
-        {"set-global",          {"rpm-base-url", "itrack-base-url"}},
+        {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
     };
     return m;

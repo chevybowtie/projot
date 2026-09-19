@@ -163,7 +163,7 @@ int cmd_list(const Args& args) {
 
     std::cout << "Project: " << ctx.config.name
               << "  |  RPM: " << ctx.config.rpm
-              << "  |  Jira: " << (ctx.config.itrack.empty() ? "N/A" : ctx.config.itrack)
+              << "  |  Jira: " << (ctx.config.jira.empty() ? "N/A" : ctx.config.jira)
               << "\n\n";
 
     auto todos = filter_todos(proj.todos, filter);
@@ -468,9 +468,9 @@ int cmd_set_link(const Args& args) {
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
-    // "jira" is the user-facing name; the stored link key stays "itrack" for compatibility.
+    // "itrack" is the legacy name for the Jira link key.
     std::string key = args.get("key");
-    if (key == "jira") key = "itrack";
+    if (key == "itrack") key = "jira";
     const std::string url = args.get("url");
 
     return execute_config_command(ctx, [key, &url](Context& c) {

@@ -25,7 +25,7 @@ struct HookTempRepo {
         // Write .projot/config with app_id and rpm so commands work
         fs::create_directories(path / ".projot", ec);
         std::ofstream cfg(path / ".projot" / "config");
-        cfg << "config_version = 1\napp_id = TestApp\nrpm = 1\nname = P\nitrack = 1\n";
+        cfg << "config_version = 1\napp_id = TestApp\nrpm = 1\nname = P\njira = 1\n";
         cfg.close();
         // Create minimal notes file
         std::ofstream notes(path / ".projot" / "1.md");
@@ -68,7 +68,7 @@ TEST_CASE("new_installs_hook") {
     a.subcommand = "new";
     a.flags["rpm"].push_back("99");
     a.flags["name"].push_back("P");
-    a.flags["itrack"].push_back("1");
+    a.flags["jira"].push_back("1");
     // no --no-hook: hook should be installed
     cmd_new(a);
 
@@ -92,7 +92,7 @@ TEST_CASE("new_hook_content") {
     a.subcommand = "new";
     a.flags["rpm"].push_back("88");
     a.flags["name"].push_back("P");
-    a.flags["itrack"].push_back("1");
+    a.flags["jira"].push_back("1");
     cmd_new(a);
 
     const auto content = HookTempRepo::read_file(repo.hook_path());
@@ -113,7 +113,7 @@ TEST_CASE("new_no_hook_flag") {
     a.subcommand = "new";
     a.flags["rpm"].push_back("77");
     a.flags["name"].push_back("P");
-    a.flags["itrack"].push_back("1");
+    a.flags["jira"].push_back("1");
     a.flags["no-hook"].push_back("true");
     cmd_new(a);
 

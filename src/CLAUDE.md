@@ -133,7 +133,7 @@ if (!args.has("required-flag")) {
 Via `Context`:
 - `ctx.repo_root` — git repo root (fs::path)
 - `ctx.config` — loaded config (Config struct)
-  - `ctx.config.app_id`, `ctx.config.rpm`, `ctx.config.name`, `ctx.config.itrack`
+  - `ctx.config.app_id`, `ctx.config.rpm`, `ctx.config.name`, `ctx.config.jira`
   - `ctx.config.links`, `ctx.config.labels`, `ctx.config.link_urls`
   - `ctx.config.github`, `ctx.config.swagger`, `ctx.config.blizzard`
   - `ctx.config.azure_*` (azure_subscription, azure_key_vault, etc.)

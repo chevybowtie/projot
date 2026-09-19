@@ -29,8 +29,8 @@ writeFileSync(join(tmp, ".projot", "config"), [
   "app_id = TestApp",
   "rpm = 12345",
   "name = Test Project",
-  "itrack = 67890",
-  "link.itrack = https://itrack.example.com/67890",
+  "jira = 67890",
+  "link.jira = https://jira.example.com/67890",
   "link.teams = https://teams.example.com/channel",
   "link.rpm = https://rpm.example.com/12345",
   "github = https://github.com/example/repo",
@@ -160,13 +160,13 @@ test("get_open_todos: list --open (regression guard)", (assert) => {
 });
 
 // F023 regression: openUrl must pass URL as argument, not interpolate into a shell string.
-// Uses the link.itrack value from .projot/config ("https://itrack.example.com/67890").
+// Uses the link.jira value from .projot/config ("https://jira.example.com/67890").
 if (openCmd) {
   test(`open_jira: URL passed as argument to ${openCmd} (F023 regression)`, (assert) => {
     const { allLines } = runTool("projot_open_jira", {});
     const openLine = allLines.find(l => l.startsWith(openCmd + ":"));
     assert(`${openCmd} was called`, !!openLine);
-    assert("URL present in args", openLine && openLine.includes("https://itrack.example.com/67890"));
+    assert("URL present in args", openLine && openLine.includes("https://jira.example.com/67890"));
     // If the URL were shell-interpolated via execSync(`xdg-open "${url}"`),
     // the surrounding quotes would appear in the log. With execFileSync they don't.
     assert("URL not wrapped in quotes (no shell interpolation)", openLine && !openLine.includes('"https://'));

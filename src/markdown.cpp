@@ -111,11 +111,11 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
                 out.rpm = trim(line.substr(8));
             } else if (starts_with(line, "- Jira: ")) {
                 const auto v = trim(line.substr(8));
-                out.itrack = (v == "N/A") ? "" : v;
+                out.jira = (v == "N/A") ? "" : v;
             } else if (starts_with(line, "- iTrack: ")) {
                 // Legacy: accept old "iTrack" label for backward compatibility with existing notes files.
                 const auto v = trim(line.substr(10));
-                out.itrack = (v == "N/A") ? "" : v;
+                out.jira = (v == "N/A") ? "" : v;
             } else if (starts_with(line, "- App ID: ")) {
                 const auto v = trim(line.substr(10));
                 out.app_id = (v == "N/A") ? "" : v;

@@ -121,7 +121,7 @@ Two config files exist:
 %APPDATA%\projot\config           # Windows
 ```
 
-Global config provides defaults for base URLs (`rpm_base_url`, `itrack_base_url`) that apply across all projects. Repo-level config can override these values. (Field names stay as `itrack_base_url` for backward compatibility; display text uses "Jira".)
+Global config provides defaults for base URLs (`rpm_base_url`, `jira_base_url`) that apply across all projects. Repo-level config can override these values.
 
 Users may optionally specify `--config <path>` in later versions.
 
@@ -144,7 +144,7 @@ Users may optionally specify `--config <path>` in later versions.
 
 | Field             | Description                                                                                           |
 |-------------------|-------------------------------------------------------------------------------------------------------|
-| `config_version`  | Integer. Written by projot on `init`. Incremented only when the config schema changes in a breaking way. Current value: `1`. |
+| `config_version`  | Integer. Written by projot on `init`. Incremented only when the config schema changes in a breaking way. Current value: `2`. |
 
 **Repo-level** (set by `init`, rarely change):
 
@@ -160,7 +160,7 @@ Users may optionally specify `--config <path>` in later versions.
 | Field                | Required | Description                                                                                         |
 |----------------------|----------|-----------------------------------------------------------------------------------------------------|
 | `rpm_base_url`       | Optional | Base URL for RPM project links; project number is appended (e.g. `https://rpm.example.com/`)       |
-| `itrack_base_url`    | Optional | Base URL for Jira ticket links; ticket number is appended (e.g. `https://yourcompany.atlassian.net/browse/`) |
+| `jira_base_url`  | Optional | Base URL for Jira ticket links; ticket number is appended (e.g. `https://yourcompany.atlassian.net/browse/`) |
 
 **Project-level** (set by `new`, specific to the RPM project):
 
@@ -168,7 +168,7 @@ Users may optionally specify `--config <path>` in later versions.
 |------------------|----------|------------------------------------------------------------------------------|
 | `rpm`            | Required | The RPM project number                                                       |
 | `name`           | Required | Human-readable project name                                                  |
-| `itrack`         | Required | Jira ticket number                                                           |
+| `jira`           | Required | Jira ticket number                                                           |
 | `date_format`    | Optional | Display-only date format (stored ISO always)                                 |
 | `links`          | Optional | Ordered list of single-value link keys to include                            |
 | `label.<key>`    | Optional | Human-friendly label for a link key                                          |
@@ -187,14 +187,14 @@ Users may optionally specify `--config <path>` in later versions.
 # Base URLs for RPM and Jira links (used across all projects)
 
 rpm_base_url = https://rpm.example.com/
-itrack_base_url = https://yourcompany.atlassian.net/browse/
+jira_base_url = https://yourcompany.atlassian.net/browse/
 ```
 
 #### Repo Config Example (`.projot/config`)
 
 ```sh
 # projot config
-config_version = 1
+config_version = 2
 
 # --- Repo-level fields (set by `init`) ---
 
@@ -219,23 +219,23 @@ rpm = 12345
 name = My Project
 
 # Jira ticket number
-itrack = 67890
+jira = 67890
 
 # Date format used for display only; stored ISO always
 date_format = YYYY-MM-DD
 
 # Which single-value URLs to include in the Links section
-links = teams, itrack, rpm, other
+links = teams, jira, rpm, other
 
 # Human-friendly labels
 label.teams = Teams
-label.itrack = Jira
+label.jira = Jira
 label.rpm = RPM
 label.other = Other
 
 # Single-value link URLs
 link.teams = https://teams.microsoft.com/l/channel/...
-link.itrack = https://yourcompany.atlassian.net/browse/PROJ-67890
+link.jira = https://yourcompany.atlassian.net/browse/PROJ-67890
 link.rpm = https://rpm.example.com/project/12345
 link.other = https://wiki.example.com/project
 ```
