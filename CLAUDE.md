@@ -69,7 +69,7 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Testing
 
-All 231 test cases pass. Use the `TempRepo` helper in `tests/test_commands.cpp` to set up temporary git repos for testing. Test data lives in `tests/data/configs/` and `tests/data/notes/`. Reference it with the `PROJOT_TEST_DATA_DIR` macro (set at CMake time to an absolute path).
+All tests pass. Use the `TempRepo` helper in `tests/test_commands.cpp` to set up temporary git repos for testing. Test data lives in `tests/data/configs/` and `tests/data/notes/`. Reference it with the `PROJOT_TEST_DATA_DIR` macro (set at CMake time to an absolute path).
 
 Tests verify config parsing, markdown I/O, command execution, versioning, error handling, and hooks. Coverage is comprehensive for the happy path; error cases (render failures, permission errors) have minimal coverage.
 
