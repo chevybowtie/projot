@@ -32,6 +32,7 @@ _projot() {
                 'list:show project summary and todos'
                 'complete:mark a todo completed'
                 'status:set a todo status (todo, in-progress, blocked, done)'
+                'summarize:display todos added and closed today'
                 'add-note:add a note to a todo'
                 'set-link:set or update a single-value link URL'
                 'set-app-id:set the application ID'
@@ -108,6 +109,11 @@ _projot() {
                     _arguments \
                         "--todo[todo ID]:id:(${ids})" \
                         '1:note text:' \
+                        '--help[show help]'
+                    ;;
+                summarize)
+                    _arguments \
+                        '--today[show only today activity]' \
                         '--help[show help]'
                     ;;
                 set-link)
