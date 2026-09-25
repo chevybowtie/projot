@@ -32,6 +32,7 @@ projot is **repo-centric** — it runs inside a git repository and stores all pr
 - Manage GitHub, Swagger, and Blizzard URL lists per repo.
 - Configurable Links section with Teams, Jira, RPM, and other single-value URLs.
 - List open, closed, or all todos.
+- Summarize daily activity (todos added and closed today) for time entry tracking.
 - Automatic Teams Kanban sync on every commit (via legacy webhook or Workflows/Power Automate endpoint).
 - Cross-platform (Linux + Windows).
 - C++ standard library only — no external dependencies.
@@ -74,6 +75,9 @@ projot complete --todo 1
 
 # Add a note to a todo
 projot add-note --todo 1 "Waiting on supervisor feedback"
+
+# Summarize today's activity (for time entry)
+projot summarize
 ```
 
 ### 4. Manage URLs
@@ -198,6 +202,7 @@ Once set, projot will post a Kanban summary to the channel on every commit.
 | `list` | Display todos (`--open` default / `--closed` / `--all`) |
 | `status` | Set todo status (`--todo <ID> todo\|in-progress\|blocked\|done`) |
 | `complete` | Mark a todo done — shorthand for `status done` (`--todo <ID>`) |
+| `summarize` | Display todos added and closed today (for time entry tracking) |
 | `add-note` | Add a note to a todo (`--todo <ID> "note text"`) |
 | `links` | Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal |
 | `set-link` | Set a single-value link URL (`--key <key> --url <url>`) |
