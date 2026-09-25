@@ -443,6 +443,72 @@ int cmd_add_note(const Args& args) {
     });
 }
 
+// summarize
+
+int cmd_summarize(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot summarize [--today]\n\n"
+            "Display a summary of todos added and closed today.\n\n"
+            "Optional:\n"
+            "  --today   Show only today's activity (default)\n\n"
+            "Example:\n"
+            "  projot summarize\n"
+            "  projot summarize --today\n";
+        return 0;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    Project proj;
+    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+
+    std::string today = date_today();
+
+    std::vector<const Todo*> added_today;
+    std::vector<const Todo*> closed_today;
+
+    for (const auto& todo : proj.todos) {
+        if (todo.created_date == today) {
+            added_today.push_back(&todo);
+        }
+        if (todo.status == TodoStatus::Done && todo.completed_date == today) {
+            closed_today.push_back(&todo);
+        }
+    }
+
+    std::cout << "Daily Summary for " << today << "\n";
+    std::cout << "==============================================\n\n";
+
+    std::cout << "Added Today (" << added_today.size() << "):\n";
+    if (added_today.empty()) {
+        std::cout << "  (none)\n";
+    } else {
+        for (const auto* t : added_today) {
+            std::cout << "  [" << t->id << "] " << t->text << "\n";
+        }
+    }
+
+    std::cout << "\nClosed Today (" << closed_today.size() << "):\n";
+    if (closed_today.empty()) {
+        std::cout << "  (none)\n";
+    } else {
+        for (const auto* t : closed_today) {
+            std::cout << "  [" << t->id << "] " << t->text << "\n";
+        }
+    }
+
+    int total_open = static_cast<int>(filter_todos(proj.todos, TodoFilter::Open).size());
+    std::cout << "\nProject Status:\n";
+    std::cout << "  Open Todos: " << total_open << "\n";
+    std::cout << "  Total Todos: " << proj.todos.size() << "\n";
+
+    return 0;
+}
+
 // set-link
 
 int cmd_set_link(const Args& args) {
