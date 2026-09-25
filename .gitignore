@@ -36,7 +36,6 @@ test_results/
 .claude/.nfs00000*
 
 # Generated files
-CHANGELOG.md
 RELEASE_NOTES.md
 # sigmap working files
 .context/
