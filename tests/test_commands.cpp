@@ -1129,3 +1129,60 @@ TEST_CASE("status_complete_still_works_backward_compat") {
     REQUIRE(!proj.todos.empty());
     CHECK(proj.todos[0].status == TodoStatus::Done);
 }
+
+// ── summarize ──────────────────────────────────────────────────────────────────
+
+TEST_CASE("summarize_empty_project") {
+    TempRepo repo("summarize_empty");
+    repo.init(); repo.new_project("30");
+    int ret = cmd_summarize(make_args("summarize"));
+    CHECK(ret == 0);
+}
+
+TEST_CASE("summarize_shows_today_todos") {
+    TempRepo repo("summarize_today");
+    repo.init(); repo.new_project("31");
+    cmd_add_todo(make_args("add-todo", {}, "Todo 1"));
+    cmd_add_todo(make_args("add-todo", {}, "Todo 2"));
+    int ret = cmd_summarize(make_args("summarize"));
+    CHECK(ret == 0);
+    // Verify the todos were created today
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "31.md").string(), proj);
+    REQUIRE(proj.todos.size() == 2);
+    std::string today = date_today();
+    CHECK(proj.todos[0].created_date == today);
+    CHECK(proj.todos[1].created_date == today);
+}
+
+TEST_CASE("summarize_counts_closed_today") {
+    TempRepo repo("summarize_closed");
+    repo.init(); repo.new_project("32");
+    cmd_add_todo(make_args("add-todo", {}, "Close me"));
+    cmd_complete(make_args("complete", {{"todo", "1"}}));
+    int ret = cmd_summarize(make_args("summarize"));
+    CHECK(ret == 0);
+    // Verify the todo was completed with today's date
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "32.md").string(), proj);
+    REQUIRE(!proj.todos.empty());
+    CHECK(proj.todos[0].status == TodoStatus::Done);
+    std::string today = date_today();
+    CHECK(proj.todos[0].completed_date == today);
+}
+
+TEST_CASE("summarize_requires_project") {
+    TempRepo repo("summarize_no_project");
+    repo.init();
+    // Don't create a project
+    int ret = cmd_summarize(make_args("summarize"));
+    CHECK(ret != 0);
+}
+
+TEST_CASE("summarize_help") {
+    TempRepo repo("summarize_help");
+    Args a = make_args("summarize");
+    a.help_requested = true;
+    int ret = cmd_summarize(a);
+    CHECK(ret == 0);
+}

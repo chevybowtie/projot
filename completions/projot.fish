@@ -15,7 +15,7 @@ function __projot_open_todo_ids
 end
 
 function __projot_no_subcommand
-    not __fish_seen_subcommand_from init new close add-todo list complete status add-note \
+    not __fish_seen_subcommand_from init new close add-todo list complete status summarize add-note \
         set-link set-app-id add-github add-swagger add-blizzard add-azure render \
         install-hook uninstall-hook install-mcp-server uninstall-mcp-server \
         set-global set-teams-webhook
@@ -33,6 +33,7 @@ complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new t
 complete -c projot -n __projot_no_subcommand -a list          -d 'Show project summary and todos'
 complete -c projot -n __projot_no_subcommand -a complete      -d 'Mark a todo completed'
 complete -c projot -n __projot_no_subcommand -a status        -d "Set a todo's status"
+complete -c projot -n __projot_no_subcommand -a summarize     -d 'Display todos added and closed today'
 complete -c projot -n __projot_no_subcommand -a add-note      -d 'Add a note to a todo'
 complete -c projot -n __projot_no_subcommand -a set-link      -d 'Set or update a single-value link URL'
 complete -c projot -n __projot_no_subcommand -a set-app-id    -d 'Set the application ID'
@@ -49,7 +50,7 @@ complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global 
 complete -c projot -n __projot_no_subcommand -a set-teams-webhook -d 'Set the Teams incoming webhook URL'
 
 # --help on every subcommand
-for sub in init new close add-todo list complete status add-note set-link set-app-id \
+for sub in init new close add-todo list complete status summarize add-note set-link set-app-id \
            add-github add-swagger add-blizzard add-azure render install-hook \
            uninstall-hook install-mcp-server uninstall-mcp-server set-global \
            set-teams-webhook
@@ -93,6 +94,10 @@ complete -c projot -n '__fish_seen_subcommand_from status' \
 # add-note (note text is a positional argument)
 complete -c projot -n '__fish_seen_subcommand_from add-note' -l todo \
     -d 'Todo ID' -r -a '(__projot_open_todo_ids)'
+
+# summarize
+complete -c projot -n '__fish_seen_subcommand_from summarize' -l today \
+    -d 'Show only today activity'
 
 # set-link
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l key \
