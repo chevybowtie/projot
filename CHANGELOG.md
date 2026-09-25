@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.1.22] - 2026-09-25
+
+### BUG FIXES
+
+- Checkout master branch before pushing CHANGELOG.md in release workflow ([#84c29fb](https://github.com/chevybowtie/projot/commit/84c29fb13a42c3e6bd020edea93f7d104b252b03))
 
 ### DOCUMENTATION
 
@@ -103,6 +107,10 @@ All notable changes to this project will be documented in this file.
 - Reder project reports error if project is closed
 - Update release process test command for consistency
 
+### DOCUMENTATION
+
+- Fix path
+
 ### FEATURES
 
 - Enhance managed comment in markdown output for clarity and consistency
@@ -114,6 +122,23 @@ All notable changes to this project will be documented in this file.
 - Replace execCommand with execArgs for improved security and consistency
 - Rename test case for clarity and adjust expected behavior in render command
 
+## [v0.1.12] - 2026-05-19
+
+### BUG FIXES
+
+- Convert server to JSON-RPC 2.0
+- Add MCP tests
+
+### DOCUMENTATION
+
+- Update CLAUDE.md for clarity and formatting improvements
+- Update command list and installation instructions for clarity and accuracy
+- Bump version for release
+
+### REFACTORING
+
+- Improve code quality for demo readiness ([#0f608d0](https://github.com/chevybowtie/projot/commit/0f608d0d5b1e6e806530fcdf6b19bd5fd187399d))
+
 ## [v0.1.10] - 2026-05-15
 
 ### BUG FIXES
@@ -121,16 +146,10 @@ All notable changes to this project will be documented in this file.
 - Use bundled MCP server path in install-mcp-server config
 - Resolve Windows executable path for MCP server discovery
 - Expand MCP bundled path search for Windows build layout
-- Convert server to JSON-RPC 2.0
-- Add MCP tests
 
 ### DOCUMENTATION
 
 - Update MCP setup docs for bundled server path flow
-- Update CLAUDE.md for clarity and formatting improvements
-- Update command list and installation instructions for clarity and accuracy
-- Bump version for release
-- Fix path
 
 ### FEATURES
 
@@ -139,7 +158,6 @@ All notable changes to this project will be documented in this file.
 ### REFACTORING
 
 - Document Windows path limit in binary_dir helper
-- Improve code quality for demo readiness ([#0f608d0](https://github.com/chevybowtie/projot/commit/0f608d0d5b1e6e806530fcdf6b19bd5fd187399d))
 
 ### TESTING
 
