@@ -23,6 +23,7 @@ static void print_usage() {
         "  links         Print all project URLs to the terminal\n"
         "  complete      Mark a todo completed\n"
         "  status        Set a todo's status (todo, in-progress, blocked, done)\n"
+        "  summarize     Display todos added and closed today\n"
         "  add-note      Add a note to a todo\n"
         "  set-link      Set or update a single-value link URL\n"
         "  set-app-id    Set the application ID\n"
@@ -54,6 +55,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"complete",     {"todo"}},
         {"status",       {"todo"}},
         {"add-note",     {"todo"}},
+        {"summarize",    {"today"}},
         {"set-link",     {"key", "url"}},
         {"set-app-id",   {"app-id", "force"}},
         {"add-github",   {"url"}},
@@ -97,6 +99,7 @@ int main(int argc, char* argv[]) {
         {"complete",     cmd_complete},
         {"status",       cmd_status},
         {"add-note",     cmd_add_note},
+        {"summarize",    cmd_summarize},
         {"set-link",     cmd_set_link},
         {"set-app-id",   cmd_set_app_id},
         {"add-github",   cmd_add_github},

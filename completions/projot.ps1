@@ -4,7 +4,7 @@
 # Or install via projot's installer
 
 $projotSubcommands = @(
-    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'status', 'add-note',
+    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'status', 'summarize', 'add-note',
     'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
     'add-azure', 'render', 'install-hook', 'uninstall-hook',
     'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook'
@@ -18,6 +18,7 @@ $projotFlags = @{
     'list'                 = @('--open', '--closed', '--all', '--help')
     'complete'             = @('--todo', '--help')
     'status'               = @('--todo', '--help')
+    'summarize'            = @('--today', '--help')
     'add-note'             = @('--todo', '--help')
     'set-link'             = @('--key', '--url', '--help')
     'set-app-id'           = @('--app-id', '--force', '--help')
