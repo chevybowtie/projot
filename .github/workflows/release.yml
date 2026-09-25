@@ -171,9 +171,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout master
           git add CHANGELOG.md
           git commit -m "docs: update CHANGELOG.md for ${{ steps.version.outputs.version }}" || true
-          git push
+          git push origin master
 
       - name: Build .deb and tar.gz packages
         run: bash scripts/package.sh --version "${{ steps.version.outputs.version }}" --prefix dist/staging --output-dir dist
