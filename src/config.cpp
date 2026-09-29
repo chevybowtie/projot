@@ -248,6 +248,14 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
             write_list("azure_private_dns", cfg.azure_private_dns);
     }
 
+    file.flush();
+    if (!file.good()) {
+        return {false, "Write error to config file: " + path};
+    }
+    file.close();
+    if (file.fail()) {
+        return {false, "Failed to close config file: " + path};
+    }
     return {true, ""};
 }
 
@@ -271,5 +279,13 @@ ParseResult write_global_config(const std::string& path, const Config& cfg) {
     if (!cfg.jira_base_url.empty())
         file << "jira_base_url = " << cfg.jira_base_url << "\n";
 
+    file.flush();
+    if (!file.good()) {
+        return {false, "Write error to global config: " + path};
+    }
+    file.close();
+    if (file.fail()) {
+        return {false, "Failed to close global config: " + path};
+    }
     return {true, ""};
 }

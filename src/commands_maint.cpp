@@ -337,6 +337,10 @@ static bool install_claude_mcp(const fs::path& repo_root,
         if (!f.is_open()) { error = "cannot write .claude/settings.json"; return false; }
 
         f << claude_settings_fresh(server_arg);
+        f.flush();
+        if (!f.good()) { error = "write error to .claude/settings.json"; return false; }
+        f.close();
+        if (f.fail()) { error = "failed to close .claude/settings.json"; return false; }
         return true;
     }
 
@@ -347,6 +351,7 @@ static bool install_claude_mcp(const fs::path& repo_root,
     std::string content((std::istreambuf_iterator<char>(f_read)),
                         std::istreambuf_iterator<char>());
     f_read.close();
+    if (!f_read.good() && !f_read.eof()) { error = "failed to read .claude/settings.json"; return false; }
 
     // Check if projot is already configured
     if (content.find(projot_sentinel) != std::string::npos) {
@@ -379,6 +384,10 @@ static bool install_claude_mcp(const fs::path& repo_root,
     std::ofstream f_write(settings_file);
     if (!f_write.is_open()) { error = "cannot write .claude/settings.json"; return false; }
     f_write << content;
+    f_write.flush();
+    if (!f_write.good()) { error = "write error to .claude/settings.json"; return false; }
+    f_write.close();
+    if (f_write.fail()) { error = "failed to close .claude/settings.json"; return false; }
     return true;
 }
 
@@ -497,6 +506,16 @@ int cmd_install_mcp_server(const Args& args) {
               << "    }\n"
               << "  }\n"
               << "}\n";
+            f.flush();
+            if (!f.good()) {
+                std::cerr << "error: write error to .vscode/mcp.json\n";
+                return 1;
+            }
+            f.close();
+            if (f.fail()) {
+                std::cerr << "error: failed to close .vscode/mcp.json\n";
+                return 1;
+            }
 
             std::cout << "Configured MCP server in .vscode/mcp.json\n";
         } else {
@@ -543,6 +562,10 @@ int cmd_uninstall_hook(const Args& args) {
     }
     std::string content((std::istreambuf_iterator<char>(in)), {});
     in.close();
+    if (!in.good() && !in.eof()) {
+        std::cerr << "error: failed to read " << hook_path.string() << "\n";
+        return 1;
+    }
 
     if (content.find("projot render") == std::string::npos) {
         std::cout << "projot hook block not found in pre-commit hook.\n";
@@ -584,6 +607,11 @@ int cmd_uninstall_hook(const Args& args) {
             return 1;
         }
         f << content;
+        f.flush();
+        if (!f.good()) {
+            std::cerr << "error: write error to " << hook_path.string() << "\n";
+            return 1;
+        }
         f.close();
 #ifndef _WIN32
         fs::permissions(hook_path,
@@ -613,6 +641,10 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
     }
     std::string content((std::istreambuf_iterator<char>(f_read)), {});
     f_read.close();
+    if (!f_read.good() && !f_read.eof()) {
+        message = "failed to read .claude/settings.json";
+        return false;
+    }
 
     if (content.find("\"projot\"") == std::string::npos) {
         message = "projot not configured in .claude/settings.json.";
@@ -663,6 +695,16 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
                 return false;
             }
             f_write << content;
+            f_write.flush();
+            if (!f_write.good()) {
+                message = "write error to .claude/settings.json";
+                return false;
+            }
+            f_write.close();
+            if (f_write.fail()) {
+                message = "failed to close .claude/settings.json";
+                return false;
+            }
             message = "Removed projot MCP entry from .claude/settings.json";
             return true;
         }
@@ -714,8 +756,16 @@ int cmd_uninstall_mcp_server(const Args& args) {
             std::cout << "No .vscode/mcp.json found.\n";
         } else {
             std::ifstream f(mcp_json);
+            if (!f.is_open()) {
+                std::cerr << "error: cannot read .vscode/mcp.json\n";
+                return 1;
+            }
             std::string content((std::istreambuf_iterator<char>(f)), {});
             f.close();
+            if (!f.good() && !f.eof()) {
+                std::cerr << "error: failed to read .vscode/mcp.json\n";
+                return 1;
+            }
             if (content.find("\"projot\"") != std::string::npos) {
                 fs::remove(mcp_json, ec);
                 if (ec) {

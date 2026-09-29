@@ -158,8 +158,10 @@ bool install_hook_impl(const fs::path& repo_root,
     bool exists = fs::exists(hook_path, ec);
     if (exists) {
         std::ifstream in(hook_path);
+        if (!in.is_open()) { error = "cannot read " + hook_path.string(); return false; }
         std::string content((std::istreambuf_iterator<char>(in)), {});
         in.close();
+        if (!in.good() && !in.eof()) { error = "failed to read " + hook_path.string(); return false; }
 
         // Idempotent: block already present
         if (content.find("projot render") != std::string::npos)
@@ -168,11 +170,19 @@ bool install_hook_impl(const fs::path& repo_root,
         std::ofstream f(hook_path, std::ios::app);
         if (!f.is_open()) { error = "cannot append to " + hook_path.string(); return false; }
         f << "\n" << HOOK_BLOCK;
+        f.flush();
+        if (!f.good()) { error = "write error to " + hook_path.string(); return false; }
+        f.close();
+        if (f.fail()) { error = "failed to close " + hook_path.string(); return false; }
         appended = true;
     } else {
         std::ofstream f(hook_path);
         if (!f.is_open()) { error = "cannot create " + hook_path.string(); return false; }
         f << "#!/bin/sh\n" << HOOK_BLOCK;
+        f.flush();
+        if (!f.good()) { error = "write error to " + hook_path.string(); return false; }
+        f.close();
+        if (f.fail()) { error = "failed to close " + hook_path.string(); return false; }
     }
 
 #ifndef _WIN32
