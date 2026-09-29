@@ -17,7 +17,7 @@ _projot() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     words=("${COMP_WORDS[@]}")
 
-    local subcommands="init new close add-todo list complete status summarize add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook uninstall-hook install-mcp-server uninstall-mcp-server set-global set-teams-webhook"
+    local subcommands="init new close add-todo list links complete status summarize add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook uninstall-hook install-mcp-server uninstall-mcp-server set-global set-teams-webhook"
 
     # First word after projot — complete subcommands
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -44,6 +44,9 @@ _projot() {
                 ;;
             list)
                 COMPREPLY=( $(compgen -W "--open --closed --all --help" -- "${cur}") )
+                ;;
+            links)
+                COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
             complete|status)
                 COMPREPLY=( $(compgen -W "--todo --help" -- "${cur}") )

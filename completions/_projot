@@ -30,6 +30,7 @@ _projot() {
                 'close:archive current project and reset'
                 'add-todo:append a new todo'
                 'list:show project summary and todos'
+                'links:print all project URLs to the terminal'
                 'complete:mark a todo completed'
                 'status:set a todo status (todo, in-progress, blocked, done)'
                 'summarize:display todos added and closed today'
@@ -87,6 +88,9 @@ _projot() {
                         '--closed[closed todos only]' \
                         '--all[all todos]' \
                         '--help[show help]'
+                    ;;
+                links)
+                    _arguments '--help[show help]'
                     ;;
                 complete)
                     local -a ids
