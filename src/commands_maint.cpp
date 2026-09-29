@@ -49,9 +49,11 @@ static bool git_stage_file(const fs::path& repo_root, const std::string& rel_pat
     STARTUPINFOA si{};
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
+    pi.hProcess = nullptr;  // Ensure handle is initialized
     if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
-                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
         return false;
+    }
     WaitForSingleObject(pi.hProcess, INFINITE);
     DWORD exit_code = 1;
     GetExitCodeProcess(pi.hProcess, &exit_code);
@@ -216,13 +218,14 @@ static void invoke_teams_sync(const Context& ctx) {
     STARTUPINFOA si{};
     si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
-    CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
-                   FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
-    if (pi.hProcess) {
-        WaitForSingleObject(pi.hProcess, 10000); // 10-second timeout
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
+    pi.hProcess = nullptr;  // Ensure handle is initialized
+    if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
+                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        return;  // Process creation failed; sync is best-effort
     }
+    WaitForSingleObject(pi.hProcess, 10000); // 10-second timeout
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
 #else
     const char* argv[] = {
         "node", script.c_str(), config_path.c_str(),
@@ -234,7 +237,7 @@ static void invoke_teams_sync(const Context& ctx) {
         int fd = open("/dev/null", O_WRONLY);
         if (fd >= 0) { dup2(fd, STDOUT_FILENO); close(fd); }
         execvp("node", const_cast<char**>(argv));
-        _exit(0);
+        _exit(1);  // exec failed; exit with error code
     }
     // Wait with a 10-second timeout so commits don't hang indefinitely
     for (int i = 0; i < 100; ++i) {
