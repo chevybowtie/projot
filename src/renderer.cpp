@@ -160,5 +160,13 @@ RenderResult render_to_file(const std::string& path, const Config& cfg, const st
     }
 
     file << render_markdown(cfg, todos);
+    file.flush();
+    if (!file.good()) {
+        return {false, "Write error to notes file: " + path};
+    }
+    file.close();
+    if (file.fail()) {
+        return {false, "Failed to close notes file: " + path};
+    }
     return {true, ""};
 }
