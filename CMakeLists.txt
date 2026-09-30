@@ -32,6 +32,7 @@ set(CORE_SOURCES
     src/markdown.cpp
     src/renderer.cpp
     src/cli.cpp
+    src/process.cpp
     src/commands_shared.cpp
     src/commands_project.cpp
     src/commands_config.cpp
@@ -46,7 +47,7 @@ add_executable(projot src/main.cpp)
 target_link_libraries(projot PRIVATE projot_core)
 
 install(TARGETS projot RUNTIME DESTINATION bin)
-install(FILES mcp/server.js mcp/package.json
+install(FILES mcp/server.js mcp/teams-sync.js mcp/package.json
         DESTINATION share/projot/mcp)
 
 # Shell completions
