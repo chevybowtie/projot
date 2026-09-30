@@ -53,11 +53,37 @@ function getConfigValue(key) {
   try {
     const configPath = join(cwd(), ".projot", "config");
     const config = readFileSync(configPath, "utf8");
-    const match = config.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, "m"));
-    return match ? match[1].trim() : null;
+    return matchConfigValue(config, key);
   } catch {
     throw new Error("Could not read .projot/config");
   }
+}
+
+// Value of `key = value` in config text, or null if absent or empty.
+// [ \t]* rather than \s*: \s also matches newlines, so an empty value (projot writes
+// "github = " when the list is empty) would otherwise capture the next line.
+function matchConfigValue(config, key) {
+  const match = config.match(new RegExp(`^${key}[ \\t]*=[ \\t]*(.*)$`, "m"));
+  return match && match[1].trim() ? match[1].trim() : null;
+}
+
+// First item of a comma-separated config list, matching the C++ split_list():
+// "\," is a literal comma and "\\" a literal backslash.
+function firstListItem(value) {
+  if (!value) return null;
+  let item = "";
+  for (let i = 0; i < value.length; i++) {
+    const c = value[i];
+    if (c === "\\" && (value[i + 1] === "," || value[i + 1] === "\\")) {
+      item += value[++i];
+    } else if (c === ",") {
+      if (item.trim()) break;
+      item = "";
+    } else {
+      item += c;
+    }
+  }
+  return item.trim() || null;
 }
 
 function getGlobalConfigValue(key) {
@@ -72,8 +98,7 @@ function getGlobalConfigValue(key) {
     }
     const configPath = join(base, "projot", "config");
     const config = readFileSync(configPath, "utf8");
-    const match = config.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, "m"));
-    return match ? match[1].trim() : null;
+    return matchConfigValue(config, key);
   } catch {
     return null;
   }
@@ -344,19 +369,19 @@ function handleRequest(request) {
       }
 
       if (name === "projot_open_github") {
-        const url = getConfigValue("github") || getConfigValue("link.github");
+        const url = firstListItem(getConfigValue("github")) || getConfigValue("link.github");
         if (!url) return err("No GitHub URL configured in .projot/config");
         return openUrl(url) || ok(`Opening GitHub: ${url}`);
       }
 
       if (name === "projot_open_swagger") {
-        const url = getConfigValue("swagger") || getConfigValue("link.swagger");
+        const url = firstListItem(getConfigValue("swagger")) || getConfigValue("link.swagger");
         if (!url) return err("No Swagger URL configured in .projot/config");
         return openUrl(url) || ok(`Opening Swagger: ${url}`);
       }
 
       if (name === "projot_open_blizzard") {
-        const url = getConfigValue("blizzard") || getConfigValue("link.blizzard");
+        const url = firstListItem(getConfigValue("blizzard")) || getConfigValue("link.blizzard");
         if (!url) return err("No Blizzard URL configured in .projot/config");
         return openUrl(url) || ok(`Opening Blizzard: ${url}`);
       }
