@@ -137,14 +137,15 @@ int cmd_close(const Args& args) {
 int cmd_add_todo(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot add-todo \"<description>\"\n\n"
+            "Usage: projot add \"<description>\"\n"
+            "       projot add-todo \"<description>\"\n\n"
             "Append a new todo to the project notes file.\n\n"
             "Required:\n"
             "  \"<description>\"   Text of the new todo\n\n"
             "Text starting with '-' must follow '--':\n"
-            "  projot add-todo -- \"--verbose flag is ignored\"\n\n"
+            "  projot add -- \"--verbose flag is ignored\"\n\n"
             "Example:\n"
-            "  projot add-todo \"Validate index rebuild plan\"\n";
+            "  projot add \"Validate index rebuild plan\"\n";
         return 0;
     }
 

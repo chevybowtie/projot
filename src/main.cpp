@@ -19,7 +19,7 @@ static void print_usage() {
         "  new           Start a new RPM project in this repository\n"
         "  close         Archive the current project and reset for the next one\n\n"
         "Project commands:\n"
-        "  add-todo      Append a new todo\n"
+        "  add           Append a new todo (alias: add-todo)\n"
         "  list          Show project summary and todos\n"
         "  links         Print all project URLs to the terminal\n"
         "  complete      Mark a todo completed\n"
@@ -50,6 +50,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"new",          {"rpm", "name", "jira", "teams", "teams-sync-url", "teams-webhook",
                           "rpm-url", "jira-url", "other", "no-hook"}},
         {"close",        {}},
+        {"add",          {}},
         {"add-todo",     {}},
         {"list",         {"open", "closed", "all"}},
         {"links",        {}},
@@ -94,6 +95,7 @@ int main(int argc, char* argv[]) {
         {"init",         cmd_init},
         {"new",          cmd_new},
         {"close",        cmd_close},
+        {"add",          cmd_add_todo},
         {"add-todo",     cmd_add_todo},
         {"list",         cmd_list},
         {"links",        cmd_links},
@@ -143,7 +145,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         // Reject unexpected positional arguments for commands that don't use them.
-        static const std::set<std::string> positional_commands{"add-todo", "add-note", "status", "set-teams-webhook"};
+        static const std::set<std::string> positional_commands{"add", "add-todo", "add-note", "status", "set-teams-webhook"};
         if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
             std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";
