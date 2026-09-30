@@ -75,21 +75,45 @@ int cmd_close(const Args& args) {
         }
     }
 
+    // rename() replaces an existing target, so an RPM reused across projects would
+    // silently overwrite the earlier archive. Pick a name that is not taken.
     fs::path archived_notes = archive_dir / (ctx.config.rpm + ".md");
+    for (int n = 2; fs::exists(archived_notes, ec) || ec; ++n) {
+        if (ec) {
+            std::cerr << "error: cannot check archive directory: " << ec.message() << "\n";
+            return 1;
+        }
+        archived_notes = archive_dir / (ctx.config.rpm + "." + std::to_string(n) + ".md");
+    }
     fs::rename(old_notes, archived_notes, ec);
-    if (ec && ec != std::errc::no_such_file_or_directory) {
+    if (ec) {
         std::cerr << "error: cannot archive notes file: " << ec.message() << "\n";
         return 1;
     }
 
-    std::cout << "Archived project: " << ctx.config.name
-              << "  |  RPM: " << ctx.config.rpm
-              << "  |  Created: " << ctx.config.created << "\n";
-
+    const Config closing_config = ctx.config;
     ctx.config.clear_project();
 
     auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
+    if (!save.ok) {
+        std::cerr << "error: " << save.error << "\n";
+        // The config still names this project, so its notes file must be where
+        // require_project() looks for it; otherwise neither close nor new can run.
+        std::error_code undo_ec;
+        fs::rename(archived_notes, old_notes, undo_ec);
+        if (undo_ec) {
+            std::cerr << "error: could not restore " << old_notes.string() << " from "
+                      << archived_notes.string() << ": " << undo_ec.message() << "\n";
+        }
+        return 1;
+    }
+
+    std::cout << "Archived project: " << closing_config.name
+              << "  |  RPM: " << closing_config.rpm
+              << "  |  Created: " << closing_config.created << "\n";
+    if (archived_notes.filename() != closing_config.rpm + ".md")
+        std::cout << "Archive already had RPM " << closing_config.rpm
+                  << "; saved as " << archived_notes.filename().string() << "\n";
 
     if (!carryover_todos.empty())
         std::cout << "Saved " << carryover_todos.size()

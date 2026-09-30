@@ -5,17 +5,32 @@
 
 #include <filesystem>
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace fs = std::filesystem;
 static constexpr const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
 
+class RepoLock;
+
 struct Context {
     fs::path repo_root;
-    Config   config;
+    Config   config;        // exactly what .projot/config holds; safe to write back
     bool     ok    = true;
     std::string error;
+
+    // Effective base URLs: the repo-level value if set, else the global default.
+    // Kept out of `config` so a global default is never persisted into the repo.
+    std::string rpm_base_url;
+    std::string jira_base_url;
+
+    // Held for the command's lifetime; see acquire_repo_lock().
+    std::shared_ptr<RepoLock> lock;
 };
+
+// True if rpm is usable as a file name inside .projot/: letters, digits, '-', '_'
+// and '.', not starting with '.' (which rules out "..", hidden files, and paths).
+bool is_safe_rpm(const std::string& rpm);
 
 // Load repo root + config. Validates config_version.
 Context load_context();
@@ -54,9 +69,12 @@ int execute_config_command(Context& ctx,
 // The projot block that gets inserted into git hooks.
 extern const std::string HOOK_BLOCK;
 
-// Install or re-install the pre-commit git hook.
-// Sets appended=true if content was appended to an existing hook rather than written fresh.
+// Install or re-install the pre-commit git hook in the directory git actually runs
+// hooks from (see resolve_hooks_dir()).
+// Sets appended=true if content was added to an existing hook rather than written fresh.
+// Sets notice to extra information for the user (e.g. where the block was placed).
 // Idempotent: does nothing if the block is already present.
 bool install_hook_impl(const fs::path& repo_root,
                        bool& appended,
+                       std::string& notice,
                        std::string& error);

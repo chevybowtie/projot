@@ -3,6 +3,7 @@
 #include "commands_internal.h"
 #include "config.h"
 #include "markdown.h"
+#include "repo.h"
 #include "todo.h"
 #include "utils.h"
 
@@ -1002,6 +1003,11 @@ TEST_CASE("new_render_failure") {
     int ret = repo.new_project(); // write_config succeeds, then render_to_file fails
     fs::permissions(notes, fs::perms::owner_all, ec);
     CHECK(ret != 0);
+    // The config is rolled back, so 'new' can simply be retried.
+    Config cfg;
+    REQUIRE(parse_config((repo.path / ".projot" / "config").string(), cfg).ok);
+    CHECK(cfg.rpm.empty());
+    CHECK(repo.new_project() == 0);
 #endif
 }
 
@@ -1106,7 +1112,7 @@ TEST_CASE("load_context_merges_global_rpm_base_url") {
 
     auto ctx = load_context();
     REQUIRE(ctx.ok);
-    CHECK(ctx.config.rpm_base_url == "https://rpm.example.com/");
+    CHECK(ctx.rpm_base_url == "https://rpm.example.com/");
 }
 
 TEST_CASE("load_context_local_config_overrides_global") {
@@ -1123,7 +1129,7 @@ TEST_CASE("load_context_local_config_overrides_global") {
 
     auto ctx = load_context();
     REQUIRE(ctx.ok);
-    CHECK(ctx.config.rpm_base_url == "https://local.example.com/");
+    CHECK(ctx.rpm_base_url == "https://local.example.com/");
 }
 
 // ── cmd_status ────────────────────────────────────────────────────────────────
@@ -1255,4 +1261,119 @@ TEST_CASE("summarize_help") {
     a.help_requested = true;
     int ret = cmd_summarize(a);
     CHECK(ret == 0);
+}
+
+// ── rpm as a file name ────────────────────────────────────────────────────────
+
+TEST_CASE("is_safe_rpm_rules") {
+    CHECK(is_safe_rpm("12345"));
+    CHECK(is_safe_rpm("RPM-12_3.1"));
+    CHECK_FALSE(is_safe_rpm(""));
+    CHECK_FALSE(is_safe_rpm(".."));
+    CHECK_FALSE(is_safe_rpm(".hidden"));
+    CHECK_FALSE(is_safe_rpm("../../escaped"));
+    CHECK_FALSE(is_safe_rpm("a/b"));
+    CHECK_FALSE(is_safe_rpm("a\\b"));
+}
+
+TEST_CASE("new_rejects_path_traversal_rpm") {
+    TempRepo repo("new_rejects_traversal");
+    repo.init();
+    CHECK(repo.new_project("../../escaped") != 0);
+    CHECK_FALSE(fs::exists(repo.path.parent_path().parent_path() / "escaped.md"));
+    Config cfg;
+    REQUIRE(parse_config((repo.path / ".projot" / "config").string(), cfg).ok);
+    CHECK(cfg.rpm.empty());
+}
+
+TEST_CASE("load_context_rejects_hand_edited_unsafe_rpm") {
+    TempRepo repo("load_context_unsafe_rpm");
+    repo.init(); repo.new_project();
+    { std::ofstream f(repo.path / ".projot" / "config", std::ios::app); f << "rpm = ../x\n"; }
+    CHECK_FALSE(load_context().ok);
+}
+
+// ── close ─────────────────────────────────────────────────────────────────────
+
+TEST_CASE("close_does_not_overwrite_existing_archive") {
+    TempRepo repo("close_archive_collision");
+    repo.init();
+    repo.new_project("5", "First");
+    cmd_add_todo(make_args("add-todo", {}, "first-project history"));
+    cmd_complete(make_args("complete", {{"todo", "1"}}));
+    REQUIRE(cmd_close(make_args("close")) == 0);
+    repo.new_project("5", "Second");
+    REQUIRE(cmd_close(make_args("close")) == 0);
+
+    const fs::path archive = repo.path / ".projot" / "archive";
+    CHECK(read_all(archive / "5.md").find("first-project history") != std::string::npos);
+    CHECK(read_all(archive / "5.2.md").find("# Project: Second") != std::string::npos);
+}
+
+TEST_CASE("close_restores_notes_when_config_save_fails") {
+#ifndef _WIN32
+    if (getuid() == 0) return;
+    TempRepo repo("close_rollback");
+    repo.init(); repo.new_project("9");
+    const fs::path config = repo.path / ".projot" / "config";
+    std::error_code ec;
+    fs::permissions(config, fs::perms::owner_read, ec);
+    int ret = cmd_close(make_args("close"));
+    fs::permissions(config, fs::perms::owner_all, ec);
+    CHECK(ret != 0);
+    // Still a usable open project: notes back in place, so close can be retried.
+    CHECK(fs::exists(repo.path / ".projot" / "9.md"));
+    CHECK(cmd_close(make_args("close")) == 0);
+#endif
+}
+
+// ── repo-level base URLs ──────────────────────────────────────────────────────
+
+TEST_CASE("repo_base_url_survives_config_write_and_global_is_not_copied") {
+    TempGlobalConfig global("base_url_persist");
+    fs::create_directories(global.config_path().parent_path());
+    { std::ofstream f(global.config_path()); f << "jira_base_url = https://global-jira/\n"; }
+
+    TempRepo repo("base_url_persist");
+    repo.init(); repo.new_project();
+    { std::ofstream f(repo.path / ".projot" / "config", std::ios::app);
+      f << "rpm_base_url = https://local-rpm/\n"; }
+
+    REQUIRE(cmd_set_link(make_args("set-link", {{"key", "wiki"}, {"url", "https://w"}})) == 0);
+    const std::string content = read_all(repo.path / ".projot" / "config");
+    CHECK(content.find("rpm_base_url = https://local-rpm/") != std::string::npos);
+    CHECK(content.find("global-jira") == std::string::npos);
+}
+
+// ── Azure entries containing '|' ──────────────────────────────────────────────
+
+TEST_CASE("add_azure_rejects_pipe_in_name") {
+    TempRepo repo("azure_pipe_name");
+    repo.init(); repo.new_project();
+    CHECK(cmd_add_azure(make_args("add-azure", {{"type", "aks"}, {"name", "a|b"}, {"url", "https://x"}})) != 0);
+}
+
+TEST_CASE("azure_bare_url_with_pipe_round_trips") {
+    const AzureEntry e{"", "https://x/a|b"};
+    const AzureEntry back = parse_azure_entry(format_azure_entry(e));
+    CHECK(back.name.empty());
+    CHECK(back.url == "https://x/a|b");
+}
+
+// ── repo lock ─────────────────────────────────────────────────────────────────
+
+TEST_CASE("repo_lock_is_shared_within_process_and_released") {
+    TempRepo repo("repo_lock");
+    repo.init(); repo.new_project();
+    std::string error;
+    auto first = acquire_repo_lock(repo.path, error);
+    REQUIRE(first);
+    // A nested acquisition (e.g. a command called while a Context is alive) must not
+    // deadlock against the first.
+    auto second = acquire_repo_lock(repo.path, error);
+    CHECK(second == first);
+    CHECK(fs::exists(repo.path / ".git" / "projot.lock"));
+    first.reset(); second.reset();
+    auto third = acquire_repo_lock(repo.path, error);
+    CHECK(third);
 }
