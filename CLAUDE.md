@@ -51,7 +51,7 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Git Workflow
 
-**Worktree hazard:** Active worktree on `feature/optimization` occupies a branch lock. Before switching branches in the main repo, check `git worktree list`. If the worktree is stale, use `git worktree remove`. Do not rely on `git checkout` to move between branches if a worktree holds a lock.
+**Worktree hazard:** Before switching branches in the main repo, check `git worktree list` — an active worktree occupies a branch lock. If a worktree is stale, use `git worktree remove`. Do not rely on `git checkout` to move between branches if a worktree holds a lock.
 
 **Commit format is conventional, not enforced.** Follow the pattern from history: `refactor: ...`, `docs: ...`, `fix: ...`, `feat: ...`, `test: ...`, `chore: ...`. No linter enforces this; it is a team convention.
 
