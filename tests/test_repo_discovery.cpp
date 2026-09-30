@@ -3,7 +3,9 @@
 #include "process.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
+#include <optional>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -104,6 +106,48 @@ bool git_available() {
     return r.started && r.exit_code == 0;
 }
 
+std::optional<std::string> get_env(const char* name) {
+#ifdef _WIN32
+    char* value = nullptr;
+    size_t len = 0;
+    if (_dupenv_s(&value, &len, name) != 0 || !value) return std::nullopt;
+    std::string result(value);
+    free(value);
+    return result;
+#else
+    const char* value = std::getenv(name);
+    return value ? std::optional<std::string>(value) : std::nullopt;
+#endif
+}
+
+void set_env(const char* name, const std::string* value) {
+#ifdef _WIN32
+    _putenv_s(name, value ? value->c_str() : "");  // "" removes the variable
+#else
+    if (value) setenv(name, value->c_str(), 1);
+    else       unsetenv(name);
+#endif
+}
+
+// Git exports variables such as GIT_INDEX_FILE (a relative ".git/index") to hooks.
+// When the suite runs inside a pre-commit hook they would redirect the scratch
+// repos' git commands, so clear them for the test and restore them afterwards.
+struct ScrubbedGitEnv {
+    std::vector<std::pair<const char*, std::optional<std::string>>> saved;
+    ScrubbedGitEnv() {
+        for (const char* name : {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
+                                 "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+                                 "GIT_COMMON_DIR", "GIT_PREFIX", "GIT_CONFIG_PARAMETERS"}) {
+            saved.emplace_back(name, get_env(name));
+            set_env(name, nullptr);
+        }
+    }
+    ~ScrubbedGitEnv() {
+        for (const auto& [name, value] : saved)
+            if (value) set_env(name, &*value);
+    }
+};
+
 bool git(const std::filesystem::path& dir, std::vector<std::string> args) {
     args.insert(args.begin(), {"git", "-C", dir.string()});
     auto r = run_process(args, ChildOutput::Discard, ChildOutput::Discard);
@@ -138,6 +182,7 @@ TEST_CASE("resolve_git_dir_follows_gitdir_file_and_commondir") {
 TEST_CASE("resolve_hooks_dir_real_worktree_and_hooks_path") {
     if (!git_available()) return;
     namespace fs = std::filesystem;
+    ScrubbedGitEnv clean_env;
     ScratchDir d("real_git");
     const fs::path main = d.path / "main";
     fs::create_directories(main);
