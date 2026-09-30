@@ -49,6 +49,44 @@ function execArgs(cmd, args) {
   }
 }
 
+// Runs a git query whose failure is an answer, not an error; returns trimmed
+// stdout, or null if git exited non-zero.
+function gitQuery(args) {
+  try {
+    return execFileSync("git", args, { encoding: "utf8", cwd: cwd(), stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return null;
+  }
+}
+
+// Where HEAD points: { branch } for a branch (including an unborn one), or
+// { commit } when detached.
+function currentHead() {
+  const branch = gitQuery(["symbolic-ref", "--quiet", "--short", "HEAD"]);
+  if (branch) return { branch };
+  return { commit: execArgs("git", ["rev-parse", "HEAD"]).trim() };
+}
+
+// Undoes `git checkout -b <branch>`. checkout -b changes neither the index nor the
+// working tree, so pointing HEAD back without a checkout restores the previous state
+// exactly (and also works when the original branch has no commits yet).
+// Returns a message describing the outcome for the user.
+function undoBranchCreation(original, branch) {
+  const target = original.branch || original.commit;
+  try {
+    if (original.branch) execArgs("git", ["symbolic-ref", "HEAD", `refs/heads/${original.branch}`]);
+    else execArgs("git", ["update-ref", "--no-deref", "HEAD", original.commit]);
+    // -d rather than -D: the new branch has no commits of its own, and -d refuses
+    // to delete it if somehow it does. On an unborn branch no ref was created.
+    if (gitQuery(["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]) !== null)
+      execArgs("git", ["branch", "-d", branch]);
+    return `Rolled back: removed branch ${branch} and returned to ${target}.`;
+  } catch (e) {
+    return `Rollback failed (${e.message}). You may still be on ${branch}; ` +
+           `run 'git checkout ${target}' and 'git branch -d ${branch}'.`;
+  }
+}
+
 function getConfigValue(key) {
   try {
     const configPath = join(cwd(), ".projot", "config");
@@ -393,16 +431,30 @@ function handleRequest(request) {
       }
 
       if (name === "projot_setup_project") {
-        // jira_number is the legacy parameter name, still accepted.
+        // itrack_number is the legacy parameter name, still accepted.
         const { project_number, description, branch_name } = args;
         const jira_number = args.jira_number || args.itrack_number;
+
+        // Validate and read everything that can fail before touching git, so a bad
+        // request never leaves a stray branch behind.
+        if (!project_number) return err("project_number is required");
+        if (!description) return err("description is required");
         if (!jira_number) return err("jira_number is required");
         const suggestedBranch = branch_name || `feat/${project_number}-${slugifyBranchName(description)}`;
-        execArgs("git", ["checkout", "-b", suggestedBranch]);
         const teamsUrl = getConfigValue("link.teams");
         const newArgs = ["new", "--rpm", project_number, "--name", description, "--jira", jira_number];
         if (teamsUrl) newArgs.push("--teams", teamsUrl);
-        execArgs("projot", newArgs);
+        const original = currentHead();
+
+        // Fails atomically (e.g. the branch already exists), leaving nothing to undo.
+        execArgs("git", ["checkout", "-b", suggestedBranch]);
+        try {
+          // projot new rolls back its own changes on failure, so only the branch
+          // needs undoing here.
+          execArgs("projot", newArgs);
+        } catch (e) {
+          return err(`${e.message}\n${undoBranchCreation(original, suggestedBranch)}`);
+        }
         return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- Jira: ${jira_number}`);
       }
 

@@ -40,10 +40,16 @@ writeFileSync(join(tmp, ".projot", "config"), [
 
 // Mock executables: log "name: <args>" to logFile then exit 0.
 // projot, git, and the platform open command are all mocked.
+//   git:    answers the HEAD query as branch "main"; every other call succeeds.
+//   projot: fails when its subcommand equals $MOCK_PROJOT_FAIL.
 const openCmd = { darwin: "open", linux: "xdg-open", win32: null }[platform()];
+const mockBodies = {
+  git: `[ "$1 $2" = "symbolic-ref --quiet" ] && echo main\nexit 0\n`,
+  projot: `[ -n "$MOCK_PROJOT_FAIL" ] && [ "$1" = "$MOCK_PROJOT_FAIL" ] && { echo "error: simulated failure" >&2; exit 1; }\nexit 0\n`,
+};
 for (const name of ["projot", "git", ...(openCmd ? [openCmd] : [])]) {
   const script = join(binDir, name);
-  writeFileSync(script, `#!/bin/sh\necho '${name}:' "$@" >> '${logFile}'\nexit 0\n`);
+  writeFileSync(script, `#!/bin/sh\necho '${name}:' "$@" >> '${logFile}'\n${mockBodies[name] || "exit 0\n"}`);
   spawnSync("chmod", ["+x", script]);
 }
 
@@ -51,7 +57,7 @@ const testEnv = { ...process.env, PATH: binDir + ":" + process.env.PATH };
 
 // ── Harness ────────────────────────────────────────────────────────────────
 
-function runTool(toolName, toolArgs) {
+function runTool(toolName, toolArgs, extraEnv = {}) {
   writeFileSync(logFile, "");
 
   const input = [
@@ -63,7 +69,7 @@ function runTool(toolName, toolArgs) {
   const result = spawnSync("node", [SERVER], {
     input,
     cwd: tmp,
-    env: testEnv,
+    env: { ...testEnv, ...extraEnv },
     encoding: "utf8",
     timeout: 8000,
   });
@@ -71,9 +77,18 @@ function runTool(toolName, toolArgs) {
   const log = existsSync(logFile) ? readFileSync(logFile, "utf8") : "";
   // Each mock line is "<command>: <args>"; split into per-command arrays.
   const projotCalls = log.split("\n").filter(l => l.startsWith("projot:"));
+  const gitCalls    = log.split("\n").filter(l => l.startsWith("git:"));
   const allLines    = log.split("\n").filter(Boolean);
 
-  return { projotCalls, allLines };
+  // The tools/call response (id 2), for checking isError and the message.
+  let response = null;
+  for (const line of (result.stdout || "").split("\n")) {
+    try { const msg = JSON.parse(line); if (msg.id === 2) response = msg; } catch { /* not JSON */ }
+  }
+  const isError = !!(response && response.result && response.result.isError);
+  const text = response && response.result ? response.result.content[0].text : "";
+
+  return { projotCalls, gitCalls, allLines, isError, text };
 }
 
 let pass = 0, fail = 0;
@@ -138,6 +153,39 @@ test("setup_new_project: legacy itrack_number still accepted", (assert) => {
   });
   assert("projot called", projotCalls.length > 0);
   assert("--jira 22222 passed", projotCalls[0].includes("--jira") && projotCalls[0].includes("22222"));
+});
+
+const setupArgs = { project_number: "99999", description: "test setup", jira_number: "11111" };
+const setupBranch = "feat/99999-test-setup";
+
+test("setup_project: success creates the branch and does not roll back", (assert) => {
+  const { gitCalls, isError } = runTool("projot_setup_project", setupArgs);
+  assert("not an error", !isError);
+  assert("branch created", gitCalls.some(l => l.includes(`checkout -b ${setupBranch}`)));
+  assert("no branch deletion", !gitCalls.some(l => l.includes("branch -d")));
+});
+
+test("setup_project: failed projot new removes the branch and restores HEAD", (assert) => {
+  const { gitCalls, isError, text } =
+    runTool("projot_setup_project", setupArgs, { MOCK_PROJOT_FAIL: "new" });
+  assert("reported as error", isError);
+  assert("projot's error surfaced", text.includes("simulated failure"));
+  assert("rollback reported", text.includes("Rolled back"));
+  const checkout = gitCalls.findIndex(l => l.includes(`checkout -b ${setupBranch}`));
+  const restore  = gitCalls.findIndex(l => l.includes("symbolic-ref HEAD refs/heads/main"));
+  const remove   = gitCalls.findIndex(l => l.includes(`branch -d ${setupBranch}`));
+  assert("HEAD restored after branching", checkout >= 0 && restore > checkout);
+  assert("branch deleted after HEAD restored", remove > restore);
+});
+
+test("setup_project: missing arguments fail before any git call", (assert) => {
+  for (const missing of ["project_number", "description", "jira_number"]) {
+    const partial = { ...setupArgs };
+    delete partial[missing];
+    const { gitCalls, isError, text } = runTool("projot_setup_project", partial);
+    assert(`${missing}: reported as error`, isError && text.includes(missing));
+    assert(`${missing}: git untouched`, gitCalls.length === 0);
+  }
 });
 
 // Regression guard: complete_todo must pass the todo ID via --todo.

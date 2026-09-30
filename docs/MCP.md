@@ -90,7 +90,7 @@ All tools are prefixed with `projot_` to avoid conflicts with built-in AI task m
 
 | Tool | What it does |
 |------|--------------|
-| `projot_setup_project` | Create a branch, run `projot new`, and switch to it |
+| `projot_setup_project` | Create a branch, run `projot new`, and switch to it. If `projot new` fails (e.g. a project is still open), the branch is deleted and HEAD returns to where it was, so the call can simply be retried |
 
 ### Open links in browser
 
