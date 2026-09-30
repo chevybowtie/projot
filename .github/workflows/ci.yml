@@ -60,3 +60,28 @@ jobs:
       - name: Test (Windows)
         if: runner.os == 'Windows'
         run: ctest --test-dir build -C Release --output-on-failure
+
+  sanitizers:
+    # Catches memory errors and undefined behaviour (e.g. uninitialised reads,
+    # signed overflow, out-of-bounds container access) that a passing Release
+    # build can hide.
+    name: ubuntu-latest / gcc / asan+ubsan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
+
+      - name: Configure
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug
+          "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all -D_GLIBCXX_ASSERTIONS"
+          "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: ctest --test-dir build --output-on-failure
