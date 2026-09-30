@@ -323,6 +323,8 @@ Each todo's checkbox marker encodes its status:
 - Represent todos internally as a structured model.
 - Modify in-memory data when adding, completing, or appending notes.
 - Re-render the entire file on each write to guarantee consistency.
+- Everything from `## Todos` onward is regenerated from the parsed todos, so projot **refuses to rewrite** the notes file (and `render` fails, blocking the commit) if the `## Todos` heading is missing or the section contains any non-blank line the parser cannot place — free-form text, a later `##` heading, a malformed todo header, or mis-indented notes. The error names the first such line. Parsing is lenient where it is safe: `[X]` is read as done, and trailing whitespace stripped by an editor (`N. [ ]`, `- Created:`) is accepted. Read-only commands (`list`, `summarize`) warn instead of failing.
+- Notes and config files are written atomically: content goes to a sibling `*.projot-tmp` file that is renamed over the target, so an interrupted write leaves the old file intact. Values containing line breaks are rejected on the command line and again by the writers.
 - `## GitHub`, `## Swagger`, and `## Blizzard` sections are **projot-managed**: their content is sourced from `.projot/config` and fully regenerated on each write. Manual edits to these sections will be overwritten.
 - `App ID` in the file header is also sourced from `.projot/config` and regenerated on write.
 - Sections with empty URL lists (GitHub, Swagger, Blizzard) are omitted from the rendered file.
