@@ -19,9 +19,11 @@ struct ProcessResult {
     std::string output;      // captured stdout when stdout_mode == Capture
 };
 
-// Runs argv[0] (looked up on PATH) with argv. timeout_ms < 0 waits indefinitely;
-// otherwise the child is terminated once the timeout elapses, so it never outlives
-// projot. With Capture, stdout is read to EOF before the timeout starts counting.
+// Runs argv[0] (looked up on PATH) with argv. timeout_ms < 0 waits indefinitely.
+// Otherwise the timeout covers the whole run, including reading captured output, so
+// a child that hangs with stdout open still times out. On timeout the child and
+// everything it started (its process group on POSIX, its job object on Windows) are
+// killed and the child is reaped, so nothing outlives projot.
 ProcessResult run_process(const std::vector<std::string>& argv,
                           ChildOutput stdout_mode,
                           ChildOutput stderr_mode,

@@ -28,6 +28,7 @@ std::string read_first_line(const std::filesystem::path& p) {
     return trim(line);
 }
 
+constexpr int GIT_QUERY_TIMEOUT_MS = 5000;
 constexpr int LOCK_TIMEOUT_MS = 10000;
 constexpr int LOCK_RETRY_MS   = 100;
 
@@ -67,8 +68,10 @@ std::optional<std::filesystem::path> resolve_git_dir(const std::filesystem::path
 
 std::filesystem::path resolve_hooks_dir(const std::filesystem::path& repo_root) {
     namespace fs = std::filesystem;
+    // Bounded: a hung git (e.g. on a stalled network filesystem) falls back to the
+    // manual resolution below instead of hanging install-hook or new.
     auto r = run_process({"git", "-C", repo_root.string(), "rev-parse", "--git-path", "hooks"},
-                         ChildOutput::Capture, ChildOutput::Discard);
+                         ChildOutput::Capture, ChildOutput::Discard, GIT_QUERY_TIMEOUT_MS);
     if (r.started && !r.timed_out && r.exit_code == 0) {
         const std::string out = trim(r.output);
         if (!out.empty() && !has_line_break(out)) {
