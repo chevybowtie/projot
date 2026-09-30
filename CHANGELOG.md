@@ -2,23 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.1.22] - 2026-09-25
+## [v0.1.24] - 2026-09-30
 
 ### BUG FIXES
 
-- Checkout master branch before pushing CHANGELOG.md in release workflow ([#84c29fb](https://github.com/chevybowtie/projot/commit/84c29fb13a42c3e6bd020edea93f7d104b252b03))
+- Checkout master branch before pushing CHANGELOG.md in release workflow ([#b8ed896](https://github.com/chevybowtie/projot/commit/b8ed8968787f53a4bb8629f7b81a99abd25d12d6))
+- Add comprehensive stream state validation to file I/O operations ([#0708f2c](https://github.com/chevybowtie/projot/commit/0708f2c7a0105b1ac6d06512f69f3bffefaba142))
+- Add proper process creation error handling for git staging and Teams sync ([#213b41b](https://github.com/chevybowtie/projot/commit/213b41b96349e85264a941c670f4f4b02b23e2c1))
+- Improve robustness of config parsing, hook installation, and date formatting ([#a90a48d](https://github.com/chevybowtie/projot/commit/a90a48d98730906e5c3c0b5ee425f5d833472da9))
+- Enhance todo line parsing and handle unparsed lines in markdown
+- Improve atomic file writing with enhanced error handling and symlink support
+- Enhance file writing by rejecting invalid values and improving error handling
+- Add line break validation for command-line arguments and enhance config writing checks
+- Enforce strict todo section validation and improve atomic file writing
+- Implement git directory and hooks directory resolution with RepoLock management
+- Enhance cmd_new and config handling with improved validation and error recovery
+- Improve config reading and command-line argument handling for teams-sync
+- Refactor config value retrieval and enhance first list item extraction
+- Enhance process handling and security guidelines in CLAUDE.md
+- Add process source file and update install files for mcp
+- Update DESIGN.md with detailed config item handling and pre-commit hook installation logic
+- Enhance context handling with repo lock and safe RPM validation
+- Add environment variable management for Git commands in tests
+- Improve todo line parsing and add error handling for markdown reading
+- Enhance config version validation and add tests for error handling
+- Update command arguments for projot add-todo and add-note to ensure proper parsing
+- Add argument rules for command execution to improve input validation
+- Add sanitizers job to CI for memory error detection and undefined behavior
+- Enhance argument parsing and validation for todos and notes
+- Remove settings.json and update .gitignore to exclude personal Claude Code settings
+- Implement timeout handling for child processes to prevent hangs and ensure proper cleanup
+- Improve duplicate ID handling in todos and enhance warning messages for incomplete listings
+- Enhance projot_setup_project to handle failures gracefully and rollback branch creation
+- Update project version to 0.1.24
 
 ### DOCUMENTATION
 
 - Add summarize command to documentation and shell completions ([#e969091](https://github.com/chevybowtie/projot/commit/e96909183381a77319a552e3f85b44c602d3e077))
+- Update CHANGELOG.md for 0.1.22
 
 ### FEATURES
 
 - Add summarize command for daily todo summary ([#102e4e8](https://github.com/chevybowtie/projot/commit/102e4e8151d1521aea656670b74716ddf42245c1))
+- Add 'links' subcommand to project completion scripts
+- Implement process management functions for cross-platform execution
 
 ### TESTING
 
 - Add unit tests for summarize command functionality
+- Enhance markdown parser and config validation with additional cases
 
 ## [v0.1.21] - 2026-09-19
 
