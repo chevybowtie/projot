@@ -29,13 +29,12 @@ static bool parse_todo_line(const std::string& line, int& id, TodoStatus& status
     std::size_t dot = line.find(". ");
     if (dot == std::string::npos) return false;
 
+    // At most 9 digits (MAX_TODO_ID) keeps every id, and next_todo_id()'s max + 1, within int.
     const std::string id_str = line.substr(0, dot);
-    if (id_str.empty() || id_str.find_first_not_of("0123456789") != std::string::npos) return false;
-    try {
-        id = std::stoi(id_str);
-    } catch (...) {
-        return false;
-    }
+    if (id_str.empty() || id_str.size() > 9 ||
+        id_str.find_first_not_of("0123456789") != std::string::npos) return false;
+    id = std::stoi(id_str);
+    static_assert(MAX_TODO_ID == 999999999, "parser accepts exactly 9 digits");
 
     // "[?]" then either end of line or " text". A bare "[ ]" is what an editor that
     // strips trailing whitespace leaves of a todo with empty text.
@@ -205,6 +204,9 @@ MarkdownParseResult parse_markdown(const std::string& path, Project& out) {
     while (std::getline(file, line)) {
         lines.push_back(line);
     }
+    // getline() also stops on a read error; rendering from a partial read would
+    // drop every todo after the failure point.
+    if (file.bad()) return {false, "Error reading notes file: " + path};
     return parse_lines(lines, out);
 }
 

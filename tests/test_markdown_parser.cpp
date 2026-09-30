@@ -1,6 +1,7 @@
 #include "doctest.h"
 #include "markdown.h"
 #include "todo.h"
+#include <filesystem>
 
 // ── Header parsing ────────────────────────────────────────────────────────────
 
@@ -298,4 +299,21 @@ TEST_CASE("parse_missing_todos_heading") {
     Project proj;
     parse_markdown_string("# Project: P\n- RPM: 1\n\n1. [ ] Orphan\n", proj);
     CHECK(!proj.has_todos_section);
+}
+
+TEST_CASE("parse_rejects_ten_digit_id") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix + "1000000000. [ ] Too big\n", proj);
+    CHECK(proj.todos.empty());
+    CHECK(proj.unparsed_lines.size() == 1);
+}
+
+TEST_CASE("parse_markdown_read_error_is_not_eof") {
+#ifndef _WIN32
+    auto dir = std::filesystem::temp_directory_path() / "projot_notes_is_dir";
+    std::filesystem::create_directories(dir);
+    Project proj;
+    CHECK_FALSE(parse_markdown(dir.string(), proj).ok);
+    std::filesystem::remove_all(dir);
+#endif
 }
