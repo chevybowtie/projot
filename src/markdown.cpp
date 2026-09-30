@@ -29,20 +29,28 @@ static bool parse_todo_line(const std::string& line, int& id, TodoStatus& status
     std::size_t dot = line.find(". ");
     if (dot == std::string::npos) return false;
 
+    const std::string id_str = line.substr(0, dot);
+    if (id_str.empty() || id_str.find_first_not_of("0123456789") != std::string::npos) return false;
     try {
-        id = std::stoi(line.substr(0, dot));
+        id = std::stoi(id_str);
     } catch (...) {
         return false;
     }
 
+    // "[?]" then either end of line or " text". A bare "[ ]" is what an editor that
+    // strips trailing whitespace leaves of a todo with empty text.
     const std::string rest = line.substr(dot + 2);
-    if (rest.size() < 4) return false;
+    if (rest.size() < 3 || rest[0] != '[' || rest[2] != ']') return false;
+    if (rest.size() > 3 && rest[3] != ' ') return false;
 
-    if (starts_with(rest, "[ ] "))      { status = TodoStatus::Todo;       text = rest.substr(4); }
-    else if (starts_with(rest, "[>] ")) { status = TodoStatus::InProgress;  text = rest.substr(4); }
-    else if (starts_with(rest, "[~] ")) { status = TodoStatus::Blocked;     text = rest.substr(4); }
-    else if (starts_with(rest, "[x] ")) { status = TodoStatus::Done;        text = rest.substr(4); }
-    else { return false; }
+    switch (rest[1]) {
+        case ' ':           status = TodoStatus::Todo;       break;
+        case '>':           status = TodoStatus::InProgress; break;
+        case '~':           status = TodoStatus::Blocked;    break;
+        case 'x': case 'X': status = TodoStatus::Done;       break;
+        default:            return false;
+    }
+    text = rest.size() > 4 ? rest.substr(4) : "";
     return true;
 }
 
@@ -55,50 +63,29 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
     Todo* current_todo = nullptr;
     bool in_notes_block = false;
 
+    std::size_t line_no = 0;
     for (const auto& raw : lines) {
+        ++line_no;
         // Strip CRLF
         std::string line = raw;
         if (!line.empty() && line.back() == '\r') line.pop_back();
 
-        // Section transitions
-        if (starts_with(line, "## Links")) {
-            section = Section::Links;
-            current_todo = nullptr;
-            in_notes_block = false;
-            continue;
-        }
-        if (starts_with(line, "## GitHub")) {
-            section = Section::GitHub;
-            current_todo = nullptr;
-            in_notes_block = false;
-            continue;
-        }
-        if (starts_with(line, "## Swagger")) {
-            section = Section::Swagger;
-            current_todo = nullptr;
-            in_notes_block = false;
-            continue;
-        }
-        if (starts_with(line, "## Blizzard")) {
-            section = Section::Blizzard;
-            current_todo = nullptr;
-            in_notes_block = false;
-            continue;
-        }
-        if (starts_with(line, "## Todos")) {
-            section = Section::Todos;
-            current_todo = nullptr;
-            in_notes_block = false;
-            continue;
-        }
-        if (starts_with(line, "## ")) {
-            section = Section::Unknown;
-            current_todo = nullptr;
-            in_notes_block = false;
+        // Section transitions. The renderer emits "## Todos" last, so a heading after
+        // it is user content (handled as an unparsed line below), not a new section.
+        if (section != Section::Todos && starts_with(line, "## ")) {
+            if (starts_with(line, "## Links"))         section = Section::Links;
+            else if (starts_with(line, "## GitHub"))   section = Section::GitHub;
+            else if (starts_with(line, "## Swagger"))  section = Section::Swagger;
+            else if (starts_with(line, "## Blizzard")) section = Section::Blizzard;
+            else if (starts_with(line, "## Todos")) {
+                section = Section::Todos;
+                out.has_todos_section = true;
+            }
+            else section = Section::Unknown;
             continue;
         }
         // Skip the projot-managed comment
-        if (starts_with(line, "<!-- projot-managed")) continue;
+        if (section != Section::Todos && starts_with(line, "<!-- projot-managed")) continue;
 
         // Header section
         if (section == Section::Header) {
@@ -165,26 +152,39 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
 
         // Todos section
         if (section == Section::Todos) {
+            const std::string trimmed = trim(line);
+            if (trimmed.empty()) continue;
+
             // Try to parse a new todo header line: "1. [ ] text", "2. [>] text", etc.
             int id; TodoStatus status; std::string text;
-            if (!line.empty() && std::isdigit(static_cast<unsigned char>(line[0])) &&
-                parse_todo_line(line, id, status, text)) {
-                out.todos.push_back(Todo{id, text, status, "", "", {}});
-                current_todo = &out.todos.back();
+            if (std::isdigit(static_cast<unsigned char>(line[0]))) {
+                if (parse_todo_line(line, id, status, text)) {
+                    out.todos.push_back(Todo{id, text, status, "", "", {}});
+                    current_todo = &out.todos.back();
+                    in_notes_block = false;
+                    continue;
+                }
+                // Detail lines under an unreadable header must not attach to the
+                // previous todo, overwriting its dates or merging notes into it.
+                current_todo = nullptr;
                 in_notes_block = false;
+                out.unparsed_lines.emplace_back(line_no, line);
                 continue;
             }
 
-            if (!current_todo) continue;
-
-            if (starts_with(line, "   - Created: ")) {
-                current_todo->created_date = trim(line.substr(14));
-            } else if (starts_with(line, "   - Completed: ")) {
-                current_todo->completed_date = trim(line.substr(16));
-            } else if (trim(line) == "- Notes:") {
+            // Note lines are told apart from detail lines by their deeper indent.
+            // Detail lines match on trimmed text so a stripped trailing space after an
+            // empty value ("   - Created:") still parses.
+            if (current_todo && in_notes_block && starts_with(line, "     -")) {
+                current_todo->notes.push_back(trim(line.substr(6)));
+            } else if (current_todo && starts_with(trimmed, "- Created:")) {
+                current_todo->created_date = trim(trimmed.substr(10));
+            } else if (current_todo && starts_with(trimmed, "- Completed:")) {
+                current_todo->completed_date = trim(trimmed.substr(12));
+            } else if (current_todo && trimmed == "- Notes:") {
                 in_notes_block = true;
-            } else if (in_notes_block && starts_with(line, "     - ")) {
-                current_todo->notes.push_back(trim(line.substr(7)));
+            } else {
+                out.unparsed_lines.emplace_back(line_no, line);
             }
             continue;
         }

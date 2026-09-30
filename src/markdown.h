@@ -25,6 +25,12 @@ struct Project {
 
     // Todos
     std::vector<Todo> todos;
+
+    // Everything from "## Todos" onward is regenerated from `todos` on render, so any
+    // line there the parser could not place would be silently dropped. Commands must
+    // refuse to rewrite the file while either of these reports a problem.
+    bool has_todos_section = false;
+    std::vector<std::pair<std::size_t, std::string>> unparsed_lines; // (1-based line no, text)
 };
 
 struct MarkdownParseResult {
