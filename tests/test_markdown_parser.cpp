@@ -301,6 +301,22 @@ TEST_CASE("parse_missing_todos_heading") {
     CHECK(!proj.has_todos_section);
 }
 
+TEST_CASE("parse_records_duplicate_ids_once_each") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix +
+        "1. [ ] A\n2. [ ] B\n1. [x] A again\n2. [ ] B again\n1. [ ] A third\n3. [ ] C\n", proj);
+    CHECK(proj.todos.size() == 6);  // all still readable, e.g. for list
+    REQUIRE(proj.duplicate_ids.size() == 2);
+    CHECK(proj.duplicate_ids[0] == 1);
+    CHECK(proj.duplicate_ids[1] == 2);
+}
+
+TEST_CASE("parse_unique_ids_have_no_duplicates") {
+    Project proj;
+    parse_markdown(PROJOT_TEST_DATA_DIR "/notes/multi_todo.md", proj);
+    CHECK(proj.duplicate_ids.empty());
+}
+
 TEST_CASE("parse_rejects_ten_digit_id") {
     Project proj;
     parse_markdown_string(kTodosPrefix + "1000000000. [ ] Too big\n", proj);

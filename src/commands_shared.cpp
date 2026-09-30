@@ -101,13 +101,12 @@ std::string unrewritable_notes_reason(const Project& proj, const std::string& pa
     }
     // Commands address todos by ID, so a duplicate would make them act on whichever
     // copy comes first.
-    for (std::size_t i = 0; i < proj.todos.size(); ++i) {
-        for (std::size_t j = i + 1; j < proj.todos.size(); ++j) {
-            if (proj.todos[i].id == proj.todos[j].id) {
-                return path + " has more than one todo numbered " + std::to_string(proj.todos[i].id) +
-                       ". Renumber one of them; projot will not rewrite the file until then.";
-            }
-        }
+    if (!proj.duplicate_ids.empty()) {
+        std::string ids;
+        for (int id : proj.duplicate_ids) ids += (ids.empty() ? "" : ", ") + std::to_string(id);
+        return path + " has todo IDs used more than once (" + ids + "), so an ID no longer "
+               "identifies a single todo. Renumber the duplicates; commands that change "
+               "todos will refuse until then.";
     }
     if (proj.unparsed_lines.empty()) return "";
     const auto& [line_no, text] = proj.unparsed_lines.front();

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 // Line helpers
 
@@ -61,6 +62,7 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
     Section section = Section::Header;
     Todo* current_todo = nullptr;
     bool in_notes_block = false;
+    std::set<int> seen_ids;
 
     std::size_t line_no = 0;
     for (const auto& raw : lines) {
@@ -158,6 +160,10 @@ static MarkdownParseResult parse_lines(const std::vector<std::string>& lines, Pr
             int id; TodoStatus status; std::string text;
             if (std::isdigit(static_cast<unsigned char>(line[0]))) {
                 if (parse_todo_line(line, id, status, text)) {
+                    if (!seen_ids.insert(id).second &&
+                        std::find(out.duplicate_ids.begin(), out.duplicate_ids.end(), id) == out.duplicate_ids.end()) {
+                        out.duplicate_ids.push_back(id);
+                    }
                     out.todos.push_back(Todo{id, text, status, "", "", {}});
                     current_todo = &out.todos.back();
                     in_notes_block = false;

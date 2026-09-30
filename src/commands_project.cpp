@@ -201,7 +201,9 @@ int cmd_list(const Args& args) {
     auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
     const std::string unreadable = unrewritable_notes_reason(proj, notes_path);
-    if (!unreadable.empty()) std::cerr << "warning: list may be incomplete: " << unreadable << "\n";
+    // Still list what could be read, so a broken file can be inspected; the reason
+    // says what is wrong and that changing commands will refuse.
+    if (!unreadable.empty()) std::cerr << "warning: " << unreadable << "\n";
 
     TodoFilter filter = TodoFilter::Open;
     if (args.has("closed")) filter = TodoFilter::Closed;
@@ -525,7 +527,7 @@ int cmd_summarize(const Args& args) {
     auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
     const std::string unreadable = unrewritable_notes_reason(proj, notes_path);
-    if (!unreadable.empty()) std::cerr << "warning: summary may be incomplete: " << unreadable << "\n";
+    if (!unreadable.empty()) std::cerr << "warning: " << unreadable << "\n";
 
     std::string today = date_today();
 
