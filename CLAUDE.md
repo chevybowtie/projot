@@ -57,7 +57,13 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Critical Gotchas
 
-**No shell invocations.** Git staging goes through `git_stage_file()` in `src/commands_maint.cpp`, which uses `fork()`+`execvp()` (`CreateProcess` on Windows) with no shell. Do not add `std::system()` or other shell-string calls; extend the existing helpers instead. The Windows `CreateProcess` command lines are built with `quote_windows_arg()` (`src/utils.h`); quote every argument through it rather than concatenating raw strings.
+**No shell invocations.** Every child process (git staging, `git rev-parse`, Teams sync) goes through `run_process()` in `src/process.cpp`, which uses `fork()`+`execvp()` (`CreateProcess` on Windows) with no shell, retries `waitpid` on `EINTR`, and kills the child if a timeout expires. Do not add `std::system()`, raw `fork`/`CreateProcess` calls, or other shell-string calls; use `run_process()`. On Windows it builds the command line with `quote_windows_arg()` (`src/utils.h`).
+
+**Never pass secrets on a child's command line** — other local users can read it from the process list. `teams-sync.js` reads the sync URL from `.projot/config` for this reason.
+
+**Commands hold a repo lock.** `load_context()` takes an exclusive OS lock on `<git dir>/projot.lock` (`acquire_repo_lock()` in `src/repo.cpp`), held for the life of the `Context`, so the CLI, MCP server and pre-commit hook can't interleave read-modify-write cycles. The OS releases it if the process dies. A second acquisition in the same process shares the lock instead of deadlocking.
+
+**Hooks live where git says.** Use `resolve_hooks_dir()` (honours `core.hooksPath` and worktrees), never `repo_root / ".git" / "hooks"`.
 
 **MCP server requires Node.js.** The `install-mcp-server` command checks for Node.js by scanning `PATH` (`node_available()`, no shell). Node must be on PATH. If missing, the tool warns but doesn't fail. Test locally with `which node` before relying on MCP integration.
 
