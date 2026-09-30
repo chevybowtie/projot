@@ -386,3 +386,87 @@ TEST_CASE("install_hook_unwritable_dir") {
     CHECK(ret != 0);
 #endif
 }
+
+// ── hook placement and removal ────────────────────────────────────────────────
+
+TEST_CASE("install_hook_inserts_before_trailing_exec_and_uninstall_restores") {
+    HookTempRepo repo("install_hook_before_exec");
+    const std::string original =
+        "#!/bin/sh\n"
+        "echo checking\n"
+        "exec git diff-index --check --cached HEAD --\n";
+    { std::ofstream f(repo.hook_path()); f << original; }
+
+    REQUIRE(cmd_install_hook(make_hook_args("install-hook")) == 0);
+    const std::string installed = McpTempRepo::read_file(repo.hook_path());
+    const auto block_pos = installed.find("projot render");
+    const auto exec_pos  = installed.find("exec git diff-index");
+    REQUIRE(block_pos != std::string::npos);
+    CHECK(block_pos < exec_pos);
+
+    REQUIRE(cmd_uninstall_hook(make_hook_args("uninstall-hook")) == 0);
+    CHECK(McpTempRepo::read_file(repo.hook_path()) == original);
+}
+
+TEST_CASE("install_hook_appends_when_hook_does_not_end_with_exit") {
+    HookTempRepo repo("install_hook_exit_inside_if");
+    { std::ofstream f(repo.hook_path()); f << "#!/bin/sh\nif false; then\n  exit 1\nfi\n"; }
+    REQUIRE(cmd_install_hook(make_hook_args("install-hook")) == 0);
+    const std::string installed = McpTempRepo::read_file(repo.hook_path());
+    CHECK(installed.find("projot render") > installed.find("fi\n"));
+}
+
+TEST_CASE("uninstall_hook_fails_on_edited_block") {
+    HookTempRepo repo("uninstall_hook_edited");
+    { std::ofstream f(repo.hook_path()); f << "#!/bin/sh\necho mine\n# projot\nprojot render\n"; }
+    CHECK(cmd_uninstall_hook(make_hook_args("uninstall-hook")) != 0);
+    CHECK(McpTempRepo::read_file(repo.hook_path()).find("projot render") != std::string::npos);
+}
+
+// ── MCP config edits ──────────────────────────────────────────────────────────
+
+TEST_CASE("install_mcp_into_empty_settings_object_stays_valid") {
+    McpTempRepo repo("install_mcp_empty_object");
+    fs::create_directories(repo.path / ".claude");
+    { std::ofstream f(repo.path / ".claude" / "settings.json"); f << "{}\n"; }
+
+    REQUIRE(cmd_install_mcp_server(make_mcp_args("install-mcp-server", {{"no-vscode", "true"}})) == 0);
+    const std::string installed = McpTempRepo::read_file(repo.path / ".claude" / "settings.json");
+    CHECK(installed.find("{,") == std::string::npos);
+    CHECK(installed.find("\"mcpServers\"") != std::string::npos);
+
+    // "{}" plus the injected block is byte-identical to a fresh install, so uninstall
+    // deletes the file; an absent settings file means the same as "{}".
+    REQUIRE(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
+    const fs::path settings = repo.path / ".claude" / "settings.json";
+    CHECK((!fs::exists(settings) || McpTempRepo::read_file(settings) == "{}\n"));
+}
+
+TEST_CASE("install_then_uninstall_mcp_restores_non_empty_settings") {
+    McpTempRepo repo("install_mcp_restores_settings");
+    fs::create_directories(repo.path / ".claude");
+    const std::string original = "{\n  \"permissions\": {}\n}\n";
+    { std::ofstream f(repo.path / ".claude" / "settings.json"); f << original; }
+    REQUIRE(cmd_install_mcp_server(make_mcp_args("install-mcp-server", {{"no-vscode", "true"}})) == 0);
+    REQUIRE(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server", {{"no-vscode", "true"}})) == 0);
+    CHECK(McpTempRepo::read_file(repo.path / ".claude" / "settings.json") == original);
+}
+
+TEST_CASE("install_mcp_leaves_unrecognised_settings_alone") {
+    McpTempRepo repo("install_mcp_unrecognised");
+    fs::create_directories(repo.path / ".claude");
+    const std::string original = "{\n  \"a\": 1,\n  // trailing comment\n}\n";
+    { std::ofstream f(repo.path / ".claude" / "settings.json"); f << original; }
+    REQUIRE(cmd_install_mcp_server(make_mcp_args("install-mcp-server", {{"no-vscode", "true"}})) == 0);
+    CHECK(McpTempRepo::read_file(repo.path / ".claude" / "settings.json") == original);
+}
+
+TEST_CASE("uninstall_mcp_keeps_user_vscode_file") {
+    McpTempRepo repo("uninstall_mcp_keeps_vscode");
+    fs::create_directories(repo.path / ".vscode");
+    const std::string original =
+        "{\"servers\":{\"mine\":{\"command\":\"x\"},\"projot\":{\"command\":\"node\"}}}\n";
+    { std::ofstream f(repo.path / ".vscode" / "mcp.json"); f << original; }
+    CHECK(cmd_uninstall_mcp_server(make_mcp_args("uninstall-mcp-server")) == 0);
+    CHECK(McpTempRepo::read_file(repo.path / ".vscode" / "mcp.json") == original);
+}
