@@ -150,5 +150,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    const std::string line_break_error = line_break_arg_error(args);
+    if (!line_break_error.empty()) {
+        std::cerr << "error: " << line_break_error << "\n";
+        return 1;
+    }
+
     return cmd_it->second(args);
 }

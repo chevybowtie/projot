@@ -143,7 +143,50 @@ ParseResult parse_config(const std::string& path, Config& out) {
 
 // Writing
 
+std::string invalid_config_value(const Config& cfg) {
+    const std::pair<const char*, const std::string*> scalars[] = {
+        {"app_id", &cfg.app_id}, {"rpm", &cfg.rpm}, {"name", &cfg.name},
+        {"jira", &cfg.jira}, {"created", &cfg.created}, {"date_format", &cfg.date_format},
+        {"teams_sync_url", &cfg.teams_sync_url},
+        {"rpm_base_url", &cfg.rpm_base_url}, {"jira_base_url", &cfg.jira_base_url},
+    };
+    for (const auto& [key, value] : scalars)
+        if (has_line_break(*value)) return std::string(key) + " contains a line break";
+
+    const std::pair<const char*, const std::vector<std::string>*> lists[] = {
+        {"github", &cfg.github}, {"swagger", &cfg.swagger}, {"blizzard", &cfg.blizzard},
+        {"azure_subscription", &cfg.azure_subscription},
+        {"azure_key_vault", &cfg.azure_key_vault},
+        {"azure_resource_group", &cfg.azure_resource_group},
+        {"azure_aks", &cfg.azure_aks},
+        {"azure_log_analytics", &cfg.azure_log_analytics},
+        {"azure_storage", &cfg.azure_storage},
+        {"azure_private_dns", &cfg.azure_private_dns},
+    };
+    for (const auto& [key, items] : lists)
+        for (const auto& item : *items)
+            if (has_line_break(item)) return std::string(key) + " entry contains a line break";
+
+    // Link keys are also items of the comma-separated `links` list.
+    for (const auto& key : cfg.links)
+        if (key.find_first_of("=,\r\n") != std::string::npos)
+            return "link key '" + key + "' contains '=', ',' or a line break";
+
+    for (const auto* m : {&cfg.labels, &cfg.link_urls}) {
+        for (const auto& [key, value] : *m) {
+            if (key.find_first_of("=\r\n") != std::string::npos)
+                return "link key '" + key + "' contains '=' or a line break";
+            if (has_line_break(value))
+                return "value for link key '" + key + "' contains a line break";
+        }
+    }
+    return "";
+}
+
 ParseResult write_config(const std::string& path, const Config& cfg) {
+    const std::string invalid = invalid_config_value(cfg);
+    if (!invalid.empty()) return {false, "Refusing to write config file " + path + ": " + invalid};
+
     // Ensure parent directory exists
     std::filesystem::path p(path);
     if (p.has_parent_path()) {
@@ -152,10 +195,7 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
         if (ec) return {false, "Cannot create directory: " + p.parent_path().string()};
     }
 
-    std::ofstream file(path, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) {
-        return {false, "Cannot write config file: " + path};
-    }
+    std::ostringstream file;
 
     file << "# projot config\n";
     file << "config_version = " << PROJOT_CONFIG_SCHEMA_VERSION << "\n";
@@ -253,18 +293,17 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
             write_list("azure_private_dns", cfg.azure_private_dns);
     }
 
-    file.flush();
-    if (!file.good()) {
-        return {false, "Write error to config file: " + path};
-    }
-    file.close();
-    if (file.fail()) {
-        return {false, "Failed to close config file: " + path};
+    std::string error;
+    if (!atomic_write_file(p, file.str(), error)) {
+        return {false, "Cannot write config file: " + path + " (" + error + ")"};
     }
     return {true, ""};
 }
 
 ParseResult write_global_config(const std::string& path, const Config& cfg) {
+    if (has_line_break(cfg.rpm_base_url) || has_line_break(cfg.jira_base_url))
+        return {false, "Refusing to write global config " + path + ": base URL contains a line break"};
+
     // Ensure parent directory exists
     std::filesystem::path p(path);
     if (p.has_parent_path()) {
@@ -273,24 +312,16 @@ ParseResult write_global_config(const std::string& path, const Config& cfg) {
         if (ec) return {false, "Cannot create directory: " + p.parent_path().string()};
     }
 
-    std::ofstream file(path, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) {
-        return {false, "Cannot write global config: " + path};
-    }
-
+    std::ostringstream file;
     file << "# projot global config\n";
     if (!cfg.rpm_base_url.empty())
         file << "rpm_base_url = " << cfg.rpm_base_url << "\n";
     if (!cfg.jira_base_url.empty())
         file << "jira_base_url = " << cfg.jira_base_url << "\n";
 
-    file.flush();
-    if (!file.good()) {
-        return {false, "Write error to global config: " + path};
-    }
-    file.close();
-    if (file.fail()) {
-        return {false, "Failed to close global config: " + path};
+    std::string error;
+    if (!atomic_write_file(p, file.str(), error)) {
+        return {false, "Cannot write global config: " + path + " (" + error + ")"};
     }
     return {true, ""};
 }

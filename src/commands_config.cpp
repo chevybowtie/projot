@@ -129,9 +129,8 @@ int cmd_new(const Args& args) {
     else if (args.has("teams-webhook"))
         ctx.config.teams_sync_url = args.get("teams-webhook");
 
-    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
-    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
-
+    // Read the carryover before saving the config, so a failure here leaves no
+    // project configured rather than one whose notes file was never written.
     std::vector<Todo> carryover_todos;
     fs::path carryover_path = ctx.repo_root / ".projot" / CARRYOVER_TODOS_FILE;
     if (fs::exists(carryover_path)) {
@@ -141,6 +140,9 @@ int cmd_new(const Args& args) {
             std::cerr << "error: " << parse.error << "\n";
             return 1;
         }
+        const std::string unrewritable =
+            unrewritable_notes_reason(carryover_project, carryover_path.string());
+        if (!unrewritable.empty()) { std::cerr << "error: " << unrewritable << "\n"; return 1; }
 
         int next_id = 1;
         for (const auto* todo : filter_todos(carryover_project.todos, TodoFilter::Open)) {
@@ -150,6 +152,9 @@ int cmd_new(const Args& args) {
             carryover_todos.push_back(std::move(copied));
         }
     }
+
+    auto save = write_config(projot_file_path(ctx, "config"), ctx.config);
+    if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, carryover_todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }

@@ -260,10 +260,14 @@ int cmd_render(const Args& args) {
     if (ctx.config.rpm.empty()) return 0;  // no active project; hook is a no-op between projects
 
     Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    const std::string notes_path = projot_file_path(ctx, ctx.config.rpm + ".md");
+    auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+    // Blocking the commit is recoverable; silently dropping hand-edited todos is not.
+    const std::string unrewritable = unrewritable_notes_reason(proj, notes_path);
+    if (!unrewritable.empty()) { std::cerr << "error: " << unrewritable << "\n"; return 1; }
 
-    auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
+    auto render = render_to_file(notes_path, ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
     // Stage the rendered file. No shell involved; git_stage_file uses fork+execvp.
@@ -384,13 +388,11 @@ static bool install_claude_mcp(const fs::path& repo_root,
 
     content.insert(last_brace, to_inject);
 
-    std::ofstream f_write(settings_file);
-    if (!f_write.is_open()) { error = "cannot write .claude/settings.json"; return false; }
-    f_write << content;
-    f_write.flush();
-    if (!f_write.good()) { error = "write error to .claude/settings.json"; return false; }
-    f_write.close();
-    if (f_write.fail()) { error = "failed to close .claude/settings.json"; return false; }
+    std::string write_error;
+    if (!atomic_write_file(settings_file, content, write_error)) {
+        error = "cannot write .claude/settings.json: " + write_error;
+        return false;
+    }
     return true;
 }
 
@@ -604,18 +606,11 @@ int cmd_uninstall_hook(const Args& args) {
         }
         std::cout << "Removed pre-commit hook at " << hook_path.string() << "\n";
     } else {
-        std::ofstream f(hook_path);
-        if (!f.is_open()) {
-            std::cerr << "error: cannot write " << hook_path.string() << "\n";
+        std::string write_error;
+        if (!atomic_write_file(hook_path, content, write_error)) {
+            std::cerr << "error: " << write_error << "\n";
             return 1;
         }
-        f << content;
-        f.flush();
-        if (!f.good()) {
-            std::cerr << "error: write error to " << hook_path.string() << "\n";
-            return 1;
-        }
-        f.close();
 #ifndef _WIN32
         fs::permissions(hook_path,
             fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec,
@@ -692,20 +687,9 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
         auto pos = content.find(injected_entry);
         if (pos != std::string::npos) {
             content.erase(pos, injected_entry.size());
-            std::ofstream f_write(settings_file);
-            if (!f_write.is_open()) {
-                message = "cannot write .claude/settings.json";
-                return false;
-            }
-            f_write << content;
-            f_write.flush();
-            if (!f_write.good()) {
-                message = "write error to .claude/settings.json";
-                return false;
-            }
-            f_write.close();
-            if (f_write.fail()) {
-                message = "failed to close .claude/settings.json";
+            std::string write_error;
+            if (!atomic_write_file(settings_file, content, write_error)) {
+                message = "cannot write .claude/settings.json: " + write_error;
                 return false;
             }
             message = "Removed projot MCP entry from .claude/settings.json";

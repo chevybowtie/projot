@@ -50,6 +50,9 @@ int cmd_close(const Args& args) {
         std::cerr << "error: " << parse.error << "\n";
         return 1;
     }
+    // Unreadable lines may be open todos that would silently miss the carryover.
+    const std::string unrewritable = unrewritable_notes_reason(closing_project, old_notes.string());
+    if (!unrewritable.empty()) { std::cerr << "error: " << unrewritable << "\n"; return 1; }
 
     std::vector<Todo> carryover_todos;
     for (const auto* todo : filter_todos(closing_project.todos, TodoFilter::Open)) {
@@ -154,8 +157,11 @@ int cmd_list(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    const std::string notes_path = projot_file_path(ctx, ctx.config.rpm + ".md");
+    auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+    const std::string unreadable = unrewritable_notes_reason(proj, notes_path);
+    if (!unreadable.empty()) std::cerr << "warning: list may be incomplete: " << unreadable << "\n";
 
     TodoFilter filter = TodoFilter::Open;
     if (args.has("closed")) filter = TodoFilter::Closed;
@@ -463,8 +469,11 @@ int cmd_summarize(const Args& args) {
     if (!require_project(ctx)) return 1;
 
     Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    const std::string notes_path = projot_file_path(ctx, ctx.config.rpm + ".md");
+    auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+    const std::string unreadable = unrewritable_notes_reason(proj, notes_path);
+    if (!unreadable.empty()) std::cerr << "warning: summary may be incomplete: " << unreadable << "\n";
 
     std::string today = date_today();
 
@@ -537,6 +546,12 @@ int cmd_set_link(const Args& args) {
     // "itrack" is the legacy name for the Jira link key.
     std::string key = args.get("key");
     if (key == "itrack") key = "jira";
+    // The key is written as "link.<key> = ..." and as an item of the comma-separated
+    // links list, so '=' or ',' would split it when the config is read back.
+    if (key.empty() || key.find_first_of("=, \t\r\n") != std::string::npos) {
+        std::cerr << "error: --key must be non-empty and must not contain '=', ',' or whitespace.\n";
+        return 1;
+    }
     const std::string url = args.get("url");
 
     return execute_config_command(ctx, [key, &url](Context& c) {
