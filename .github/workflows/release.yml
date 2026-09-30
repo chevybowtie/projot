@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
 
       - name: Configure (Linux)
         if: runner.os == 'Linux'
@@ -113,24 +113,24 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # fetch full history for changelog generation
 
       - name: Download Linux binary
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: projot-linux-x86_64
           path: dist/
 
       - name: Download Windows binary
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: projot-windows-x86_64.exe
           path: dist/
 
       - name: Download Chocolatey package
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v4
         with:
           name: projot-choco
           path: dist/
