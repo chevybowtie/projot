@@ -1,4 +1,5 @@
 #include "cli.h"
+#include "utils.h"
 
 Args parse_args(int argc, char* argv[]) {
     Args args;
@@ -56,6 +57,15 @@ Args parse_args(int argc, char* argv[]) {
     }
 
     return args;
+}
+
+std::string line_break_arg_error(const Args& args) {
+    for (const auto& [key, values] : args.flags)
+        for (const auto& value : values)
+            if (has_line_break(value)) return "--" + key + " must not contain line breaks.";
+    for (const auto& value : args.positional)
+        if (has_line_break(value)) return "arguments must not contain line breaks.";
+    return "";
 }
 
 void normalize_flag_aliases(Args& args) {

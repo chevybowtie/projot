@@ -50,3 +50,8 @@ inline const std::set<std::string>& boolean_flags() {
 
 // Parse argc/argv into an Args struct.
 Args parse_args(int argc, char* argv[]);
+
+// Returns an error message if any flag value or positional argument contains a line
+// break, or "" if none does. Every value is stored on a single line of the config or
+// notes file, where a line break would inject a new key or a new todo.
+std::string line_break_arg_error(const Args& args);

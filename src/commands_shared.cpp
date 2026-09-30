@@ -3,6 +3,7 @@
 #include "markdown.h"
 #include "renderer.h"
 #include "repo.h"
+#include "utils.h"
 
 #include <iostream>
 #include <fstream>
@@ -68,12 +69,28 @@ std::string projot_file_path(const Context& ctx, const std::string& filename) {
     return (ctx.repo_root / ".projot" / filename).string();
 }
 
+std::string unrewritable_notes_reason(const Project& proj, const std::string& path) {
+    if (!proj.has_todos_section) {
+        return path + " has no '## Todos' heading, so its todos cannot be read. "
+               "Restore the heading; projot will not rewrite the file until then.";
+    }
+    if (proj.unparsed_lines.empty()) return "";
+    const auto& [line_no, text] = proj.unparsed_lines.front();
+    return path + " has " + std::to_string(proj.unparsed_lines.size()) +
+           " line(s) in the Todos section that projot does not understand (first: line " +
+           std::to_string(line_no) + ": \"" + text + "\"). Fix or remove them; projot will "
+           "not rewrite the file until then, so they are not lost.";
+}
+
 int execute_project_command(const Context& ctx,
                             ProjectModifier modifier,
                             const std::string& success_msg) {
     Project proj;
-    auto parse = parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj);
+    const std::string notes_path = projot_file_path(ctx, ctx.config.rpm + ".md");
+    auto parse = parse_markdown(notes_path, proj);
     if (!parse.ok) { std::cerr << "error: " << parse.error << "\n"; return 1; }
+    const std::string unrewritable = unrewritable_notes_reason(proj, notes_path);
+    if (!unrewritable.empty()) { std::cerr << "error: " << unrewritable << "\n"; return 1; }
 
     auto result = modifier(proj);
     if (!result.ok) {
@@ -111,10 +128,16 @@ int execute_config_command(Context& ctx,
 
     if (re_render && !ctx.config.rpm.empty()) {
         Project proj;
-        if (parse_markdown(projot_file_path(ctx, ctx.config.rpm + ".md"), proj).ok) {
-            auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, proj.todos);
-            if (!render.ok)
-                std::cerr << "warning: notes file not updated: " << render.error << "\n";
+        const std::string notes_path = projot_file_path(ctx, ctx.config.rpm + ".md");
+        if (parse_markdown(notes_path, proj).ok) {
+            const std::string unrewritable = unrewritable_notes_reason(proj, notes_path);
+            if (!unrewritable.empty()) {
+                std::cerr << "warning: notes file not updated: " << unrewritable << "\n";
+            } else {
+                auto render = render_to_file(notes_path, ctx.config, proj.todos);
+                if (!render.ok)
+                    std::cerr << "warning: notes file not updated: " << render.error << "\n";
+            }
         }
     }
 
@@ -173,13 +196,9 @@ bool install_hook_impl(const fs::path& repo_root,
             if (ec) { error = "cannot create hooks directory: " + ec.message(); return false; }
         }
 
-        std::ofstream f(hook_path, std::ios::app);
-        if (!f.is_open()) { error = "cannot append to " + hook_path.string(); return false; }
-        f << "\n" << HOOK_BLOCK;
-        f.flush();
-        if (!f.good()) { error = "write error to " + hook_path.string(); return false; }
-        f.close();
-        if (f.fail()) { error = "failed to close " + hook_path.string(); return false; }
+        // Rewrite atomically so an interrupted append can't leave a half-written
+        // block in the user's hook.
+        if (!atomic_write_file(hook_path, content + "\n" + HOOK_BLOCK, error)) return false;
         appended = true;
     } else {
         std::ofstream f(hook_path);

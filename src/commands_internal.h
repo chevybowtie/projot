@@ -23,6 +23,10 @@ Context load_context();
 // Helper to build paths like .projot/config, .projot/{rpm}.md
 std::string projot_file_path(const Context& ctx, const std::string& filename);
 
+// Returns why a parsed notes file must not be rewritten (rendering would drop content
+// the parser could not read), or "" if it is safe to rewrite.
+std::string unrewritable_notes_reason(const Project& proj, const std::string& path);
+
 // Verifies that a project is configured and the notes file exists.
 bool require_project(const Context& ctx);
 

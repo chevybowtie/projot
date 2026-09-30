@@ -95,7 +95,12 @@ struct ParseResult {
 // Returns ok=false with an error message on failure.
 ParseResult parse_config(const std::string& path, Config& out);
 
+// Describes the first value in cfg that would not survive a write/parse round trip
+// (a line break, or '=' / ',' in a link key), or returns "" if all values are valid.
+std::string invalid_config_value(const Config& cfg);
+
 // Write a Config to disk in canonical format.
+// Refuses (ok=false) if invalid_config_value(cfg) reports a problem.
 // Returns ok=false with an error message on failure.
 ParseResult write_config(const std::string& path, const Config& cfg);
 
