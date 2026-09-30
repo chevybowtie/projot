@@ -345,6 +345,13 @@ projot <subcommand> [options]
 
 All subcommands must be run from within a git repository. `init` and `new` are the two setup commands; `close` archives a completed project. All other commands require `init` and `new` to have been run first.
 
+Argument rules, enforced before any command runs:
+
+- A flag that takes a value must be given a non-blank one (`--url` as the last argument is an error, not an empty URL).
+- No value or argument may contain a line break.
+- `--` ends option parsing; everything after it is positional. Use it for text that starts with `-`: `projot add-todo -- "--verbose flag is ignored"`. The MCP server always passes todo and note text this way.
+- `--todo` IDs must be plain digits (`3`, not `3abc` or `-3`); todo and note text must not be blank.
+
 ### 9.0 Help
 
 #### `projot --help` / `projot -h`
