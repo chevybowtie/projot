@@ -63,10 +63,22 @@ inline std::string format_date(const std::string& fmt) {
 
     std::string out = fmt;
     // Replace tokens (simple, non-overlapping)
-    size_t pos;
-    while ((pos = out.find("YYYY")) != std::string::npos) out.replace(pos, 4, year);
-    while ((pos = out.find("MM")) != std::string::npos) out.replace(pos, 2, month);
-    while ((pos = out.find("DD")) != std::string::npos) out.replace(pos, 2, day_s);
+    // Move past replaced text to avoid infinite loops if replacement contains the token
+    size_t pos = 0;
+    while ((pos = out.find("YYYY", pos)) != std::string::npos) {
+        out.replace(pos, 4, year);
+        pos += year.size();  // Move past the inserted text
+    }
+    pos = 0;
+    while ((pos = out.find("MM", pos)) != std::string::npos) {
+        out.replace(pos, 2, month);
+        pos += month.size();
+    }
+    pos = 0;
+    while ((pos = out.find("DD", pos)) != std::string::npos) {
+        out.replace(pos, 2, day_s);
+        pos += day_s.size();
+    }
     return out;
 }
 
