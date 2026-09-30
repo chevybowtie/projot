@@ -3,6 +3,7 @@
 #include "config.h"
 #include "markdown.h"
 #include "renderer.h"
+#include "process.h"
 #include "repo.h"
 #include "utils.h"
 
@@ -20,61 +21,17 @@
 
 #ifdef _WIN32
 #  include <windows.h>
-#else
-#  include <unistd.h>
-#  include <sys/wait.h>
-#  include <fcntl.h>
-#  include <time.h>
 #endif
 
 namespace fs = std::filesystem;
-
-// Validate that RPM is safe to embed in a shell command.
-static bool is_safe_rpm(const std::string& s) {
-    if (s.empty()) return false;
-    for (char c : s) {
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_')
-            return false;
-    }
-    return true;
-}
 
 // Stage a single file in the git index without invoking a shell.
 // rel_path is relative to repo_root (e.g. ".projot/foo.md").
 // Returns true on success; staging failure is non-fatal (best-effort).
 static bool git_stage_file(const fs::path& repo_root, const std::string& rel_path) {
-#ifdef _WIN32
-    std::string cmd = "git -C " + quote_windows_arg(repo_root.string())
-                      + " add " + quote_windows_arg(rel_path);
-    STARTUPINFOA si{};
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi{};
-    pi.hProcess = nullptr;  // Ensure handle is initialized
-    if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
-                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        return false;
-    }
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    DWORD exit_code = 1;
-    GetExitCodeProcess(pi.hProcess, &exit_code);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    return exit_code == 0;
-#else
-    std::string repo = repo_root.string();
-    const char* argv[] = {"git", "-C", repo.c_str(), "add", rel_path.c_str(), nullptr};
-    pid_t pid = fork();
-    if (pid < 0) return false;
-    if (pid == 0) {
-        int fd = open("/dev/null", O_WRONLY);
-        if (fd >= 0) { dup2(fd, STDERR_FILENO); close(fd); }
-        execvp("git", const_cast<char**>(argv));
-        _exit(1);
-    }
-    int status;
-    waitpid(pid, &status, 0);
-    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-#endif
+    auto r = run_process({"git", "-C", repo_root.string(), "add", "--", rel_path},
+                         ChildOutput::Inherit, ChildOutput::Discard);
+    return r.started && !r.timed_out && r.exit_code == 0;
 }
 
 // MCP helpers
@@ -175,17 +132,46 @@ static std::string claude_settings_fresh(const std::string& server_arg) {
         "}\n";
 }
 
-static std::string claude_settings_injected_block(const std::string& server_arg) {
-    return
-        ",\n  \"mcpServers\": {\n"
+// The block inserted before the final '}' of an existing settings object. It needs a
+// leading comma after an existing member, and none when the object is empty.
+static std::string claude_settings_injected_block(const std::string& server_arg,
+                                                  bool after_member) {
+    const std::string block =
+        "\n  \"mcpServers\": {\n"
         "    \"projot\": {\n"
         "      \"command\": \"node\",\n"
         "      \"args\": [\"" + server_arg + "\"]\n"
         "    }\n"
         "  }";
+    return after_member ? "," + block : block + "\n";
+}
+
+static std::string vscode_mcp_json(const std::string& server_arg) {
+    return
+        "{\n"
+        "  \"inputs\": [],\n"
+        "  \"servers\": {\n"
+        "    \"projot\": {\n"
+        "      \"type\": \"stdio\",\n"
+        "      \"command\": \"node\",\n"
+        "      \"args\": [\"" + server_arg + "\"]\n"
+        "    }\n"
+        "  }\n"
+        "}\n";
+}
+
+// server.js paths projot may have written into a config file: the legacy relative
+// path and the current install location. Used to recognise files projot created.
+static std::vector<std::string> known_server_args() {
+    std::vector<std::string> args{"./mcp/server.js"};
+    if (auto mcp_src = find_mcp_source_dir())
+        args.push_back(json_escape((*mcp_src / "server.js").string()));
+    return args;
 }
 
 static bool node_available(); // forward declaration
+
+static constexpr int TEAMS_SYNC_TIMEOUT_MS = 10000;
 
 // Teams Kanban sync — invoked best-effort after render; never blocks commits.
 
@@ -207,47 +193,20 @@ static void invoke_teams_sync(const Context& ctx) {
         return;
     }
 
-    std::string config_path = projot_file_path(ctx, "config");
-    std::string notes_path  = projot_file_path(ctx, ctx.config.rpm + ".md");
-    std::string script      = sync_script.string();
-    std::string webhook     = ctx.config.teams_sync_url;
+    // The sync URL is a secret, so it is not passed on the command line (where other
+    // local users could read it from the process list); teams-sync.js reads it from
+    // the config file instead.
+    const std::string config_path = projot_file_path(ctx, "config");
+    const std::string notes_path  = projot_file_path(ctx, ctx.config.rpm + ".md");
 
-#ifdef _WIN32
-    std::string cmd = "node " + quote_windows_arg(script) + " " + quote_windows_arg(config_path)
-                      + " " + quote_windows_arg(notes_path) + " " + quote_windows_arg(webhook);
-    STARTUPINFOA si{};
-    si.cb = sizeof(si);
-    PROCESS_INFORMATION pi{};
-    pi.hProcess = nullptr;  // Ensure handle is initialized
-    if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr,
-                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        return;  // Process creation failed; sync is best-effort
-    }
-    WaitForSingleObject(pi.hProcess, 10000); // 10-second timeout
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-#else
-    const char* argv[] = {
-        "node", script.c_str(), config_path.c_str(),
-        notes_path.c_str(), webhook.c_str(), nullptr
-    };
-    pid_t pid = fork();
-    if (pid < 0) return;
-    if (pid == 0) {
-        int fd = open("/dev/null", O_WRONLY);
-        if (fd >= 0) { dup2(fd, STDOUT_FILENO); close(fd); }
-        execvp("node", const_cast<char**>(argv));
-        _exit(1);  // exec failed; exit with error code
-    }
-    // Wait with a 10-second timeout so commits don't hang indefinitely
-    for (int i = 0; i < 100; ++i) {
-        int status;
-        pid_t r = waitpid(pid, &status, WNOHANG);
-        if (r != 0) break;
-        struct timespec ts{0, 100000000}; // 100 ms
-        nanosleep(&ts, nullptr);
-    }
-#endif
+    // Bounded so a slow endpoint can't hang the commit; the child is killed on timeout.
+    auto r = run_process({"node", sync_script.string(), config_path, notes_path},
+                         ChildOutput::Discard, ChildOutput::Inherit, TEAMS_SYNC_TIMEOUT_MS);
+    if (!r.started)
+        std::cerr << "warning: could not start Teams sync\n";
+    else if (r.timed_out)
+        std::cerr << "warning: Teams sync did not finish within "
+                  << TEAMS_SYNC_TIMEOUT_MS / 1000 << "s and was stopped\n";
 }
 
 // render
@@ -270,9 +229,12 @@ int cmd_render(const Args& args) {
     auto render = render_to_file(notes_path, ctx.config, proj.todos);
     if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
 
-    // Stage the rendered file. No shell involved; git_stage_file uses fork+execvp.
-    if (is_safe_rpm(ctx.config.rpm)) {
-        git_stage_file(ctx.repo_root, ".projot/" + ctx.config.rpm + ".md");
+    // Stage the rendered file (load_context() has already validated rpm as a file name).
+    // Failure doesn't block the commit, but it must not go unnoticed: the commit would
+    // otherwise silently lack the refreshed notes.
+    if (!git_stage_file(ctx.repo_root, ".projot/" + ctx.config.rpm + ".md")) {
+        std::cerr << "warning: could not stage .projot/" << ctx.config.rpm
+                  << ".md; this commit will not include the refreshed notes.\n";
     }
 
     if (!ctx.config.teams_sync_url.empty()) {
@@ -302,19 +264,19 @@ int cmd_install_hook(const Args& args) {
     }
 
     bool appended = false;
-    std::string error;
-    if (!install_hook_impl(*root, appended, error)) {
+    std::string notice, error;
+    if (!install_hook_impl(*root, appended, notice, error)) {
         std::cerr << "warning: could not install pre-commit hook: " << error << "\n";
         return 1;
     }
 
+    const fs::path hook_path = resolve_hooks_dir(*root) / "pre-commit";
     if (appended) {
-        std::cout << "Note: appended projot render block to existing "
-                     ".git/hooks/pre-commit\n";
+        std::cout << "Note: added projot render block to existing " << hook_path.string() << "\n";
     } else {
-        std::cout << "Installed pre-commit hook at "
-                  << (*root / ".git" / "hooks" / "pre-commit").string() << "\n";
+        std::cout << "Installed pre-commit hook at " << hook_path.string() << "\n";
     }
+    if (!notice.empty()) std::cout << "Note: " << notice << "\n";
     return 0;
 }
 
@@ -384,7 +346,28 @@ static bool install_claude_mcp(const fs::path& repo_root,
         return false;
     }
 
-    std::string to_inject = claude_settings_injected_block(server_arg);
+    // What precedes the closing brace decides whether a comma is needed. Anything
+    // other than the end of a JSON value or the opening brace means the structure is
+    // not what we expect (e.g. a trailing comment), so leave the file alone.
+    const size_t prev = content.find_last_not_of(" \t\r\n", last_brace == 0 ? 0 : last_brace - 1);
+    const char prev_char = (last_brace == 0 || prev == std::string::npos) ? '\0' : content[prev];
+    const bool empty_object = prev_char == '{';
+    const bool after_value = prev_char == '}' || prev_char == ']' || prev_char == '"' ||
+                             std::isdigit(static_cast<unsigned char>(prev_char)) ||
+                             prev_char == 'e' || prev_char == 'l';  // true, false, null
+    if (!empty_object && !after_value) {
+        manual_action = "note: .claude/settings.json has a structure projot does not recognise.\n"
+                        "Add the following to its top-level object manually:\n\n"
+                        "  \"mcpServers\": {\n"
+                        "    \"projot\": {\n"
+                        "      \"command\": \"node\",\n"
+                        "      \"args\": [\"" + server_arg + "\"]\n"
+                        "    }\n"
+                        "  }\n";
+        return true;
+    }
+
+    std::string to_inject = claude_settings_injected_block(server_arg, !empty_object);
 
     content.insert(last_brace, to_inject);
 
@@ -501,16 +484,7 @@ int cmd_install_mcp_server(const Args& args) {
                 return 1;
             }
 
-            f << "{\n"
-              << "  \"inputs\": [],\n"
-              << "  \"servers\": {\n"
-              << "    \"projot\": {\n"
-              << "      \"type\": \"stdio\",\n"
-              << "      \"command\": \"node\",\n"
-              << "      \"args\": [\"" << server_arg << "\"]\n"
-              << "    }\n"
-              << "  }\n"
-              << "}\n";
+            f << vscode_mcp_json(server_arg);
             f.flush();
             if (!f.good()) {
                 std::cerr << "error: write error to .vscode/mcp.json\n";
@@ -552,7 +526,7 @@ int cmd_uninstall_hook(const Args& args) {
         return 1;
     }
 
-    auto hook_path = *root / ".git" / "hooks" / "pre-commit";
+    auto hook_path = resolve_hooks_dir(*root) / "pre-commit";
     std::error_code ec;
 
     if (!fs::exists(hook_path, ec)) {
@@ -585,8 +559,13 @@ int cmd_uninstall_hook(const Args& args) {
     } else {
         // Remove block without preceding newline (written-fresh case)
         pos = content.find(HOOK_BLOCK);
-        if (pos != std::string::npos)
-            content.erase(pos, HOOK_BLOCK.size());
+        if (pos == std::string::npos) {
+            std::cerr << "error: " << hook_path.string() << " mentions 'projot render' but the "
+                         "projot block has been edited, so it was not removed automatically.\n"
+                         "Remove these lines by hand:\n\n" << HOOK_BLOCK;
+            return 1;
+        }
+        content.erase(pos, HOOK_BLOCK.size());
     }
 
     // Check whether only a shebang line (or nothing) remains
@@ -649,20 +628,19 @@ static bool uninstall_claude_mcp(const fs::path& repo_root, std::string& message
         return true;
     }
 
-    const std::string legacy_server_arg = "./mcp/server.js";
-    std::vector<std::string> server_args{legacy_server_arg};
-    if (auto mcp_src = find_mcp_source_dir()) {
-        server_args.push_back(json_escape((*mcp_src / "server.js").string()));
-    }
+    const std::vector<std::string> server_args = known_server_args();
     const std::string preferred_server_arg = server_args.back();
     std::vector<std::string> fresh_entries;
     std::vector<std::string> injected_entries;
-    fresh_entries.reserve(server_args.size());
-    injected_entries.reserve(server_args.size());
     for (const auto& server_arg : server_args) {
         fresh_entries.push_back(claude_settings_fresh(server_arg));
-        injected_entries.push_back(claude_settings_injected_block(server_arg));
+        injected_entries.push_back(claude_settings_injected_block(server_arg, true));
     }
+    // The comma-less form (injected into an empty object) also matches inside a file
+    // that got the comma form, where removing it would leave a stray comma, so it is
+    // tried only after every comma form has failed to match.
+    for (const auto& server_arg : server_args)
+        injected_entries.push_back(claude_settings_injected_block(server_arg, false));
 
     // Case A: file was created fresh by projot — delete it
     bool is_fresh = false;
@@ -753,13 +731,23 @@ int cmd_uninstall_mcp_server(const Args& args) {
                 std::cerr << "error: failed to read .vscode/mcp.json\n";
                 return 1;
             }
-            if (content.find("\"projot\"") != std::string::npos) {
+            // install only ever creates this file, never edits one, so delete it only
+            // if it is exactly what install wrote. Anything else may hold the user's
+            // other servers.
+            bool created_by_projot = false;
+            for (const auto& server_arg : known_server_args())
+                if (content == vscode_mcp_json(server_arg)) created_by_projot = true;
+
+            if (created_by_projot) {
                 fs::remove(mcp_json, ec);
                 if (ec) {
                     std::cerr << "error: cannot remove .vscode/mcp.json: " << ec.message() << "\n";
                     return 1;
                 }
                 std::cout << "Removed .vscode/mcp.json\n";
+            } else if (content.find("\"projot\"") != std::string::npos) {
+                std::cout << "note: .vscode/mcp.json has other content, so it was left in place.\n"
+                             "Remove its \"projot\" server entry manually.\n";
             } else {
                 std::cout << "projot not configured in .vscode/mcp.json.\n";
             }

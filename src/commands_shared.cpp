@@ -31,6 +31,15 @@ Context load_context() {
         return ctx;
     }
 
+    // Take the lock before reading so the whole read-modify-write is serialised.
+    std::string lock_error;
+    ctx.lock = acquire_repo_lock(ctx.repo_root, lock_error);
+    if (!ctx.lock) {
+        ctx.ok = false;
+        ctx.error = lock_error;
+        return ctx;
+    }
+
     auto result = parse_config(cfg_path.string(), ctx.config);
     if (!result.ok) {
         ctx.ok = false;
@@ -49,20 +58,36 @@ Context load_context() {
     if (ctx.config.config_version == 0) {
         std::cerr << "warning: config_version missing; treating as version 0.\n";
     }
+    // rpm names the notes file, so a hand-edited value must not escape .projot/.
+    if (!ctx.config.rpm.empty() && !is_safe_rpm(ctx.config.rpm)) {
+        ctx.ok = false;
+        ctx.error = "rpm '" + ctx.config.rpm + "' in .projot/config is not a valid file name "
+                    "(use letters, digits, '-', '_' and '.', not starting with '.').";
+        return ctx;
+    }
 
-    // Merge global config (provides defaults for base URL fields)
+    // Global config provides defaults for base URL fields.
+    ctx.rpm_base_url  = ctx.config.rpm_base_url;
+    ctx.jira_base_url = ctx.config.jira_base_url;
     auto global_path = global_config_path();
     if (global_path) {
         Config global_cfg;
         if (parse_config(global_path->string(), global_cfg).ok) {
-            if (ctx.config.rpm_base_url.empty())
-                ctx.config.rpm_base_url = global_cfg.rpm_base_url;
-            if (ctx.config.jira_base_url.empty())
-                ctx.config.jira_base_url = global_cfg.jira_base_url;
+            if (ctx.rpm_base_url.empty())  ctx.rpm_base_url  = global_cfg.rpm_base_url;
+            if (ctx.jira_base_url.empty()) ctx.jira_base_url = global_cfg.jira_base_url;
         }
     }
 
     return ctx;
+}
+
+bool is_safe_rpm(const std::string& rpm) {
+    if (rpm.empty() || rpm[0] == '.') return false;
+    for (char c : rpm) {
+        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_' && c != '.')
+            return false;
+    }
+    return true;
 }
 
 std::string projot_file_path(const Context& ctx, const std::string& filename) {
@@ -165,11 +190,32 @@ const std::string HOOK_BLOCK =
     "    projot render\n"
     "fi\n";
 
+// Offset of the hook's last statement if it is `exec ...` or `exit ...`, which would
+// end the script before an appended block could run (git's own pre-commit.sample ends
+// with `exec git diff-index ...`); npos otherwise.
+static std::size_t terminal_statement_offset(const std::string& content) {
+    std::size_t end = content.size();
+    while (end > 0) {
+        std::size_t start = content.rfind('\n', end - 1);
+        start = (start == std::string::npos) ? 0 : start + 1;
+        const std::string line = trim(content.substr(start, end - start));
+        if (!line.empty() && line[0] != '#') {
+            const bool is_exit = line == "exit" || line.rfind("exit ", 0) == 0 || line.rfind("exit;", 0) == 0;
+            const bool is_exec = line.rfind("exec ", 0) == 0;
+            return (is_exit || is_exec) ? start : std::string::npos;
+        }
+        if (start == 0) break;
+        end = start - 1;
+    }
+    return std::string::npos;
+}
+
 bool install_hook_impl(const fs::path& repo_root,
                        bool& appended,
+                       std::string& notice,
                        std::string& error) {
     appended = false;
-    auto hooks_dir = repo_root / ".git" / "hooks";
+    auto hooks_dir = resolve_hooks_dir(repo_root);
     auto hook_path = hooks_dir / "pre-commit";
 
     std::error_code ec;
@@ -196,9 +242,22 @@ bool install_hook_impl(const fs::path& repo_root,
             if (ec) { error = "cannot create hooks directory: " + ec.message(); return false; }
         }
 
-        // Rewrite atomically so an interrupted append can't leave a half-written
+        // Insert before a final exec/exit so the block actually runs. Either way the
+        // block is preceded by "\n", which uninstall removes with it, restoring the
+        // original hook byte for byte.
+        std::string updated;
+        const std::size_t terminal = terminal_statement_offset(content);
+        if (terminal != std::string::npos) {
+            updated = content.substr(0, terminal) + "\n" + HOOK_BLOCK + content.substr(terminal);
+            notice = "the existing hook ends with exec/exit, so the projot block was "
+                     "inserted before that last statement.";
+        } else {
+            updated = content + "\n" + HOOK_BLOCK;
+        }
+
+        // Rewrite atomically so an interrupted write can't leave a half-written
         // block in the user's hook.
-        if (!atomic_write_file(hook_path, content + "\n" + HOOK_BLOCK, error)) return false;
+        if (!atomic_write_file(hook_path, updated, error)) return false;
         appended = true;
     } else {
         std::ofstream f(hook_path);

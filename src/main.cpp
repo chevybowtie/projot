@@ -1,6 +1,7 @@
 #include "cli.h"
 #include "commands.h"
 
+#include <exception>
 #include <iostream>
 #include <map>
 #include <set>
@@ -156,5 +157,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    return cmd_it->second(args);
+    // Filesystem calls can throw (permission denied, and on Windows paths that the
+    // ANSI code page cannot represent). Report and fail instead of aborting with a
+    // core dump — this also runs inside the pre-commit hook.
+    try {
+        return cmd_it->second(args);
+    } catch (const std::exception& e) {
+        std::cerr << "error: " << e.what() << "\n";
+        return 1;
+    }
 }
