@@ -135,7 +135,10 @@ Users may optionally specify `--config <path>` in later versions.
 
 - Lines beginning with `#` are comments.
 - Unknown keys are ignored (future-proofing).
-- Lists are comma-separated values on a single line.
+- Lists are comma-separated values on a single line. Within an item, `\,` is a literal comma (e.g. in a URL) and `\\` a literal backslash; a backslash before any other character is literal, so configs written before escaping existed read back unchanged. Only items that contain `,` or `\` are written differently, so this did not change `config_version`.
+- An Azure entry is `name|url`, or just `url`; a bare URL that itself contains `|` is written as `|url`.
+- `rpm` must be a plain file name (letters, digits, `-`, `_`, `.`, not starting with `.`), since it names `.projot/{RPM}.md`.
+- `rpm_base_url` / `jira_base_url` may be set here to override the global defaults; projot preserves them when it rewrites the file.
 - `config_version` is written by projot and must not be hand-edited.
 
 ### 6.2 Fields
@@ -449,7 +452,7 @@ If `.projot/carryover_todos.md` exists (written by the previous `close`), its op
 
 #### `close`
 
-Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` and clears all project-level configuration (rpm, name, Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
+Archive the current project and reset the repository for the next one. Moves the project notes file to `.projot/archive/{RPM}.md` (or `{RPM}.2.md`, `{RPM}.3.md`, … if an earlier project with the same RPM is already archived — archives are never overwritten) and clears all project-level configuration (rpm, name, Jira, todos, etc). Repo-level settings (app_id, github, swagger, blizzard, azure resources) are preserved.
 
 Open todos (any status other than `done`) are saved to `.projot/carryover_todos.md` before the project is archived, and the next `new` restores them. If no todos are open, any stale carryover file is removed. The carryover file is written first, so a failure there leaves the project open and unchanged.
 
@@ -662,7 +665,7 @@ projot set-teams-webhook https://xxx.webhook.office.com/webhookb2/...
 
 ### 9.4 Git Hook
 
-`new` installs a `pre-commit` hook at `{repo_root}/.git/hooks/pre-commit` to keep the notes file current on every commit.
+`new` installs a `pre-commit` hook in the directory git runs hooks from, as reported by `git rev-parse --git-path hooks`: normally `{repo_root}/.git/hooks/pre-commit`, but the shared hooks dir for a linked worktree and the `core.hooksPath` directory (husky, lefthook) when set. If git cannot be run, projot resolves the git dir itself (following `.git` pointer files and `commondir`).
 
 #### Hook behaviour
 
@@ -686,8 +689,10 @@ If `.git/hooks/pre-commit` **does not exist**, projot writes the file and sets i
 If `.git/hooks/pre-commit` **already exists**, projot appends the guarded block above and prints a notice:
 
 ```sh
-Note: appended projot render block to existing .git/hooks/pre-commit
+Note: added projot render block to existing <hooks dir>/pre-commit
 ```
+
+If the existing hook's last statement is `exec …` or `exit …` (git's own `pre-commit.sample` ends with `exec git diff-index`), the block is inserted before that statement instead, since anything after it would never run. `uninstall-hook` restores the original hook byte for byte; if the block has been edited so it no longer matches, it fails and prints the lines to remove by hand.
 
 The guard (`command -v projot`) ensures the hook is a no-op if projot is not on `PATH` (e.g. on a colleague's machine who hasn't installed it).
 
