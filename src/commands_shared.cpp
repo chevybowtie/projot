@@ -167,6 +167,12 @@ bool install_hook_impl(const fs::path& repo_root,
         if (content.find("projot render") != std::string::npos)
             return true;
 
+        // Re-verify directory exists before append (protect against race condition)
+        if (!fs::exists(hooks_dir, ec)) {
+            fs::create_directories(hooks_dir, ec);
+            if (ec) { error = "cannot create hooks directory: " + ec.message(); return false; }
+        }
+
         std::ofstream f(hook_path, std::ios::app);
         if (!f.is_open()) { error = "cannot append to " + hook_path.string(); return false; }
         f << "\n" << HOOK_BLOCK;

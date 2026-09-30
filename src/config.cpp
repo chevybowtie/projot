@@ -1,6 +1,7 @@
 #include "config.h"
 #include "utils.h"
 
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <algorithm>
@@ -75,7 +76,11 @@ ParseResult parse_config(const std::string& path, Config& out) {
         if (line.empty() || line[0] == '#') continue;
 
         const auto eq = line.find('=');
-        if (eq == std::string::npos) continue; // malformed line, ignore
+        if (eq == std::string::npos) {
+            // Malformed line; log warning for debugging but continue parsing
+            std::cerr << "warning: ignoring malformed config line (missing '='): " << line << "\n";
+            continue;
+        }
 
         const std::string key = trim(line.substr(0, eq));
         const std::string value = trim(line.substr(eq + 1));
