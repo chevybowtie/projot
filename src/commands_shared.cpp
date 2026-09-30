@@ -99,6 +99,16 @@ std::string unrewritable_notes_reason(const Project& proj, const std::string& pa
         return path + " has no '## Todos' heading, so its todos cannot be read. "
                "Restore the heading; projot will not rewrite the file until then.";
     }
+    // Commands address todos by ID, so a duplicate would make them act on whichever
+    // copy comes first.
+    for (std::size_t i = 0; i < proj.todos.size(); ++i) {
+        for (std::size_t j = i + 1; j < proj.todos.size(); ++j) {
+            if (proj.todos[i].id == proj.todos[j].id) {
+                return path + " has more than one todo numbered " + std::to_string(proj.todos[i].id) +
+                       ". Renumber one of them; projot will not rewrite the file until then.";
+            }
+        }
+    }
     if (proj.unparsed_lines.empty()) return "";
     const auto& [line_no, text] = proj.unparsed_lines.front();
     return path + " has " + std::to_string(proj.unparsed_lines.size()) +

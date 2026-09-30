@@ -17,6 +17,9 @@ struct Todo {
 
 enum class TodoFilter { Open, Closed, All };
 
+// Largest todo ID the notes parser accepts (9 digits), so max + 1 never overflows int.
+constexpr int MAX_TODO_ID = 999999999;
+
 // Return the next stable ID to assign (max existing ID + 1, or 1 if empty).
 int next_todo_id(const std::vector<Todo>& todos);
 

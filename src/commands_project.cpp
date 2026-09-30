@@ -12,6 +12,14 @@
 
 namespace fs = std::filesystem;
 
+// Digits only: std::stoi alone would accept "3abc" or " 3" and act on todo 3.
+static bool parse_todo_id(const std::string& s, int& id) {
+    if (s.empty() || s.size() > 9 || s.find_first_not_of("0123456789") != std::string::npos)
+        return false;
+    id = std::stoi(s);
+    return true;
+}
+
 // close
 
 int cmd_close(const Args& args) {
@@ -133,6 +141,8 @@ int cmd_add_todo(const Args& args) {
             "Append a new todo to the project notes file.\n\n"
             "Required:\n"
             "  \"<description>\"   Text of the new todo\n\n"
+            "Text starting with '-' must follow '--':\n"
+            "  projot add-todo -- \"--verbose flag is ignored\"\n\n"
             "Example:\n"
             "  projot add-todo \"Validate index rebuild plan\"\n";
         return 0;
@@ -143,6 +153,10 @@ int cmd_add_todo(const Args& args) {
         return 1;
     }
     std::string text = args.positional[0];
+    if (trim(text).empty()) {
+        std::cerr << "error: todo text must not be empty.\n";
+        return 1;
+    }
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
@@ -151,6 +165,8 @@ int cmd_add_todo(const Args& args) {
     return execute_project_command(ctx, [&](Project& proj) {
         Todo t;
         t.id           = next_todo_id(proj.todos);
+        if (t.id > MAX_TODO_ID)
+            return ParseResult{false, "todo IDs are exhausted; renumber the todos in the notes file."};
         t.text         = text;
         t.created_date = date_today();
         proj.todos.push_back(t);
@@ -325,8 +341,10 @@ int cmd_status(const Args& args) {
     }
 
     int id;
-    try { id = std::stoi(args.get("todo")); }
-    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+    if (!parse_todo_id(args.get("todo"), id)) {
+        std::cerr << "error: --todo must be a todo number (e.g. --todo 3).\n";
+        return 1;
+    }
 
     const std::string status_str = args.positional[0];
     TodoStatus new_status;
@@ -385,8 +403,10 @@ int cmd_complete(const Args& args) {
     }
 
     int id;
-    try { id = std::stoi(args.get("todo")); }
-    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+    if (!parse_todo_id(args.get("todo"), id)) {
+        std::cerr << "error: --todo must be a todo number (e.g. --todo 3).\n";
+        return 1;
+    }
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
@@ -424,6 +444,8 @@ int cmd_add_note(const Args& args) {
             "Required:\n"
             "  --todo <ID>    Stable numeric todo ID\n"
             "  \"<note>\"       Note text\n\n"
+            "Text starting with '-' must follow '--':\n"
+            "  projot add-note --todo 1 -- \"-5% after the change\"\n\n"
             "Example:\n"
             "  projot add-note --todo 1 \"Waiting on supervisor feedback\"\n";
         return 0;
@@ -441,10 +463,16 @@ int cmd_add_note(const Args& args) {
     }
 
     int id;
-    try { id = std::stoi(args.get("todo")); }
-    catch (...) { std::cerr << "error: --todo must be a number.\n"; return 1; }
+    if (!parse_todo_id(args.get("todo"), id)) {
+        std::cerr << "error: --todo must be a todo number (e.g. --todo 3).\n";
+        return 1;
+    }
 
     std::string text = args.positional[0];
+    if (trim(text).empty()) {
+        std::cerr << "error: note text must not be empty.\n";
+        return 1;
+    }
 
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
