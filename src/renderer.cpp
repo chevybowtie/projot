@@ -146,6 +146,20 @@ std::string render_markdown(const Config& cfg, const std::vector<Todo>& todos) {
 }
 
 RenderResult render_to_file(const std::string& path, const Config& cfg, const std::vector<Todo>& todos) {
+    // A line break inside a value would render as extra lines that parse back as
+    // different todos, so refuse rather than write a file that won't round-trip.
+    const std::string invalid = invalid_config_value(cfg);
+    if (!invalid.empty()) return {false, "Refusing to write notes file " + path + ": " + invalid};
+    for (const auto& todo : todos) {
+        bool broken = has_line_break(todo.text) || has_line_break(todo.created_date) ||
+                      has_line_break(todo.completed_date);
+        for (const auto& note : todo.notes) broken = broken || has_line_break(note);
+        if (broken) {
+            return {false, "Refusing to write notes file " + path + ": todo " +
+                           std::to_string(todo.id) + " contains a line break"};
+        }
+    }
+
     // Ensure parent directory exists
     std::filesystem::path p(path);
     if (p.has_parent_path()) {
@@ -154,19 +168,9 @@ RenderResult render_to_file(const std::string& path, const Config& cfg, const st
         if (ec) return {false, "Cannot create directory: " + p.parent_path().string()};
     }
 
-    std::ofstream file(path, std::ios::out | std::ios::trunc);
-    if (!file.is_open()) {
-        return {false, "Cannot write notes file: " + path};
-    }
-
-    file << render_markdown(cfg, todos);
-    file.flush();
-    if (!file.good()) {
-        return {false, "Write error to notes file: " + path};
-    }
-    file.close();
-    if (file.fail()) {
-        return {false, "Failed to close notes file: " + path};
+    std::string error;
+    if (!atomic_write_file(p, render_markdown(cfg, todos), error)) {
+        return {false, "Cannot write notes file: " + path + " (" + error + ")"};
     }
     return {true, ""};
 }
