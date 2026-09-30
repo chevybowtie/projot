@@ -28,9 +28,14 @@ struct Project {
 
     // Everything from "## Todos" onward is regenerated from `todos` on render, so any
     // line there the parser could not place would be silently dropped. Commands must
-    // refuse to rewrite the file while either of these reports a problem.
+    // refuse to rewrite the file while any of these reports a problem.
     bool has_todos_section = false;
     std::vector<std::pair<std::size_t, std::string>> unparsed_lines; // (1-based line no, text)
+
+    // IDs used by more than one todo, each listed once, in order of first repeat.
+    // Commands address todos by ID and find_todo() returns the first match, so while
+    // this is non-empty an ID no longer identifies a single todo.
+    std::vector<int> duplicate_ids;
 };
 
 struct MarkdownParseResult {
