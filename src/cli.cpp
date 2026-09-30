@@ -1,4 +1,5 @@
 #include "cli.h"
+#include "config.h"  // trim()
 #include "utils.h"
 
 Args parse_args(int argc, char* argv[]) {
@@ -24,6 +25,13 @@ Args parse_args(int argc, char* argv[]) {
 
     while (i < argc) {
         std::string arg = argv[i];
+
+        // "--" ends option parsing, so free text that starts with '-' (e.g. a todo
+        // "--verbose flag is broken") can still be passed as a positional argument.
+        if (arg == "--") {
+            for (++i; i < argc; ++i) args.positional.push_back(argv[i]);
+            break;
+        }
 
         if (arg == "--help" || arg == "-h") {
             args.help_requested = true;
@@ -57,6 +65,16 @@ Args parse_args(int argc, char* argv[]) {
     }
 
     return args;
+}
+
+std::string empty_flag_value_error(const Args& args) {
+    const auto& bools = boolean_flags();
+    for (const auto& [key, values] : args.flags) {
+        if (bools.count(key)) continue;
+        for (const auto& value : values)
+            if (trim(value).empty()) return "--" + key + " requires a value.";
+    }
+    return "";
 }
 
 std::string line_break_arg_error(const Args& args) {

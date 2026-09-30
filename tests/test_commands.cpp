@@ -1377,3 +1377,65 @@ TEST_CASE("repo_lock_is_shared_within_process_and_released") {
     auto third = acquire_repo_lock(repo.path, error);
     CHECK(third);
 }
+
+// ── argument validation ───────────────────────────────────────────────────────
+
+TEST_CASE("double_dash_ends_option_parsing") {
+    char a0[] = "projot", a1[] = "add-todo", a2[] = "--", a3[] = "--verbose is broken";
+    char* argv[] = {a0, a1, a2, a3, nullptr};
+    Args a = parse_args(4, argv);
+    CHECK(a.flags.empty());
+    REQUIRE(a.positional.size() == 1);
+    CHECK(a.positional[0] == "--verbose is broken");
+}
+
+TEST_CASE("flag_without_value_is_rejected") {
+    char a0[] = "projot", a1[] = "add-github", a2[] = "--url";
+    char* argv[] = {a0, a1, a2, nullptr};
+    CHECK(!empty_flag_value_error(parse_args(3, argv)).empty());
+
+    char b1[] = "summarize", b2[] = "--today";
+    char* argv2[] = {a0, b1, b2, nullptr};
+    CHECK(empty_flag_value_error(parse_args(3, argv2)).empty());  // boolean flag
+}
+
+TEST_CASE("todo_id_must_be_digits_only") {
+    TempRepo repo("todo_id_strict");
+    repo.init(); repo.new_project();
+    cmd_add_todo(make_args("add-todo", {}, "One"));
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1abc"}})) != 0);
+    CHECK(cmd_complete(make_args("complete", {{"todo", " 1"}})) != 0);
+    CHECK(cmd_complete(make_args("complete", {{"todo", "-1"}})) != 0);
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) == 0);
+}
+
+TEST_CASE("empty_todo_and_note_text_rejected") {
+    TempRepo repo("empty_text");
+    repo.init(); repo.new_project();
+    Args todo = make_args("add-todo");
+    todo.positional.push_back("   ");
+    CHECK(cmd_add_todo(todo) != 0);
+    cmd_add_todo(make_args("add-todo", {}, "One"));
+    Args note = make_args("add-note", {{"todo", "1"}});
+    note.positional.push_back("");
+    CHECK(cmd_add_note(note) != 0);
+}
+
+TEST_CASE("duplicate_todo_ids_block_rewrite") {
+    TempRepo repo("duplicate_ids");
+    repo.init(); repo.new_project("18");
+    cmd_add_todo(make_args("add-todo", {}, "One"));
+    fs::path notes = repo.path / ".projot" / "18.md";
+    { std::ofstream f(notes, std::ios::app); f << "1. [ ] Also one\n   - Created: 2025-01-01\n   - Notes:\n"; }
+    const std::string before = read_all(notes);
+    CHECK(cmd_complete(make_args("complete", {{"todo", "1"}})) != 0);
+    CHECK(read_all(notes) == before);
+}
+
+TEST_CASE("add_todo_refuses_when_ids_exhausted") {
+    TempRepo repo("ids_exhausted");
+    repo.init(); repo.new_project("18");
+    fs::path notes = repo.path / ".projot" / "18.md";
+    { std::ofstream f(notes, std::ios::app); f << "999999999. [ ] Last\n   - Created: 2025-01-01\n   - Notes:\n"; }
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Next")) != 0);
+}

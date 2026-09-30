@@ -43,13 +43,18 @@ void normalize_flag_aliases(Args& args);
 // Known boolean flags that take no value argument.
 inline const std::set<std::string>& boolean_flags() {
     static const std::set<std::string> s{
-        "force", "no-hook", "open", "closed", "all", "no-mcp", "no-vscode"
+        "force", "no-hook", "open", "closed", "all", "no-mcp", "no-vscode", "today"
     };
     return s;
 }
 
 // Parse argc/argv into an Args struct.
 Args parse_args(int argc, char* argv[]);
+
+// Returns an error message if a value-taking flag was given an empty or blank value
+// (e.g. `--url` as the last argument, which would otherwise store an empty URL),
+// or "" if every value is present.
+std::string empty_flag_value_error(const Args& args);
 
 // Returns an error message if any flag value or positional argument contains a line
 // break, or "" if none does. Every value is stored on a single line of the config or

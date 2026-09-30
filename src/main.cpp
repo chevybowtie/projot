@@ -151,10 +151,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const std::string line_break_error = line_break_arg_error(args);
-    if (!line_break_error.empty()) {
-        std::cerr << "error: " << line_break_error << "\n";
-        return 1;
+    for (const std::string& arg_error : {empty_flag_value_error(args), line_break_arg_error(args)}) {
+        if (!arg_error.empty()) {
+            std::cerr << "error: " << arg_error << "\n";
+            return 1;
+        }
     }
 
     // Filesystem calls can throw (permission denied, and on Windows paths that the
