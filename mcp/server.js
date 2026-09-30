@@ -327,13 +327,13 @@ function handleRequest(request) {
 
       if (name === "projot_add_todo") {
         const { text } = args;
-        execArgs("projot", ["add-todo", text]);
+        execArgs("projot", ["add-todo", "--", text]);
         return ok(`Projot work item added: "${text}"`);
       }
 
       if (name === "projot_add_note") {
         const { todo_id, text } = args;
-        execArgs("projot", ["add-note", "--todo", String(todo_id), text]);
+        execArgs("projot", ["add-note", "--todo", String(todo_id), "--", text]);
         return ok(`Note added to projot work item #${todo_id}`);
       }
 
