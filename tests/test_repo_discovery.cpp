@@ -9,6 +9,11 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#ifndef _WIN32
+#include <cerrno>
+#include <csignal>
+#include <time.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -222,5 +227,45 @@ TEST_CASE("run_process_kills_child_on_timeout") {
 
 TEST_CASE("run_process_exit_code") {
     CHECK(run_process({"sh", "-c", "exit 3"}, ChildOutput::Discard, ChildOutput::Discard).exit_code == 3);
+}
+
+// True once pid no longer exists (a killed orphan is reaped by init shortly after).
+static bool process_gone(pid_t pid) {
+    for (int i = 0; i < 100; ++i) {
+        if (kill(pid, 0) != 0 && errno == ESRCH) return true;
+        struct timespec ts{0, 10 * 1000 * 1000};
+        nanosleep(&ts, nullptr);
+    }
+    return false;
+}
+
+TEST_CASE("run_process_capture_times_out_when_child_holds_stdout") {
+    auto start = std::chrono::steady_clock::now();
+    auto r = run_process({"sh", "-c", "echo partial; sleep 30"},
+                         ChildOutput::Capture, ChildOutput::Discard, 300);
+    CHECK(r.timed_out);
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(3));
+    CHECK(r.output == "partial\n");
+}
+
+TEST_CASE("run_process_capture_times_out_when_descendant_holds_stdout") {
+    // The shell exits at once, but the background sleep inherited stdout and keeps
+    // the pipe open; reading to EOF would block for 30 s.
+    auto start = std::chrono::steady_clock::now();
+    auto r = run_process({"sh", "-c", "sleep 30 & echo $!"},
+                         ChildOutput::Capture, ChildOutput::Discard, 300);
+    CHECK(r.timed_out);
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(3));
+    // The timeout kills the whole process group, including the orphaned sleep.
+    const pid_t descendant = static_cast<pid_t>(std::atoi(r.output.c_str()));
+    REQUIRE(descendant > 0);
+    CHECK(process_gone(descendant));
+}
+
+TEST_CASE("run_process_capture_without_timeout_still_completes") {
+    auto r = run_process({"sh", "-c", "printf 'a'; printf 'b'"}, ChildOutput::Capture, ChildOutput::Discard);
+    CHECK_FALSE(r.timed_out);
+    CHECK(r.exit_code == 0);
+    CHECK(r.output == "ab");
 }
 #endif

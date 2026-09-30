@@ -57,7 +57,7 @@ Both helpers handle error checking, file I/O, and success messages. Use them for
 
 ## Critical Gotchas
 
-**No shell invocations.** Every child process (git staging, `git rev-parse`, Teams sync) goes through `run_process()` in `src/process.cpp`, which uses `fork()`+`execvp()` (`CreateProcess` on Windows) with no shell, retries `waitpid` on `EINTR`, and kills the child if a timeout expires. Do not add `std::system()`, raw `fork`/`CreateProcess` calls, or other shell-string calls; use `run_process()`. On Windows it builds the command line with `quote_windows_arg()` (`src/utils.h`).
+**No shell invocations.** Every child process (git staging, `git rev-parse`, Teams sync) goes through `run_process()` in `src/process.cpp`, which uses `fork()`+`execvp()` (`CreateProcess` on Windows) with no shell, retries `waitpid` on `EINTR`, and enforces a timeout across the whole run (including reading captured output), killing the child and everything it started (process group / job object). Do not add `std::system()`, raw `fork`/`CreateProcess` calls, or other shell-string calls; use `run_process()`. On Windows it builds the command line with `quote_windows_arg()` (`src/utils.h`).
 
 **Never pass secrets on a child's command line** — other local users can read it from the process list. `teams-sync.js` reads the sync URL from `.projot/config` for this reason.
 
