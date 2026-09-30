@@ -107,8 +107,13 @@ ParseResult parse_config(const std::string& path, Config& out) {
         if (key.empty()) continue;
 
         if (key == "config_version") {
-            try { out.config_version = std::stoi(value); }
-            catch (...) { out.config_version = 0; }
+            // Treating an unreadable version as 0 would let a newer, incompatible
+            // config (e.g. an overflowing number) slip past the version check.
+            if (value.empty() || value.size() > 9 ||
+                value.find_first_not_of("0123456789") != std::string::npos) {
+                return {false, "Invalid config_version '" + value + "' in " + path};
+            }
+            out.config_version = std::stoi(value);
         } else if (key == "app_id") {
             out.app_id = value;
         } else if (key == "rpm") {
@@ -147,6 +152,9 @@ ParseResult parse_config(const std::string& path, Config& out) {
         }
         // Unknown keys are silently ignored (future-proofing).
     }
+    // getline() also stops on a read error; a partial config must not be mistaken
+    // for the whole file, or the next write would persist the truncation.
+    if (file.bad()) return {false, "Error reading config file: " + path};
 
     // Configs written before the iTrack -> Jira rename used "itrack" as the link key.
     for (auto& k : out.links) if (k == "itrack") k = "jira";

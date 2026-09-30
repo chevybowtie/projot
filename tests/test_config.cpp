@@ -415,3 +415,24 @@ TEST_CASE("github_comma_url_survives_config_round_trip") {
     REQUIRE(reread.github.size() == 1);
     CHECK(reread.github[0] == "https://x.com/a,b");
 }
+
+// ── version and read errors ───────────────────────────────────────────────────
+
+TEST_CASE("parse_config_rejects_unreadable_version") {
+    Config cfg;
+    CHECK_FALSE(parse_config(write_temp("config_version = 99999999999\n"), cfg).ok);
+    CHECK_FALSE(parse_config(write_temp("config_version = 2abc\n"), cfg).ok);
+    CHECK_FALSE(parse_config(write_temp("config_version =\n"), cfg).ok);
+    CHECK(parse_config(write_temp("config_version = 2\n"), cfg).ok);
+}
+
+TEST_CASE("parse_config_read_error_is_not_eof") {
+#ifndef _WIN32
+    // Opening a directory succeeds on Linux, but reading it fails.
+    auto dir = std::filesystem::temp_directory_path() / "projot_cfg_is_dir";
+    std::filesystem::create_directories(dir);
+    Config cfg;
+    CHECK_FALSE(parse_config(dir.string(), cfg).ok);
+    std::filesystem::remove_all(dir);
+#endif
+}
