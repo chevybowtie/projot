@@ -35,6 +35,9 @@ node_modules/
 test_results/
 .claude/.nfs00000*
 
+# Personal Claude Code settings (permissions contain machine-specific paths)
+.claude/settings.json
+
 # Generated files
 RELEASE_NOTES.md
 # sigmap working files
