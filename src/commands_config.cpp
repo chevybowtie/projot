@@ -104,6 +104,16 @@ int cmd_new(const Args& args) {
         return 1;
     }
 
+    // rpm becomes the notes file name, so it must not be able to escape .projot/.
+    if (!is_safe_rpm(args.get("rpm"))) {
+        std::cerr << "error: --rpm must be a plain file name: letters, digits, '-', '_' "
+                     "and '.', not starting with '.'.\n";
+        return 1;
+    }
+
+    // Restored if a later step fails, so a half-created project is never left behind.
+    const Config original_config = ctx.config;
+
     ctx.config.rpm     = args.get("rpm");
     ctx.config.name    = args.get("name");
     ctx.config.jira  = args.get("jira");
@@ -157,7 +167,14 @@ int cmd_new(const Args& args) {
     if (!save.ok) { std::cerr << "error: " << save.error << "\n"; return 1; }
 
     auto render = render_to_file(projot_file_path(ctx, ctx.config.rpm + ".md"), ctx.config, carryover_todos);
-    if (!render.ok) { std::cerr << "error: " << render.error << "\n"; return 1; }
+    if (!render.ok) {
+        std::cerr << "error: " << render.error << "\n";
+        // Without its notes file the project is unusable and 'new' would refuse to
+        // retry, so put the previous config back.
+        auto restore = write_config(projot_file_path(ctx, "config"), original_config);
+        if (!restore.ok) std::cerr << "error: could not restore config: " << restore.error << "\n";
+        return 1;
+    }
 
     std::error_code ec;
     fs::remove(carryover_path, ec);
@@ -174,15 +191,15 @@ int cmd_new(const Args& args) {
 
     if (!args.has("no-hook")) {
         bool appended = false;
-        std::string hook_error;
-        if (!install_hook_impl(ctx.repo_root, appended, hook_error)) {
+        std::string hook_notice, hook_error;
+        if (!install_hook_impl(ctx.repo_root, appended, hook_notice, hook_error)) {
             std::cerr << "warning: could not install pre-commit hook: " << hook_error << "\n";
         } else if (appended) {
-            std::cout << "Note: appended projot render block to existing "
-                         ".git/hooks/pre-commit\n";
+            std::cout << "Note: added projot render block to existing pre-commit hook.\n";
         } else {
             std::cout << "Installed pre-commit hook.\n";
         }
+        if (!hook_notice.empty()) std::cout << "Note: " << hook_notice << "\n";
     }
 
     return 0;
@@ -359,6 +376,12 @@ int cmd_add_azure(const Args& args) {
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
+
+    // '|' separates the name from the URL in the stored entry.
+    if (args.get("name").find('|') != std::string::npos) {
+        std::cerr << "error: --name must not contain '|'.\n";
+        return 1;
+    }
 
     const AzureEntry entry{args.get("name"), args.get("url")};
     const std::string raw = format_azure_entry(entry);

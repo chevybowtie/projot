@@ -16,14 +16,28 @@ std::string trim(const std::string& s) {
     return s.substr(front, back - front + 1);
 }
 
+// List items are separated by ',' and may contain "\," (a literal comma, e.g. in a
+// URL) or "\\" (a literal backslash). A backslash before anything else is kept as is,
+// so values written before escaping existed read back unchanged.
 std::vector<std::string> split_list(const std::string& value) {
     std::vector<std::string> result;
-    std::istringstream ss(value);
     std::string token;
-    while (std::getline(ss, token, ',')) {
+    auto flush = [&] {
         auto t = trim(token);
         if (!t.empty()) result.push_back(t);
+        token.clear();
+    };
+    for (std::size_t i = 0; i < value.size(); ++i) {
+        const char c = value[i];
+        if (c == '\\' && i + 1 < value.size() && (value[i + 1] == ',' || value[i + 1] == '\\')) {
+            token += value[++i];
+        } else if (c == ',') {
+            flush();
+        } else {
+            token += c;
+        }
     }
+    flush();
     return result;
 }
 
@@ -31,7 +45,10 @@ std::string join_list(const std::vector<std::string>& items) {
     std::string result;
     for (std::size_t i = 0; i < items.size(); ++i) {
         if (i > 0) result += ", ";
-        result += items[i];
+        for (char c : items[i]) {
+            if (c == ',' || c == '\\') result += '\\';
+            result += c;
+        }
     }
     return result;
 }
@@ -47,7 +64,9 @@ AzureEntry parse_azure_entry(const std::string& s) {
 }
 
 std::string format_azure_entry(const AzureEntry& e) {
-    if (e.name.empty()) return e.url;
+    // A bare URL containing '|' would parse back with its head as the name, so mark
+    // the name as explicitly empty.
+    if (e.name.empty()) return e.url.find('|') == std::string::npos ? e.url : "|" + e.url;
     return e.name + "|" + e.url;
 }
 
@@ -204,6 +223,11 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     file << "# --- Repo-level fields (set by `init`) ---\n";
     file << "\n";
     file << "app_id = " << cfg.app_id << "\n";
+    // Repo-level overrides of the global base URLs (read by the MCP server).
+    if (!cfg.rpm_base_url.empty())
+        file << "rpm_base_url = " << cfg.rpm_base_url << "\n";
+    if (!cfg.jira_base_url.empty())
+        file << "jira_base_url = " << cfg.jira_base_url << "\n";
 
     auto write_list = [&](const std::string& key, const std::vector<std::string>& items) {
         file << key << " = " << join_list(deduplicate(items)) << "\n";

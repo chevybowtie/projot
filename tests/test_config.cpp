@@ -390,3 +390,28 @@ TEST_CASE("write_config_through_symlink_keeps_link") {
     fs::remove_all(dir, ec);
 #endif
 }
+
+// ── list escaping ─────────────────────────────────────────────────────────────
+
+TEST_CASE("list_with_comma_in_url_round_trips") {
+    const std::vector<std::string> items{"https://x.com/a,b", "https://y.com/c\\d", "plain"};
+    CHECK(split_list(join_list(items)) == items);
+}
+
+TEST_CASE("list_legacy_backslash_reads_unchanged") {
+    // Written before escaping existed: a backslash not before ',' or '\' is literal.
+    auto items = split_list("https://x/a\\b, second");
+    REQUIRE(items.size() == 2);
+    CHECK(items[0] == "https://x/a\\b");
+}
+
+TEST_CASE("github_comma_url_survives_config_round_trip") {
+    auto path = write_temp("");
+    Config cfg;
+    cfg.github = {"https://x.com/a,b"};
+    REQUIRE(write_config(path, cfg).ok);
+    Config reread;
+    REQUIRE(parse_config(path, reread).ok);
+    REQUIRE(reread.github.size() == 1);
+    CHECK(reread.github[0] == "https://x.com/a,b");
+}
