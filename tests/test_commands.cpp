@@ -868,21 +868,91 @@ TEST_CASE("add_todo_fails_if_notes_file_deleted") {
 
 // ── render ────────────────────────────────────────────────────────────────────
 
+static std::string read_all(const fs::path& p) {
+    std::ifstream f(p);
+    return std::string((std::istreambuf_iterator<char>(f)), {});
+}
+
 TEST_CASE("render_updates_file") {
     TempRepo repo("render_updates_file");
     repo.init(); repo.new_project("18");
     cmd_add_todo(make_args("add-todo", {}, "Render me"));
-    // Manually corrupt the notes file
-    {
-        std::ofstream f((repo.path / ".projot" / "18.md").string());
-        f << "corrupted content\n";
-    }
-    // render should rewrite from config + todo state
     CHECK(cmd_render(make_args("render")) == 0);
     Project proj;
     auto r = parse_markdown((repo.path / ".projot" / "18.md").string(), proj);
     CHECK(r.ok);
     CHECK(proj.name == "Test Project");
+    REQUIRE(proj.todos.size() == 1);
+    CHECK(proj.todos[0].text == "Render me");
+}
+
+TEST_CASE("render_refuses_notes_without_todos_heading") {
+    TempRepo repo("render_refuses_no_heading");
+    repo.init(); repo.new_project("18");
+    fs::path notes = repo.path / ".projot" / "18.md";
+    { std::ofstream f(notes); f << "corrupted content\n1. [ ] a todo the parser cannot place\n"; }
+    const std::string before = read_all(notes);
+    CHECK(cmd_render(make_args("render")) != 0);
+    CHECK(read_all(notes) == before);
+}
+
+TEST_CASE("render_refuses_to_drop_hand_edited_todos") {
+    TempRepo repo("render_refuses_hand_edits");
+    repo.init(); repo.new_project("18");
+    cmd_add_todo(make_args("add-todo", {}, "First"));
+    fs::path notes = repo.path / ".projot" / "18.md";
+    { std::ofstream f(notes, std::ios::app); f << "Free-form paragraph I wrote\n"; }
+    const std::string before = read_all(notes);
+
+    CHECK(cmd_render(make_args("render")) != 0);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "Second")) != 0);
+    CHECK(read_all(notes) == before);
+}
+
+TEST_CASE("config_command_skips_rerender_of_unreadable_notes") {
+    TempRepo repo("config_cmd_skips_rerender");
+    repo.init(); repo.new_project("18");
+    fs::path notes = repo.path / ".projot" / "18.md";
+    { std::ofstream f(notes, std::ios::app); f << "    - over-indented note\n"; }
+    const std::string before = read_all(notes);
+    // The config change itself succeeds; only the notes re-render is skipped.
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "wiki"}, {"url", "https://w"}})) == 0);
+    CHECK(read_all(notes) == before);
+}
+
+TEST_CASE("new_with_unreadable_carryover_configures_nothing") {
+    TempRepo repo("new_bad_carryover");
+    repo.init();
+    { std::ofstream f(repo.path / ".projot" / CARRYOVER_TODOS_FILE); f << "## Todos\n\n1) [ ] odd\n"; }
+    CHECK(repo.new_project("18") != 0);
+    Config cfg;
+    REQUIRE(parse_config((repo.path / ".projot" / "config").string(), cfg).ok);
+    CHECK(cfg.rpm.empty());
+    CHECK(fs::exists(repo.path / ".projot" / CARRYOVER_TODOS_FILE));
+}
+
+TEST_CASE("set_link_rejects_key_that_would_split") {
+    TempRepo repo("set_link_bad_key");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "a,b"}, {"url", "u"}})) != 0);
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "a=b"}, {"url", "u"}})) != 0);
+    CHECK(cmd_set_link(make_args("set-link", {{"key", "a b"}, {"url", "u"}})) != 0);
+}
+
+TEST_CASE("line_break_arg_error_detects_injection") {
+    CHECK(line_break_arg_error(make_args("add-todo", {}, "plain")).empty());
+    CHECK(!line_break_arg_error(make_args("add-todo", {}, "real\n2. [x] phantom")).empty());
+    CHECK(!line_break_arg_error(make_args("set-link", {{"key", "k"}, {"url", "u\nrpm = x"}})).empty());
+    CHECK(!line_break_arg_error(make_args("new", {{"name", "a\rb"}})).empty());
+}
+
+TEST_CASE("todo_with_line_break_is_not_written") {
+    TempRepo repo("todo_line_break");
+    repo.init(); repo.new_project("18");
+    fs::path notes = repo.path / ".projot" / "18.md";
+    const std::string before = read_all(notes);
+    CHECK(cmd_add_todo(make_args("add-todo", {}, "real\n\n2. [x] phantom")) != 0);
+    CHECK(read_all(notes) == before);
 }
 
 TEST_CASE("version_flag") {
