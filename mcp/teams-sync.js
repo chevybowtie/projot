@@ -13,7 +13,9 @@ import { URL } from "url";
 // ── config reader ─────────────────────────────────────────────────────────────
 
 function readConfigValue(text, key) {
-  const m = text.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, "m"));
+  // [ \t]* rather than \s*: \s also matches newlines, so an empty value would
+  // otherwise capture the whole next line.
+  const m = text.match(new RegExp(`^${key}[ \\t]*=[ \\t]*(.*)$`, "m"));
   return m ? m[1].trim() : "";
 }
 
@@ -181,9 +183,11 @@ function postJson(webhookUrl, body) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 async function main(argv = process.argv.slice(2)) {
-  const [configPath, notesPath, webhookUrl] = argv;
-  if (!configPath || !notesPath || !webhookUrl) {
-    process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> <sync_url>\n");
+  // The sync URL is normally read from the config, since command-line arguments are
+  // visible to other local users; an explicit third argument is still accepted.
+  const [configPath, notesPath, urlArg] = argv;
+  if (!configPath || !notesPath) {
+    process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> [sync_url]\n");
     return;
   }
 
@@ -193,6 +197,14 @@ async function main(argv = process.argv.slice(2)) {
     notesText  = fs.readFileSync(notesPath,  "utf8");
   } catch (e) {
     process.stderr.write(`teams-sync: warning: cannot read files: ${e.message}\n`);
+    return;
+  }
+
+  const webhookUrl = urlArg
+    || readConfigValue(configText, "teams_sync_url")
+    || readConfigValue(configText, "teams_webhook");
+  if (!webhookUrl) {
+    process.stderr.write("teams-sync: warning: no teams_sync_url in config; skipping\n");
     return;
   }
 
