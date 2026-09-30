@@ -5,6 +5,70 @@
 #include <algorithm>
 #include <ctime>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
+
+// True if s contains a CR or LF. Every stored value lives on one line of the config
+// or notes file, where a line break would start a new key or a new todo.
+inline bool has_line_break(const std::string& s) {
+    return s.find_first_of("\r\n") != std::string::npos;
+}
+
+// Replace target's contents by writing a sibling temp file and renaming it over the
+// target, so an interrupted write (crash, kill, full disk) leaves either the old file
+// or the new one, never a truncated one. Returns false and sets error on failure.
+inline bool atomic_write_file(const std::filesystem::path& target,
+                              const std::string& content,
+                              std::string& error) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+
+    // Write through a symlink instead of replacing the link with a regular file.
+    fs::path dest = target;
+    if (fs::is_symlink(target, ec)) {
+        dest = fs::canonical(target, ec);
+        if (ec) { error = "cannot resolve symlink " + target.string() + ": " + ec.message(); return false; }
+    }
+
+    const bool dest_exists = fs::exists(dest, ec);
+    if (dest_exists) {
+        // rename() would replace a file the user made read-only; a truncating write
+        // would have failed, so keep that behaviour. Opening for append changes nothing.
+        std::ofstream probe(dest, std::ios::app);
+        if (!probe.is_open()) { error = "cannot write " + dest.string(); return false; }
+    }
+
+    fs::path tmp = dest;
+    tmp += ".projot-tmp";
+    {
+        std::ofstream f(tmp, std::ios::out | std::ios::trunc);
+        if (!f.is_open()) { error = "cannot write " + tmp.string(); return false; }
+        f << content;
+        f.flush();
+        const bool written = f.good();
+        f.close();
+        if (!written || f.fail()) {
+            fs::remove(tmp, ec);
+            error = "write error to " + tmp.string();
+            return false;
+        }
+    }
+
+    // Carry the original's mode (e.g. an executable hook) over to the replacement.
+    if (dest_exists) {
+        const auto perms = fs::status(dest, ec).permissions();
+        if (!ec) fs::permissions(tmp, perms, fs::perm_options::replace, ec);
+    }
+
+    fs::rename(tmp, dest, ec);
+    if (ec) {
+        error = "cannot replace " + dest.string() + ": " + ec.message();
+        std::error_code ignored;
+        fs::remove(tmp, ignored);
+        return false;
+    }
+    return true;
+}
 
 // Returns today's date as YYYY-MM-DD.
 inline std::string date_today() {
