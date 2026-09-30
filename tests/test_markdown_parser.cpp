@@ -229,3 +229,73 @@ TEST_CASE("parse_backward_compat_open_closed_only") {
     CHECK(proj.todos[1].status == TodoStatus::Done);
     CHECK(proj.todos[1].completed_date == "2025-01-05");
 }
+
+// ── Lines the renderer would drop ─────────────────────────────────────────────
+
+static const std::string kTodosPrefix =
+    "# Project: P\n- RPM: 1\n- Jira: N/A\n- App ID: N/A\n- Created: 2025-01-01\n\n"
+    "## Links\n\n"
+    "## Todos\n\n";
+
+TEST_CASE("parse_rendered_file_has_nothing_unparsed") {
+    Project proj;
+    parse_markdown(PROJOT_TEST_DATA_DIR "/notes/multi_todo.md", proj);
+    CHECK(proj.has_todos_section);
+    CHECK(proj.unparsed_lines.empty());
+}
+
+TEST_CASE("parse_uppercase_x_is_done") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix + "1. [X] Done\n   - Created: 2025-01-01\n   - Notes:\n", proj);
+    REQUIRE(proj.todos.size() == 1);
+    CHECK(proj.todos[0].status == TodoStatus::Done);
+    CHECK(proj.unparsed_lines.empty());
+}
+
+TEST_CASE("parse_whitespace_stripped_empty_values") {
+    // An editor that strips trailing whitespace turns "[ ] " and "Created: " into these.
+    Project proj;
+    parse_markdown_string(kTodosPrefix + "1. [ ]\n   - Created:\n   - Notes:\n", proj);
+    REQUIRE(proj.todos.size() == 1);
+    CHECK(proj.todos[0].text.empty());
+    CHECK(proj.todos[0].created_date.empty());
+    CHECK(proj.unparsed_lines.empty());
+}
+
+TEST_CASE("parse_unreadable_header_does_not_merge_into_previous_todo") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix +
+        "1. [ ] First\n   - Created: 2025-01-01\n   - Notes:\n     - mine\n\n"
+        "2. [?] Second\n   - Created: 2025-02-02\n   - Notes:\n     - theirs\n", proj);
+    REQUIRE(proj.todos.size() == 1);
+    CHECK(proj.todos[0].created_date == "2025-01-01");
+    REQUIRE(proj.todos[0].notes.size() == 1);
+    CHECK(proj.todos[0].notes[0] == "mine");
+    REQUIRE(proj.unparsed_lines.size() == 4);
+    CHECK(proj.unparsed_lines[0].first == 16);
+    CHECK(proj.unparsed_lines[0].second == "2. [?] Second");
+}
+
+TEST_CASE("parse_records_free_text_and_headings_after_todos") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix +
+        "1. [ ] First\n   - Created: 2025-01-01\n   - Notes:\n"
+        "   A paragraph I wrote\n\n## My section\n", proj);
+    REQUIRE(proj.todos.size() == 1);
+    REQUIRE(proj.unparsed_lines.size() == 2);
+    CHECK(proj.unparsed_lines[0].second == "   A paragraph I wrote");
+    CHECK(proj.unparsed_lines[1].second == "## My section");
+}
+
+TEST_CASE("parse_rejects_non_numeric_id_prefix") {
+    Project proj;
+    parse_markdown_string(kTodosPrefix + "1a. [ ] Odd\n", proj);
+    CHECK(proj.todos.empty());
+    CHECK(proj.unparsed_lines.size() == 1);
+}
+
+TEST_CASE("parse_missing_todos_heading") {
+    Project proj;
+    parse_markdown_string("# Project: P\n- RPM: 1\n\n1. [ ] Orphan\n", proj);
+    CHECK(!proj.has_todos_section);
+}

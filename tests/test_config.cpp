@@ -337,3 +337,56 @@ TEST_CASE("parse_legacy_itrack_keys") {
     CHECK(cfg.link_urls["jira"] == "https://j.example.com/555");
     CHECK(cfg.link_urls.count("itrack") == 0);
 }
+
+// ── Values that would not round-trip ──────────────────────────────────────────
+
+TEST_CASE("write_config_refuses_line_break_and_keeps_file") {
+    auto path = write_temp("config_version = 2\nrpm = 1\n");
+    Config cfg;
+    REQUIRE(parse_config(path, cfg).ok);
+    cfg.link_urls["x"] = "u\nrpm = HIJACK";
+    CHECK(!write_config(path, cfg).ok);
+    Config reread;
+    REQUIRE(parse_config(path, reread).ok);
+    CHECK(reread.rpm == "1");
+}
+
+TEST_CASE("write_config_refuses_link_key_with_comma") {
+    Config cfg;
+    cfg.links = {"a,b"};
+    CHECK(!invalid_config_value(cfg).empty());
+    cfg.links = {"ok"};
+    cfg.labels["ok"] = "Label";
+    CHECK(invalid_config_value(cfg).empty());
+}
+
+TEST_CASE("write_config_leaves_no_temp_file") {
+    auto path = write_temp("");
+    Config cfg;
+    cfg.rpm = "7";
+    REQUIRE(write_config(path, cfg).ok);
+    CHECK(!std::filesystem::exists(path + ".projot-tmp"));
+    Config reread;
+    REQUIRE(parse_config(path, reread).ok);
+    CHECK(reread.rpm == "7");
+}
+
+TEST_CASE("write_config_through_symlink_keeps_link") {
+#ifndef _WIN32
+    namespace fs = std::filesystem;
+    fs::path dir = fs::temp_directory_path() / "projot_cfg_symlink";
+    std::error_code ec;
+    fs::remove_all(dir, ec);
+    fs::create_directories(dir);
+    { std::ofstream f(dir / "real"); f << "rpm = 1\n"; }
+    fs::create_symlink(dir / "real", dir / "link");
+    Config cfg;
+    cfg.rpm = "2";
+    REQUIRE(write_config((dir / "link").string(), cfg).ok);
+    CHECK(fs::is_symlink(dir / "link"));
+    Config reread;
+    REQUIRE(parse_config((dir / "real").string(), reread).ok);
+    CHECK(reread.rpm == "2");
+    fs::remove_all(dir, ec);
+#endif
+}
