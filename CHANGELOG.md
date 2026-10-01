@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.1.25-beta] - 2026-09-30
+
+### DOCUMENTATION
+
+- Update CHANGELOG.md for 0.1.24
+- Clarify worktree hazard instructions in CLAUDE.md
+
+### FEATURES
+
+- Add 'add' as primary command for appending todos ([#69b495c](https://github.com/chevybowtie/projot/commit/69b495c678979afb879979b7195d3ca03b953ebb))
+
 ## [v0.1.24] - 2026-09-30
 
 ### BUG FIXES
