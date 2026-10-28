@@ -386,7 +386,9 @@ test("teams_sync: Power Automate URL gets workflow body with kanban data", (asse
   assert("source is projot", body.source === "projot");
   assert("kanban present", !!body.kanban);
   assert("todo bucket kept", body.kanban && body.kanban.todo.length === 1);
-  assert("no legacy attachments", body.attachments === undefined);
+  assert("message type for default flow", body.type === "message");
+  assert("attachments present", Array.isArray(body.attachments) && body.attachments.length === 1);
+  assert("attachment is adaptive card", body.attachments[0].content.type === "AdaptiveCard");
 });
 
 test("teams_sync: legacy URL gets message/attachments body", (assert) => {
