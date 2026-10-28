@@ -10,6 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 
 import { join } from "path";
 import { tmpdir, platform } from "os";
 import { fileURLToPath } from "url";
+import { buildSyncBody, isLegacyTeamsWebhook, parseTodos } from "./teams-sync.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SERVER = join(__dirname, "server.js");
@@ -359,6 +360,45 @@ test("initialize: no protocolVersion defaults to supported version", (assert) =>
   assert("no error", !resp.error);
   assert("protocolVersion defaults to latest", resp.result && resp.result.protocolVersion === "2025-11-25");
   assert("tools capability declared", resp.result && resp.result.capabilities && "tools" in resp.result.capabilities);
+});
+
+// ── Teams sync endpoint routing (#50) ──────────────────────────────────────
+
+console.log("\nTeams sync endpoint tests\n");
+
+// Power Automate / Workflows URLs carry SAS auth in the query string. They must
+// be treated as generic endpoints (workflow body), never as legacy connectors,
+// and the body must not add any auth field of its own.
+const PA_URL = "https://prod-00.westus.logic.azure.com:443/workflows/abc/triggers/manual/paths/invoke?api-version=2016-06-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=XYZ";
+const LEGACY_URL = "https://outlook.office.com/webhookb2/abc@def/IncomingWebhook/ghi/jkl";
+const SAMPLE_TODOS = parseTodos("1. [ ] first\n2. [x] second\n");
+
+test("teams_sync: Power Automate URL is not treated as a legacy webhook", (assert) => {
+  assert("not legacy", isLegacyTeamsWebhook(PA_URL) === false);
+});
+
+test("teams_sync: legacy Teams webhook URL is still detected", (assert) => {
+  assert("legacy", isLegacyTeamsWebhook(LEGACY_URL) === true);
+});
+
+test("teams_sync: Power Automate URL gets workflow body with kanban data", (assert) => {
+  const body = buildSyncBody(PA_URL, "Demo", "123", SAMPLE_TODOS);
+  assert("source is projot", body.source === "projot");
+  assert("kanban present", !!body.kanban);
+  assert("todo bucket kept", body.kanban && body.kanban.todo.length === 1);
+  assert("no legacy attachments", body.attachments === undefined);
+});
+
+test("teams_sync: legacy URL gets message/attachments body", (assert) => {
+  const body = buildSyncBody(LEGACY_URL, "Demo", "123", SAMPLE_TODOS);
+  assert("type message", body.type === "message");
+  assert("attachments present", Array.isArray(body.attachments));
+});
+
+test("teams_sync: request body carries no auth field", (assert) => {
+  const json = JSON.stringify(buildSyncBody(PA_URL, "Demo", "123", SAMPLE_TODOS)).toLowerCase();
+  assert("no authorization key", !json.includes("authorization"));
+  assert("no sig key", !json.includes('"sig"'));
 });
 
 // ── Summary ────────────────────────────────────────────────────────────────
