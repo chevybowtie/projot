@@ -244,8 +244,9 @@ projot set-teams-webhook https://prod-00.westus.logic.azure.com:443/workflows/..
 
 If you are creating the project for the first time, you can also pass the same URL to `projot new --teams-sync-url ...`.
 
-For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly. For other endpoint URLs, `projot` posts a generic JSON payload with these fields so your flow can decide how to render it:
+For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly. For other endpoint URLs, `projot` posts the same `type` and `attachments` shape (so the default Teams webhook flow works unchanged), plus these generic fields so a custom flow can decide how to render it:
 
+- `type` (always `message`) and `attachments[0].content` (the Adaptive Card)
 - `projectName`
 - `rpm`
 - `summary`

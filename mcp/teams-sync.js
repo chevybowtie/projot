@@ -108,8 +108,18 @@ function renderSummary(projectName, rpm, buckets) {
   return lines.join("\n").trim();
 }
 
+// Non-legacy endpoints get the generic fields for custom flows, plus the same
+// message/attachments shape the legacy webhook uses, so the default Teams
+// webhook flow can post the card without any edits.
 function buildWorkflowBody(projectName, rpm, buckets, card) {
   return {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: card,
+      },
+    ],
     source: "projot",
     version: 1,
     projectName,
