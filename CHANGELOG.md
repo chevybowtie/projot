@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.1.28] - 2026-10-29
+
+### DOCUMENTATION
+
+- Update CHANGELOG.md for 0.1.27
+
+### FEATURES
+
+- Post daily summary to Teams and add post toggles ([#f2d7d62](https://github.com/chevybowtie/projot/commit/f2d7d629353b609b187fec45640c1dab562f3acc))
+- Improve tab completion
+- Add tests for teams post toggles and update config writing logic
+- Add tests for shell completions and update project configuration
+- Add unit tests for Teams post functionality
+- Update project version to 0.1.28
+- Refactor check_script function to avoid structured bindings for compatibility
+- Normalize line endings in read_text function for cross-platform compatibility
+
 ## [v0.1.27] - 2026-10-29
 
 ### BUG FIXES
