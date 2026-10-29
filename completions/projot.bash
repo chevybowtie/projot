@@ -17,7 +17,7 @@ _projot() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     words=("${COMP_WORDS[@]}")
 
-    local subcommands="init new close add-todo list links complete status summarize add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook uninstall-hook install-mcp-server uninstall-mcp-server set-global set-teams-webhook"
+    local subcommands="init new close add add-todo list links complete status summarize add-note set-link set-app-id add-github add-swagger add-blizzard add-azure render install-hook uninstall-hook install-mcp-server uninstall-mcp-server set-global set-teams-webhook set-teams-post"
 
     # First word after projot — complete subcommands
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -34,12 +34,12 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--app-id --github --swagger --blizzard --help" -- "${cur}") )
                 ;;
             new)
-                COMPREPLY=( $(compgen -W "--rpm --name --jira --teams --teams-webhook --rpm-url --jira-url --other --no-hook --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--rpm --name --jira --teams --teams-sync-url --teams-webhook --rpm-url --jira-url --other --no-hook --help" -- "${cur}") )
                 ;;
             close)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
-            add-todo)
+            add|add-todo)
                 COMPREPLY=( $(compgen -W "--help" -- "${cur}") )
                 ;;
             list)
@@ -78,6 +78,9 @@ _projot() {
             set-global)
                 COMPREPLY=( $(compgen -W "--rpm-base-url --jira-base-url --help" -- "${cur}") )
                 ;;
+            set-teams-post)
+                COMPREPLY=( $(compgen -W "--render --summarize --help" -- "${cur}") )
+                ;;
         esac
         return
     fi
@@ -93,6 +96,12 @@ _projot() {
         --key)
             COMPREPLY=( $(compgen -W "teams jira rpm other" -- "${cur}") )
             return
+            ;;
+        --render|--summarize)
+            if [[ "${subcmd}" == "set-teams-post" ]]; then
+                COMPREPLY=( $(compgen -W "on off" -- "${cur}") )
+                return
+            fi
             ;;
     esac
 

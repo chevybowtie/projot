@@ -4,18 +4,20 @@
 # Or install via projot's installer
 
 $projotSubcommands = @(
-    'init', 'new', 'close', 'add-todo', 'list', 'complete', 'status', 'summarize', 'add-note',
+    'init', 'new', 'close', 'add', 'add-todo', 'list', 'links', 'complete', 'status', 'summarize', 'add-note',
     'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
     'add-azure', 'render', 'install-hook', 'uninstall-hook',
-    'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook'
+    'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook', 'set-teams-post'
 )
 
 $projotFlags = @{
     'init'                 = @('--app-id', '--github', '--swagger', '--blizzard', '--help')
-    'new'                  = @('--rpm', '--name', '--jira', '--teams', '--teams-webhook', '--rpm-url', '--jira-url', '--other', '--no-hook', '--help')
+    'new'                  = @('--rpm', '--name', '--jira', '--teams', '--teams-sync-url', '--teams-webhook', '--rpm-url', '--jira-url', '--other', '--no-hook', '--help')
     'close'                = @('--help')
+    'add'                  = @('--help')
     'add-todo'             = @('--help')
     'list'                 = @('--open', '--closed', '--all', '--help')
+    'links'                = @('--help')
     'complete'             = @('--todo', '--help')
     'status'               = @('--todo', '--help')
     'summarize'            = @('--today', '--help')
@@ -33,17 +35,45 @@ $projotFlags = @{
     'uninstall-mcp-server' = @('--no-vscode', '--help')
     'set-global'           = @('--rpm-base-url', '--jira-base-url', '--help')
     'set-teams-webhook'    = @('--help')
+    'set-teams-post'       = @('--render', '--summarize', '--help')
 }
 
 $projotFlagValues = @{
     '--key'   = @('teams', 'jira', 'rpm', 'other')
     '--type'  = @('subscription', 'key-vault', 'resource-group', 'aks', 'log-analytics', 'storage', 'private-dns')
+    '--render'    = @('on', 'off')
+    '--summarize' = @('on', 'off')
     '--open'  = @()
     '--closed'= @()
     '--all'   = @()
     '--no-hook' = @()
     '--no-vscode' = @()
     '--force' = @()
+}
+
+# Emit open todo IDs from the current project (mirrors the other shells' helpers)
+function Get-ProjotOpenTodoIds {
+    $root = git rev-parse --show-toplevel 2>$null
+    if (-not $root) { return }
+    $config = Join-Path $root '.projot/config'
+    if (-not (Test-Path $config)) { return }
+    $rpmLine = Select-String -Path $config -Pattern '^rpm\s*=' | Select-Object -First 1
+    if (-not $rpmLine) { return }
+    $rpm = ($rpmLine.Line -replace '^rpm\s*=\s*', '').Trim()
+    $notes = Join-Path $root ".projot/$rpm.md"
+    if (-not (Test-Path $notes)) { return }
+    Select-String -Path $notes -Pattern '^(\d+)\. \[ \]' | ForEach-Object { $_.Matches[0].Groups[1].Value }
+}
+
+# Tooltips shown next to flag values (the other shells show these as descriptions)
+$projotValueTooltips = @{
+    'subscription'   = 'Subscriptions'
+    'key-vault'      = 'Key Vaults'
+    'resource-group' = 'Resource Groups'
+    'aks'            = 'AKS Clusters'
+    'log-analytics'  = 'Log Analytics'
+    'storage'        = 'Storage Containers'
+    'private-dns'    = 'Private DNS Zones'
 }
 
 Register-ArgumentCompleter -CommandName projot -ScriptBlock {
@@ -97,9 +127,19 @@ Register-ArgumentCompleter -CommandName projot -ScriptBlock {
     }
 
     # Determine if we're completing a flag value
+    # An empty word is not part of the AST, so the flag is then the last element
     $previousElement = $null
-    if ($elements.Count -ge 2) {
+    if ($word -eq '' -and $elements.Count -ge 1) {
+        $previousElement = $elements[-1].Value
+    } elseif ($elements.Count -ge 2) {
         $previousElement = $elements[-2].Value
+    }
+
+    if ($previousElement -eq '--todo') {
+        Get-ProjotOpenTodoIds | Where-Object { $_ -like "$word*" } | ForEach-Object {
+            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+        }
+        return
     }
 
     if ($projotFlagValues.ContainsKey($previousElement)) {
@@ -107,7 +147,8 @@ Register-ArgumentCompleter -CommandName projot -ScriptBlock {
         if ($values.Count -gt 0) {
             $completions = $values | Where-Object { $_ -like "$word*" }
             $completions | ForEach-Object {
-                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                $tip = if ($projotValueTooltips.ContainsKey($_)) { $projotValueTooltips[$_] } else { $_ }
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $tip)
             }
         }
         return
