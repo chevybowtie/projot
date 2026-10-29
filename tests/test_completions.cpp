@@ -246,14 +246,20 @@ void check_script(const std::string& label, const Parsed& parsed) {
     CHECK_MESSAGE(diff_sets(commands, parsed.listed).empty(),
                   label << " command list:" << diff_sets(commands, parsed.listed));
 
-    for (const auto& [cmd, expected] : truth) {
+    // Plain variables, not structured bindings: the CHECK macros capture them in a
+    // lambda, which is C++20 for bindings and fails under clang -Werror.
+    for (const auto& entry : truth) {
+        const std::string& cmd = entry.first;
+        const std::set<std::string>& expected = entry.second;
         auto it = parsed.flags.find(cmd);
         std::set<std::string> actual = it == parsed.flags.end() ? std::set<std::string>{} : it->second;
         CHECK_MESSAGE(diff_sets(expected, actual).empty(),
                       label << " flags for '" << cmd << "':" << diff_sets(expected, actual));
     }
-    for (const auto& [cmd, _] : parsed.flags)
+    for (const auto& entry : parsed.flags) {
+        const std::string& cmd = entry.first;
         CHECK_MESSAGE(truth.count(cmd), label << " has flags for unknown command '" << cmd << "'");
+    }
 }
 
 }  // namespace
