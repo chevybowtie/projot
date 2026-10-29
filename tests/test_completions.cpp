@@ -34,7 +34,17 @@ std::string read_text(const std::string& rel) {
     REQUIRE_MESSAGE(f.good(), "cannot open " << rel);
     std::stringstream ss;
     ss << f.rdbuf();
-    return ss.str();
+    std::string text = ss.str();
+
+    // A Windows checkout may convert the scripts to CRLF. Normalise so the parsers can
+    // rely on "\n", notably when joining fish's backslash-continued lines.
+    std::string out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == '\r' && i + 1 < text.size() && text[i + 1] == '\n') continue;
+        out += text[i];
+    }
+    return out;
 }
 
 std::string trim(const std::string& s) {
