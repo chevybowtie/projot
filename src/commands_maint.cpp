@@ -241,6 +241,11 @@ int cmd_render(const Args& args) {
     if (!ctx.config.teams_sync_url.empty() && ctx.config.teams_post_render) {
         run_teams_sync(ctx, {});
     }
+    // Independent of the post toggles: the page is a different endpoint and is
+    // switched on by setting (or off by clearing) its own URL.
+    if (!ctx.config.teams_page_url.empty()) {
+        run_teams_sync(ctx, {"--status"});
+    }
 
     return 0;
 }

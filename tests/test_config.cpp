@@ -127,6 +127,18 @@ TEST_CASE("parse_label_dotted_key") {
     CHECK(cfg.labels["teams"] == "My Teams");
 }
 
+TEST_CASE("teams_page_url_round_trips_through_write_and_parse") {
+    auto path = write_temp("rpm = 1\nname = X\nteams_page_url = https://flow.example.com/page\n");
+    Config cfg;
+    REQUIRE(parse_config(path, cfg).ok);
+    CHECK(cfg.teams_page_url == "https://flow.example.com/page");
+
+    REQUIRE(write_config(path, cfg).ok);
+    Config again;
+    REQUIRE(parse_config(path, again).ok);
+    CHECK(again.teams_page_url == "https://flow.example.com/page");
+}
+
 TEST_CASE("parse_teams_sync_url_key") {
     auto path = write_temp("teams_sync_url = https://flow.example.com/invoke\n");
     Config cfg;

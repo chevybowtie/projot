@@ -49,6 +49,7 @@ _projot() {
                 'uninstall-mcp-server:remove MCP server configuration'
                 'set-global:set global defaults'
                 'set-teams-webhook:set the Teams incoming webhook URL'
+                'set-teams-page:set the Teams status page endpoint URL'
                 'set-teams-post:turn Teams posting on/off for render and summarize'
             )
             _describe 'subcommand' subcommands
@@ -163,6 +164,12 @@ _projot() {
                 set-teams-webhook)
                     _arguments \
                         '1:webhook URL:' \
+                        '--help[show help]'
+                    ;;
+                set-teams-page)
+                    _arguments \
+                        '1:page URL:' \
+                        '--clear[stop sending status page updates]' \
                         '--help[show help]'
                     ;;
                 set-teams-post)
