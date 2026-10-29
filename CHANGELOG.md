@@ -2,16 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.1.25-beta] - 2026-09-30
+## [v0.1.27] - 2026-10-29
+
+### BUG FIXES
+
+- Send default Teams webhook flow shape to Power Automate endpoints (#50) ([#52e413f](https://github.com/chevybowtie/projot/commit/52e413f7fcd5a06e27806c66b01aee6dc007084d))
 
 ### DOCUMENTATION
 
 - Update CHANGELOG.md for 0.1.24
 - Clarify worktree hazard instructions in CLAUDE.md
+- Update CHANGELOG.md for 0.1.25-beta
 
 ### FEATURES
 
-- Add 'add' as primary command for appending todos ([#69b495c](https://github.com/chevybowtie/projot/commit/69b495c678979afb879979b7195d3ca03b953ebb))
+- Add 'add' as primary command for appending todos ([#0947147](https://github.com/chevybowtie/projot/commit/0947147b12565663c845e296e4ed130f826b4368))
+
+### TESTING
+
+- Cover Power Automate Teams sync routing (#50) ([#86b2a6d](https://github.com/chevybowtie/projot/commit/86b2a6dc544b58587b129ba333093694c2a73b5d))
 
 ## [v0.1.24] - 2026-09-30
 
