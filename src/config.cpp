@@ -132,6 +132,13 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.created = value;
         } else if (key == "teams_sync_url" || key == "teams_webhook") {
             out.teams_sync_url = value;
+        } else if (key == "teams_post_render" || key == "teams_post_summarize") {
+            if (value != "true" && value != "false") {
+                return {false, "Invalid " + key + " '" + value + "' in " + path +
+                               " (expected true or false)"};
+            }
+            (key == "teams_post_render" ? out.teams_post_render : out.teams_post_summarize) =
+                (value == "true");
         } else if (is_list_key(key)) {
             auto items = split_list(value);
             if (key == "github")                out.github                = items;
@@ -263,6 +270,8 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     }
     if (!cfg.teams_sync_url.empty()) {
         file << "teams_sync_url = " << cfg.teams_sync_url << "\n";
+        file << "teams_post_render = " << (cfg.teams_post_render ? "true" : "false") << "\n";
+        file << "teams_post_summarize = " << (cfg.teams_post_summarize ? "true" : "false") << "\n";
     }
 
     file << "\n";

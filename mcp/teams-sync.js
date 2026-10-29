@@ -24,19 +24,52 @@ function readConfigValue(text, key) {
 // Matches lines like:  "1. [ ] Todo text"  or  "3. [>] In progress"
 const TODO_RE = /^(\d+)\. \[(.)\] (.+)$/;
 
-function parseTodos(mdText) {
-  const buckets = { todo: [], inProgress: [], blocked: [], done: [] };
+// Each todo with its dates. Detail lines sit under the todo at exactly three
+// spaces; note lines are indented deeper, so they cannot be mistaken for dates.
+function parseTodoRecords(mdText) {
+  const records = [];
+  let current = null;
   for (const line of mdText.split("\n")) {
     const m = line.match(TODO_RE);
-    if (!m) continue;
-    const [, id, marker, text] = m;
-    const entry = `${id}. ${text.trim()}`;
-    if (marker === " ") buckets.todo.push(entry);
-    else if (marker === ">") buckets.inProgress.push(entry);
-    else if (marker === "~") buckets.blocked.push(entry);
-    else if (marker === "x") buckets.done.push(entry);
+    if (m) {
+      const [, id, marker, text] = m;
+      current = { id, marker, text: text.trim(), created: "", completed: "" };
+      records.push(current);
+      continue;
+    }
+    if (!current) continue;
+    const created = line.match(/^ {3}- Created: (.*)$/);
+    if (created) { current.created = created[1].trim(); continue; }
+    const completed = line.match(/^ {3}- Completed: (.*)$/);
+    if (completed) current.completed = completed[1].trim();
+  }
+  return records;
+}
+
+function bucketTodos(records) {
+  const buckets = { todo: [], inProgress: [], blocked: [], done: [] };
+  for (const r of records) {
+    const entry = `${r.id}. ${r.text}`;
+    if (r.marker === " ") buckets.todo.push(entry);
+    else if (r.marker === ">") buckets.inProgress.push(entry);
+    else if (r.marker === "~") buckets.blocked.push(entry);
+    else if (r.marker === "x") buckets.done.push(entry);
   }
   return buckets;
+}
+
+function parseTodos(mdText) {
+  return bucketTodos(parseTodoRecords(mdText));
+}
+
+// What was added and closed on `today`, plus how many todos are still open.
+function summarizeDay(records, today) {
+  const label = (r) => `${r.id}. ${r.text}`;
+  return {
+    added:  records.filter((r) => r.created === today).map(label),
+    closed: records.filter((r) => r.marker === "x" && r.completed === today).map(label),
+    open:   records.filter((r) => r.marker !== "x").length,
+  };
 }
 
 // ── adaptive card builder ─────────────────────────────────────────────────────
@@ -153,6 +186,70 @@ function buildSyncBody(syncUrl, projectName, rpm, buckets) {
     : buildWorkflowBody(projectName, rpm, buckets, card);
 }
 
+// ── daily summary ─────────────────────────────────────────────────────────────
+
+function listSection(title, items, color) {
+  const cells = [textBlock(title, { weight: "Bolder", color: color || "Default" })];
+  if (items.length === 0) {
+    cells.push(textBlock("—", { isSubtle: true, size: "Small" }));
+  } else {
+    for (const item of items) cells.push(textBlock("• " + item, { size: "Small" }));
+  }
+  return cells;
+}
+
+function buildSummaryCard(projectName, rpm, today, day) {
+  return {
+    $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+    type: "AdaptiveCard",
+    version: "1.4",
+    body: [
+      textBlock(`Daily summary: ${projectName} (RPM ${rpm}), ${today}`, { weight: "Bolder", size: "Medium" }),
+      ...listSection(`Added today (${day.added.length})`, day.added, "Default"),
+      ...listSection(`Closed today (${day.closed.length})`, day.closed, "Good"),
+      textBlock(`Open todos: ${day.open}`, { isSubtle: true, size: "Small" }),
+    ],
+  };
+}
+
+function renderDaySummary(projectName, rpm, today, day) {
+  const list = (items) => (items.length === 0 ? ["- —"] : items.map((i) => `- ${i}`));
+  return [
+    `Daily summary: ${projectName} (RPM ${rpm}), ${today}`,
+    "",
+    `Added today (${day.added.length}):`,
+    ...list(day.added),
+    "",
+    `Closed today (${day.closed.length}):`,
+    ...list(day.closed),
+    "",
+    `Open todos: ${day.open}`,
+  ].join("\n");
+}
+
+// Same message/attachments shape as the Kanban post, so the default flow posts it
+// unchanged. Non-legacy endpoints also get the generic fields, with kind "summary".
+function buildSummaryBody(syncUrl, projectName, rpm, today, records) {
+  const day = summarizeDay(records, today);
+  const card = buildSummaryCard(projectName, rpm, today, day);
+  const message = buildLegacyWebhookBody(card);
+  if (isLegacyTeamsWebhook(syncUrl)) return message;
+  return {
+    ...message,
+    source: "projot",
+    version: 1,
+    kind: "summary",
+    date: today,
+    projectName,
+    rpm,
+    summary: renderDaySummary(projectName, rpm, today, day),
+    card,
+    added: day.added,
+    closed: day.closed,
+    openCount: day.open,
+  };
+}
+
 // ── http post ─────────────────────────────────────────────────────────────────
 
 function postJson(webhookUrl, body) {
@@ -190,16 +287,28 @@ function postJson(webhookUrl, body) {
   });
 }
 
+function localIsoDate() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 async function main(argv = process.argv.slice(2)) {
   // The sync URL is normally read from the config, since command-line arguments are
   // visible to other local users; an explicit third argument is still accepted.
-  const [configPath, notesPath, urlArg] = argv;
+  // Flags (--summary, --today=DATE) come from projot itself and are kept apart from
+  // the positional arguments, so they cannot be taken for the sync URL.
+  const flags = argv.filter((a) => a.startsWith("--"));
+  const [configPath, notesPath, urlArg] = argv.filter((a) => !a.startsWith("--"));
   if (!configPath || !notesPath) {
-    process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> [sync_url]\n");
+    process.stderr.write("teams-sync: usage: node teams-sync.js <config_path> <notes_path> [sync_url] [--summary] [--today=YYYY-MM-DD]\n");
     return;
   }
+  const summaryMode = flags.includes("--summary");
+  const todayFlag = flags.find((f) => f.startsWith("--today="));
+  const today = todayFlag ? todayFlag.slice("--today=".length) : localIsoDate();
 
   let configText, notesText;
   try {
@@ -220,8 +329,9 @@ async function main(argv = process.argv.slice(2)) {
 
   const projectName = readConfigValue(configText, "name") || "Unknown project";
   const rpm         = readConfigValue(configText, "rpm")  || "?";
-  const buckets     = parseTodos(notesText);
-  const body        = buildSyncBody(webhookUrl, projectName, rpm, buckets);
+  const body = summaryMode
+    ? buildSummaryBody(webhookUrl, projectName, rpm, today, parseTodoRecords(notesText))
+    : buildSyncBody(webhookUrl, projectName, rpm, parseTodos(notesText));
 
   try {
     await postJson(webhookUrl, body);
@@ -239,9 +349,14 @@ if (isMainModule) {
 
 export {
   buildAdaptiveCard,
+  buildSummaryBody,
+  buildSummaryCard,
   buildSyncBody,
   buildWorkflowBody,
   isLegacyTeamsWebhook,
+  parseTodoRecords,
   parseTodos,
+  renderDaySummary,
   renderSummary,
+  summarizeDay,
 };

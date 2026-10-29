@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 static constexpr const char* CARRYOVER_TODOS_FILE = "carryover_todos.md";
@@ -44,6 +45,12 @@ std::string unrewritable_notes_reason(const Project& proj, const std::string& pa
 
 // Verifies that a project is configured and the notes file exists.
 bool require_project(const Context& ctx);
+
+// Posts this project's Kanban board or daily summary to the Teams sync endpoint.
+// extra_args are passed to mcp/teams-sync.js (e.g. "--summary"). Best-effort: it
+// warns on problems and never fails the calling command. The URL stays in the
+// config file, off the command line.
+void run_teams_sync(const Context& ctx, const std::vector<std::string>& extra_args);
 
 // Execute a command that modifies a project's todos and re-renders the file.
 // Takes a callback that modifies the Project and returns the result/message.

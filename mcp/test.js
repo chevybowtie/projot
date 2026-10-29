@@ -10,7 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 
 import { join } from "path";
 import { tmpdir, platform } from "os";
 import { fileURLToPath } from "url";
-import { buildSyncBody, isLegacyTeamsWebhook, parseTodos } from "./teams-sync.js";
+import { buildSyncBody, buildSummaryBody, isLegacyTeamsWebhook, parseTodos, parseTodoRecords, summarizeDay, renderDaySummary } from "./teams-sync.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SERVER = join(__dirname, "server.js");
@@ -401,6 +401,80 @@ test("teams_sync: request body carries no auth field", (assert) => {
   const json = JSON.stringify(buildSyncBody(PA_URL, "Demo", "123", SAMPLE_TODOS)).toLowerCase();
   assert("no authorization key", !json.includes("authorization"));
   assert("no sig key", !json.includes('"sig"'));
+});
+
+// ── Daily summary (summarize --today) ─────────────────────────────────────
+
+console.log("\nTeams daily summary tests\n");
+
+const NOTES = [
+  "# Test",
+  "",
+  "## Todos",
+  "",
+  "1. [x] shipped today",
+  "   - Created: 2026-10-27",
+  "   - Completed: 2026-10-28",
+  "2. [ ] added today",
+  "   - Created: 2026-10-28",
+  "   - Notes:",
+  "     - Created: 2026-01-01 (a note, not a date)",
+  "3. [>] old and open",
+  "   - Created: 2026-10-01",
+  "4. [x] closed earlier",
+  "   - Created: 2026-10-20",
+  "   - Completed: 2026-10-21",
+].join("\n");
+
+const RECORDS = parseTodoRecords(NOTES);
+const DAY = summarizeDay(RECORDS, "2026-10-28");
+
+test("summary: parseTodoRecords reads created and completed dates", (assert) => {
+  assert("four todos", RECORDS.length === 4);
+  assert("completed date kept", RECORDS[0].completed === "2026-10-28");
+  assert("created date kept", RECORDS[2].created === "2026-10-01");
+});
+
+test("summary: note lines are not mistaken for dates", (assert) => {
+  assert("note does not overwrite created", RECORDS[1].created === "2026-10-28");
+});
+
+test("summary: added today lists todos created on the day", (assert) => {
+  assert("added count", DAY.added.length === 1);
+  assert("added text", DAY.added[0] === "2. added today");
+});
+
+test("summary: closed today lists only todos completed on the day", (assert) => {
+  assert("closed count", DAY.closed.length === 1);
+  assert("closed text", DAY.closed[0] === "1. shipped today");
+});
+
+test("summary: open count excludes done todos", (assert) => {
+  assert("open count", DAY.open === 2);
+});
+
+test("summary: plain text lists the day's activity", (assert) => {
+  const text = renderDaySummary("Demo", "123", "2026-10-28", DAY);
+  assert("header has date", text.startsWith("Daily summary: Demo (RPM 123), 2026-10-28"));
+  assert("added listed", text.includes("- 2. added today"));
+  assert("closed listed", text.includes("- 1. shipped today"));
+});
+
+test("summary: Power Automate body uses the default-flow shape and kind", (assert) => {
+  const url = "https://prod-00.westus.logic.azure.com:443/workflows/abc/triggers/manual/paths/invoke?sig=XYZ";
+  const body = buildSummaryBody(url, "Demo", "123", "2026-10-28", RECORDS);
+  assert("message type", body.type === "message");
+  assert("adaptive card attachment", body.attachments[0].content.type === "AdaptiveCard");
+  assert("kind is summary", body.kind === "summary");
+  assert("date carried", body.date === "2026-10-28");
+  assert("generic summary present", typeof body.summary === "string");
+});
+
+test("summary: legacy webhook body is message-only", (assert) => {
+  const url = "https://outlook.office.com/webhookb2/abc@def/IncomingWebhook/ghi/jkl";
+  const body = buildSummaryBody(url, "Demo", "123", "2026-10-28", RECORDS);
+  assert("type message", body.type === "message");
+  assert("no generic fields", body.kind === undefined && body.summary === undefined);
 });
 
 // ── Summary ────────────────────────────────────────────────────────────────

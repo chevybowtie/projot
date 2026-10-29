@@ -482,3 +482,57 @@ int cmd_set_teams_webhook(const Args& args) {
         return ParseResult{true, ""};
     }, false, "Set teams_sync_url = " + url);
 }
+
+// set-teams-post
+
+// Parses "on"/"off" for a set-teams-post flag. Returns false on any other value.
+static bool parse_on_off(const std::string& text, bool& out) {
+    if (text == "on")  { out = true;  return true; }
+    if (text == "off") { out = false; return true; }
+    return false;
+}
+
+int cmd_set_teams_post(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-teams-post [--render on|off] [--summarize on|off]\n\n"
+            "Turn Teams posting on or off for each command. Both are on by default\n"
+            "once a Teams sync URL is set (see set-teams-webhook).\n\n"
+            "Optional:\n"
+            "  --render <on|off>      Post the Kanban board after 'projot render'\n"
+            "  --summarize <on|off>   Post the daily summary after 'projot summarize'\n\n"
+            "Example:\n"
+            "  projot set-teams-post --summarize off\n";
+        return 0;
+    }
+
+    if (!args.has("render") && !args.has("summarize")) {
+        std::cerr << "error: give --render and/or --summarize. "
+                     "Run 'projot set-teams-post --help' for usage.\n";
+        return 1;
+    }
+
+    bool render_on = true;
+    bool summarize_on = true;
+    if (args.has("render") && !parse_on_off(args.get("render"), render_on)) {
+        std::cerr << "error: --render must be 'on' or 'off'.\n";
+        return 1;
+    }
+    if (args.has("summarize") && !parse_on_off(args.get("summarize"), summarize_on)) {
+        std::cerr << "error: --summarize must be 'on' or 'off'.\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    const bool set_render = args.has("render");
+    const bool set_summarize = args.has("summarize");
+
+    return execute_config_command(ctx, [=](Context& c) {
+        if (set_render)    c.config.teams_post_render = render_on;
+        if (set_summarize) c.config.teams_post_summarize = summarize_on;
+        return ParseResult{true, ""};
+    }, false, "Updated Teams post settings.");
+}

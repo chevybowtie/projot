@@ -39,7 +39,8 @@ static void print_usage() {
         "  install-mcp-server    Configure MCP server for Claude Code and VS Code\n"
         "  uninstall-mcp-server  Remove MCP server configuration\n"
         "  set-global            Set global defaults (RPM and Jira base URLs)\n"
-        "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n\n"
+        "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n"
+        "  set-teams-post        Turn Teams posting on/off for render and summarize\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -71,6 +72,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-mcp-server",  {"no-vscode"}},
         {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
+        {"set-teams-post",      {"render", "summarize"}},
     };
     return m;
 }
@@ -116,6 +118,7 @@ int main(int argc, char* argv[]) {
         {"uninstall-mcp-server", cmd_uninstall_mcp_server},
         {"set-global",          cmd_set_global},
         {"set-teams-webhook",   cmd_set_teams_webhook},
+        {"set-teams-post",      cmd_set_teams_post},
     };
 
     auto cmd_it = commands.find(args.subcommand);
