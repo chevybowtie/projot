@@ -79,6 +79,7 @@ set(TEST_SOURCES
     tests/test_versioning.cpp
     tests/test_errors.cpp
     tests/test_completions.cpp
+    tests/test_teams_post.cpp
 )
 
 add_executable(projot_tests ${TEST_SOURCES})
