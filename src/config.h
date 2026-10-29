@@ -56,6 +56,11 @@ struct Config {
     // Teams sync endpoint URL for Kanban sync (legacy webhook or flow endpoint).
     std::string teams_sync_url;
 
+    // Whether `render` and `summarize` post to the Teams sync endpoint. Both default
+    // on, so setting a sync URL is enough; these switch off one kind of post.
+    bool teams_post_render = true;
+    bool teams_post_summarize = true;
+
     // Azure resources (project-level). Each entry is "name|url" or just "url".
     std::vector<std::string> azure_subscription;
     std::vector<std::string> azure_key_vault;
@@ -82,6 +87,8 @@ struct Config {
         azure_storage.clear();
         azure_private_dns.clear();
         teams_sync_url.clear();
+        teams_post_render = true;
+        teams_post_summarize = true;
     }
 };
 

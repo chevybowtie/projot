@@ -141,6 +141,46 @@ TEST_CASE("parse_legacy_teams_webhook_key") {
     CHECK(cfg.teams_sync_url == "https://legacy.example.com/webhook");
 }
 
+TEST_CASE("parse_teams_post_toggles") {
+    auto path = write_temp("teams_post_render = false\nteams_post_summarize = true\n");
+    Config cfg;
+    auto res = parse_config(path, cfg);
+    CHECK(res.ok);
+    CHECK(cfg.teams_post_render == false);
+    CHECK(cfg.teams_post_summarize == true);
+}
+
+TEST_CASE("parse_teams_post_defaults_on") {
+    auto path = write_temp("app_id = X\n");
+    Config cfg;
+    parse_config(path, cfg);
+    CHECK(cfg.teams_post_render == true);
+    CHECK(cfg.teams_post_summarize == true);
+}
+
+TEST_CASE("parse_teams_post_rejects_non_boolean") {
+    auto path = write_temp("teams_post_render = on\n");
+    Config cfg;
+    auto res = parse_config(path, cfg);
+    CHECK_FALSE(res.ok);
+    CHECK(res.error.find("teams_post_render") != std::string::npos);
+}
+
+TEST_CASE("write_teams_post_toggles_round_trip") {
+    Config cfg;
+    cfg.app_id = "ToggleApp";
+    cfg.teams_sync_url = "https://flow.example.com/invoke";
+    cfg.teams_post_render = true;
+    cfg.teams_post_summarize = false;
+    auto out_path = (std::filesystem::temp_directory_path() / "projot_teams_toggles.cfg").string();
+    REQUIRE(write_config(out_path, cfg).ok);
+
+    Config back;
+    REQUIRE(parse_config(out_path, back).ok);
+    CHECK(back.teams_post_render == true);
+    CHECK(back.teams_post_summarize == false);
+}
+
 TEST_CASE("parse_unknown_keys_ignored") {
     auto path = write_temp("unknown_future_key = some_value\napp_id = KnownApp\n");
     Config cfg;

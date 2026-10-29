@@ -175,7 +175,7 @@ static constexpr int TEAMS_SYNC_TIMEOUT_MS = 10000;
 
 // Teams Kanban sync — invoked best-effort after render; never blocks commits.
 
-static void invoke_teams_sync(const Context& ctx) {
+void run_teams_sync(const Context& ctx, const std::vector<std::string>& extra_args) {
     auto mcp_dir = find_mcp_source_dir();
     if (!mcp_dir) {
         std::cerr << "warning: teams-sync.js not found; skipping Teams sync\n";
@@ -200,8 +200,9 @@ static void invoke_teams_sync(const Context& ctx) {
     const std::string notes_path  = projot_file_path(ctx, ctx.config.rpm + ".md");
 
     // Bounded so a slow endpoint can't hang the commit; the child is killed on timeout.
-    auto r = run_process({"node", sync_script.string(), config_path, notes_path},
-                         ChildOutput::Discard, ChildOutput::Inherit, TEAMS_SYNC_TIMEOUT_MS);
+    std::vector<std::string> argv{"node", sync_script.string(), config_path, notes_path};
+    argv.insert(argv.end(), extra_args.begin(), extra_args.end());
+    auto r = run_process(argv, ChildOutput::Discard, ChildOutput::Inherit, TEAMS_SYNC_TIMEOUT_MS);
     if (!r.started)
         std::cerr << "warning: could not start Teams sync\n";
     else if (r.timed_out)
@@ -237,8 +238,8 @@ int cmd_render(const Args& args) {
                   << ".md; this commit will not include the refreshed notes.\n";
     }
 
-    if (!ctx.config.teams_sync_url.empty()) {
-        invoke_teams_sync(ctx);
+    if (!ctx.config.teams_sync_url.empty() && ctx.config.teams_post_render) {
+        run_teams_sync(ctx, {});
     }
 
     return 0;

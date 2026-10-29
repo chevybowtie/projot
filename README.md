@@ -76,7 +76,7 @@ projot complete --todo 1
 # Add a note to a todo
 projot add-note --todo 1 "Waiting on supervisor feedback"
 
-# Summarize today's activity (for time entry)
+# Summarize today's activity (for time entry); also posts it to Teams if a sync URL is set
 projot summarize
 ```
 
@@ -214,6 +214,7 @@ Once set, projot will post a Kanban summary to the channel on every commit.
 | `render` | Re-render the notes file from config |
 | `set-global` | Set global defaults (`--rpm-base-url`, `--jira-base-url`) |
 | `set-teams-webhook` | Set the Teams sync endpoint URL for Kanban sync |
+| `set-teams-post` | Turn Teams posting on/off for `render` and `summarize` |
 | `install-hook` | Install the pre-commit git hook |
 | `uninstall-hook` | Remove the pre-commit git hook |
 | `install-mcp-server` | Configure the MCP server in your IDE settings |
@@ -259,6 +260,20 @@ For legacy Teams webhook URLs, `projot` posts the Adaptive Card payload directly
 For Microsoft setup guidance, see the official Power Automate documentation at <https://learn.microsoft.com/power-automate/> and search for **"When an HTTP request is received"** and **"Post adaptive card in a chat or channel"**.
 
 `projot` stores the sync URL, but it does not provision Teams connectors or flows automatically.
+
+### Controlling Teams posts
+
+Once a sync URL is set, `render` posts the Kanban board and `summarize` posts the day's summary (todos added and closed today). Both are on by default. Turn either off with:
+
+```bash
+projot set-teams-post --render off
+projot set-teams-post --summarize off
+projot set-teams-post --render on --summarize on
+```
+
+These settings are stored in `.projot/config` as `teams_post_render` and `teams_post_summarize` (`true` or `false`).
+
+The summary uses the same message shape as the Kanban post, so the default Teams flow posts it unchanged. Custom flows can tell the two apart by the `kind` field: `"kanban"` is absent on Kanban posts, and `"summary"` marks summary posts.
 
 ---
 

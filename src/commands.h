@@ -71,3 +71,6 @@ int cmd_set_global(const Args& args);
 
 // Set the Teams sync endpoint URL for Kanban sync.
 int cmd_set_teams_webhook(const Args& args);
+
+// Turn Teams posting for render and summarize on or off.
+int cmd_set_teams_post(const Args& args);
