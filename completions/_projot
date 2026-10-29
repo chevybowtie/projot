@@ -28,7 +28,8 @@ _projot() {
                 'init:initialize projot for this repository'
                 'new:start a new RPM project'
                 'close:archive current project and reset'
-                'add-todo:append a new todo'
+                'add:append a new todo'
+                'add-todo:append a new todo (alias for add)'
                 'list:show project summary and todos'
                 'links:print all project URLs to the terminal'
                 'complete:mark a todo completed'
@@ -48,6 +49,7 @@ _projot() {
                 'uninstall-mcp-server:remove MCP server configuration'
                 'set-global:set global defaults'
                 'set-teams-webhook:set the Teams incoming webhook URL'
+                'set-teams-post:turn Teams posting on/off for render and summarize'
             )
             _describe 'subcommand' subcommands
             ;;
@@ -67,6 +69,7 @@ _projot() {
                         '--name[project name]:name' \
                         '--jira[Jira ticket number]:jira' \
                         '--teams[Teams channel URL]:url' \
+                        '--teams-sync-url[Teams sync endpoint URL]:url' \
                         '--teams-webhook[Teams incoming webhook URL]:url' \
                         '--rpm-url[RPM system link]:url' \
                         '--jira-url[Jira link]:url' \
@@ -77,7 +80,7 @@ _projot() {
                 close)
                     _arguments '--help[show help]'
                     ;;
-                add-todo)
+                add|add-todo)
                     _arguments \
                         '1:description:' \
                         '--help[show help]'
@@ -139,7 +142,7 @@ _projot() {
                     ;;
                 add-azure)
                     _arguments \
-                        '--type[resource type]:type:(subscription key-vault resource-group aks log-analytics storage private-dns)' \
+                        '--type[resource type]:type:((subscription\:"Subscriptions" key-vault\:"Key Vaults" resource-group\:"Resource Groups" aks\:"AKS Clusters" log-analytics\:"Log Analytics" storage\:"Storage Containers" private-dns\:"Private DNS Zones"))' \
                         '--name[resource name]:name' \
                         '--url[URL]:url' \
                         '--help[show help]'
@@ -160,6 +163,12 @@ _projot() {
                 set-teams-webhook)
                     _arguments \
                         '1:webhook URL:' \
+                        '--help[show help]'
+                    ;;
+                set-teams-post)
+                    _arguments \
+                        '--render[post the Kanban board after render]:state:(on off)' \
+                        '--summarize[post the daily summary after summarize]:state:(on off)' \
                         '--help[show help]'
                     ;;
                 set-global)
