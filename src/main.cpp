@@ -40,6 +40,7 @@ static void print_usage() {
         "  uninstall-mcp-server  Remove MCP server configuration\n"
         "  set-global            Set global defaults (RPM and Jira base URLs)\n"
         "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n"
+        "  set-teams-page        Set the Teams status page endpoint URL\n"
         "  set-teams-post        Turn Teams posting on/off for render and summarize\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
@@ -72,6 +73,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-mcp-server",  {"no-vscode"}},
         {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
+        {"set-teams-page",      {"clear"}},
         {"set-teams-post",      {"render", "summarize"}},
     };
     return m;
@@ -118,6 +120,7 @@ int main(int argc, char* argv[]) {
         {"uninstall-mcp-server", cmd_uninstall_mcp_server},
         {"set-global",          cmd_set_global},
         {"set-teams-webhook",   cmd_set_teams_webhook},
+        {"set-teams-page",      cmd_set_teams_page},
         {"set-teams-post",      cmd_set_teams_post},
     };
 
@@ -148,7 +151,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         // Reject unexpected positional arguments for commands that don't use them.
-        static const std::set<std::string> positional_commands{"add", "add-todo", "add-note", "status", "set-teams-webhook"};
+        static const std::set<std::string> positional_commands{"add", "add-todo", "add-note", "status", "set-teams-webhook", "set-teams-page"};
         if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
             std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";

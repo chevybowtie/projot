@@ -214,6 +214,7 @@ Once set, projot will post a Kanban summary to the channel on every commit.
 | `render` | Re-render the notes file from config |
 | `set-global` | Set global defaults (`--rpm-base-url`, `--jira-base-url`) |
 | `set-teams-webhook` | Set the Teams sync endpoint URL for Kanban sync |
+| `set-teams-page` | Set (or `--clear`) the endpoint URL for the Teams status page |
 | `set-teams-post` | Turn Teams posting on/off for `render` and `summarize` |
 | `install-hook` | Install the pre-commit git hook |
 | `uninstall-hook` | Remove the pre-commit git hook |
@@ -274,6 +275,36 @@ projot set-teams-post --render on --summarize on
 These settings are stored in `.projot/config` as `teams_post_render` and `teams_post_summarize` (`true` or `false`).
 
 The summary uses the same message shape as the Kanban post, so the default Teams flow posts it unchanged. Custom flows can tell the two apart by the `kind` field: `"kanban"` is absent on Kanban posts, and `"summary"` marks summary posts.
+
+### Status page
+
+Instead of (or as well as) posting messages, projot can keep one page in the channel showing the project's overall status: every todo by status, what was completed in the last 14 days, progress, links, and todo notes. After every `projot render` (so on each commit) it sends the current state to a **second URL**, separate from the sync URL:
+
+```bash
+projot set-teams-page https://prod-00.westus.logic.azure.com:443/workflows/...
+projot set-teams-page --clear      # stop updating the page
+```
+
+To have the page *instead of* channel posts, also run `projot set-teams-post --render off`. The page is stored as `teams_page_url` in `.projot/config` and is updated whenever that URL is set, whatever the post toggles say.
+
+projot never signs in to Microsoft; it only POSTs JSON. A URL like this can only receive data, so the flow behind it must do the create-or-update. Build it in Power Automate / Workflows:
+
+1. Trigger: **When an HTTP request is received**.
+2. Look for an existing page by the payload's `key` (for example, a page or file named after it). Creating and editing a page needs an action such as SharePoint **Create file** / **Update file**, or OneNote **Create page**, which the flow runs under your own connection.
+3. If it exists, update it with the payload's `markdown`. If not, create it, then add it to the channel as a tab if you want it pinned there.
+
+The payload (`kind` is `"status"`):
+
+- `key`: stable per project (`projot-<rpm>`); find the page by it
+- `title`, `date`, `projectName`, `rpm`
+- `markdown`: a ready-to-write page body
+- `counts` (`todo`, `inProgress`, `blocked`, `done`, `total`), `percentDone`
+- `windowDays` (14), `addedInWindow`, `completedInWindow`
+- `todos.todo`, `todos.inProgress`, `todos.blocked`, `todos.done`: each item has `id`, `text`, `created`, `completed`, `notes`
+- `recentlyCompleted`: done items completed within the window, newest first
+- `links`: `{section, label, url}` entries
+
+History comes from the `Created` and `Completed` dates in the project's notes file, so it covers the current project only. `projot close` starts a fresh history.
 
 ---
 

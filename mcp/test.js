@@ -10,7 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 
 import { join } from "path";
 import { tmpdir, platform } from "os";
 import { fileURLToPath } from "url";
-import { buildSyncBody, buildSummaryBody, isLegacyTeamsWebhook, parseTodos, parseTodoRecords, summarizeDay, renderDaySummary } from "./teams-sync.js";
+import { buildSyncBody, buildSummaryBody, buildStatusBody, parseLinks, isLegacyTeamsWebhook, parseTodos, parseTodoRecords, summarizeDay, renderDaySummary } from "./teams-sync.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SERVER = join(__dirname, "server.js");
@@ -475,6 +475,100 @@ test("summary: legacy webhook body is message-only", (assert) => {
   const body = buildSummaryBody(url, "Demo", "123", "2026-10-28", RECORDS);
   assert("type message", body.type === "message");
   assert("no generic fields", body.kind === undefined && body.summary === undefined);
+});
+
+// ── Status page ────────────────────────────────────────────────────────────
+
+console.log("\nTeams status page tests\n");
+
+const STATUS_NOTES = [
+  "# Project: Demo",
+  "",
+  "## Links",
+  "- Teams: https://teams.example.com/channel",
+  "- Jira: N/A",
+  "",
+  "## GitHub",
+  "- https://github.com/example/demo",
+  "",
+  "## Azure",
+  "### Key Vaults",
+  "- [kv-prod](https://portal.azure.com/kv)",
+  "",
+  "## Todos",
+  "",
+  "1. [x] shipped this week",
+  "   - Created: 2026-10-20",
+  "   - Completed: 2026-10-26",
+  "   - Notes:",
+  "2. [x] shipped long ago",
+  "   - Created: 2026-08-01",
+  "   - Completed: 2026-08-05",
+  "   - Notes:",
+  "3. [>] in flight",
+  "   - Created: 2026-10-27",
+  "   - Notes:",
+  "     - waiting on review",
+  "4. [~] stuck",
+  "   - Created: 2026-10-01",
+  "   - Notes:",
+  "5. [ ] not started",
+  "   - Created: 2026-10-28",
+  "   - Notes:",
+].join("\n");
+
+const STATUS_RECORDS = parseTodoRecords(STATUS_NOTES);
+const STATUS_LINKS = parseLinks(STATUS_NOTES);
+const STATUS = buildStatusBody("Demo", "123", "2026-10-28", STATUS_RECORDS, STATUS_LINKS);
+
+test("status: payload identifies itself with a stable key", (assert) => {
+  assert("kind is status", STATUS.kind === "status");
+  assert("key from rpm", STATUS.key === "projot-123");
+  assert("title names the project", STATUS.title.includes("Demo"));
+  assert("markdown present", typeof STATUS.markdown === "string" && STATUS.markdown.length > 0);
+});
+
+test("status: counts and progress cover every todo", (assert) => {
+  assert("total", STATUS.counts.total === 5);
+  assert("done", STATUS.counts.done === 2);
+  assert("in progress", STATUS.counts.inProgress === 1);
+  assert("blocked", STATUS.counts.blocked === 1);
+  assert("todo", STATUS.counts.todo === 1);
+  assert("percent done", STATUS.percentDone === 40);
+});
+
+test("status: recent history only includes the window", (assert) => {
+  assert("window days", STATUS.windowDays === 14);
+  assert("only the recent completion", STATUS.recentlyCompleted.length === 1);
+  assert("it is todo 1", STATUS.recentlyCompleted[0].id === "1");
+  assert("added in window", STATUS.addedInWindow === 3);
+  assert("old completion not in markdown history",
+    !STATUS.markdown.split("## Completed")[1].includes("shipped long ago"));
+});
+
+test("status: notes are carried on todos and in the markdown", (assert) => {
+  assert("note on todo", STATUS.todos.inProgress[0].notes[0] === "waiting on review");
+  assert("note in markdown", STATUS.markdown.includes("waiting on review"));
+});
+
+test("status: links parsed from every link section, skipping N/A", (assert) => {
+  const urls = STATUS_LINKS.map((l) => l.url);
+  assert("labelled link", urls.includes("https://teams.example.com/channel"));
+  assert("github url", urls.includes("https://github.com/example/demo"));
+  assert("azure markdown link", urls.includes("https://portal.azure.com/kv"));
+  assert("N/A skipped", STATUS_LINKS.length === 3);
+});
+
+test("status: empty project has zero progress, not NaN", (assert) => {
+  const body = buildStatusBody("Demo", "123", "2026-10-28", [], []);
+  assert("percent is 0", body.percentDone === 0);
+  assert("no links section", !body.markdown.includes("## Links"));
+});
+
+test("status: body carries no auth field", (assert) => {
+  const json = JSON.stringify(STATUS).toLowerCase();
+  assert("no authorization key", !json.includes("authorization"));
+  assert("no sig key", !json.includes('"sig"'));
 });
 
 // ── Summary ────────────────────────────────────────────────────────────────

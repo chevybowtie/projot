@@ -483,6 +483,47 @@ int cmd_set_teams_webhook(const Args& args) {
     }, false, "Set teams_sync_url = " + url);
 }
 
+// set-teams-page
+
+int cmd_set_teams_page(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-teams-page <URL>\n"
+            "       projot set-teams-page --clear\n\n"
+            "Set the endpoint URL for the Teams status page. After every 'projot render'\n"
+            "projot sends the project's overall status (todos by status, recent\n"
+            "completions, progress, links and notes) to this URL.\n\n"
+            "Unlike set-teams-webhook, the flow behind this URL must create the page if it\n"
+            "is missing and update it otherwise; projot only sends the data, with a stable\n"
+            "'key' to find the page by. See the README for the payload.\n\n"
+            "Optional:\n"
+            "  --clear   Stop sending status page updates\n\n"
+            "Note: .projot/config is git-tracked. For public repos, avoid\n"
+            "committing the URL, or gitignore .projot/config.\n\n"
+            "Example:\n"
+            "  projot set-teams-page https://prod-00.westus.logic.azure.com:443/workflows/...\n";
+        return 0;
+    }
+
+    const bool clear = args.has("clear");
+    if (clear == !args.positional.empty()) {
+        std::cerr << "error: give a page URL or --clear, not both or neither. "
+                     "Run 'projot set-teams-page --help' for usage.\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    const std::string url = clear ? "" : args.positional[0];
+
+    return execute_config_command(ctx, [&url](Context& c) {
+        c.config.teams_page_url = url;
+        return ParseResult{true, ""};
+    }, false, clear ? "Cleared teams_page_url" : "Set teams_page_url = " + url);
+}
+
 // set-teams-post
 
 // Parses "on"/"off" for a set-teams-post flag. Returns false on any other value.
