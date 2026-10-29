@@ -270,6 +270,10 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     }
     if (!cfg.teams_sync_url.empty()) {
         file << "teams_sync_url = " << cfg.teams_sync_url << "\n";
+    }
+    // Written whenever a URL is set or a toggle is off, so turning one off before the
+    // sync URL exists isn't silently dropped.
+    if (!cfg.teams_sync_url.empty() || !cfg.teams_post_render || !cfg.teams_post_summarize) {
         file << "teams_post_render = " << (cfg.teams_post_render ? "true" : "false") << "\n";
         file << "teams_post_summarize = " << (cfg.teams_post_summarize ? "true" : "false") << "\n";
     }
