@@ -510,7 +510,8 @@ int cmd_summarize(const Args& args) {
     if (args.help_requested) {
         std::cout <<
             "Usage: projot summarize [--today]\n\n"
-            "Display a summary of todos added and closed today.\n\n"
+            "Display a summary of todos added and closed today. If a Teams sync URL\n"
+            "is set, the summary is also posted to the channel (see set-teams-post).\n\n"
             "Optional:\n"
             "  --today   Show only today's activity (default)\n\n"
             "Example:\n"
@@ -569,6 +570,12 @@ int cmd_summarize(const Args& args) {
     std::cout << "\nProject Status:\n";
     std::cout << "  Open Todos: " << total_open << "\n";
     std::cout << "  Total Todos: " << proj.todos.size() << "\n";
+
+    // Pass today's date in so the Teams post matches what was printed here, whatever
+    // the script's own clock or date_format says.
+    if (!ctx.config.teams_sync_url.empty() && ctx.config.teams_post_summarize) {
+        run_teams_sync(ctx, {"--summary", "--today=" + today});
+    }
 
     return 0;
 }

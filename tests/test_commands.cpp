@@ -583,6 +583,101 @@ TEST_CASE("set_teams_webhook_writes_sync_url_key") {
     CHECK(buffer.str().find("teams_sync_url = https://flow.example.com/invoke") != std::string::npos);
 }
 
+// ── set-teams-post ───────────────────────────────────────────────────────────
+
+static Config read_repo_config(const TempRepo& repo) {
+    Config cfg;
+    parse_config((repo.path / ".projot" / "config").string(), cfg);
+    return cfg;
+}
+
+TEST_CASE("set_teams_post_turns_render_off") {
+    TempRepo repo("set_teams_post_render_off");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}})) == 0);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.teams_post_render == false);
+    CHECK(cfg.teams_post_summarize == true);
+}
+
+TEST_CASE("set_teams_post_turns_summarize_off") {
+    TempRepo repo("set_teams_post_summarize_off");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"summarize", "off"}})) == 0);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.teams_post_render == true);
+    CHECK(cfg.teams_post_summarize == false);
+}
+
+TEST_CASE("set_teams_post_sets_both_in_one_call") {
+    TempRepo repo("set_teams_post_both");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}, {"summarize", "off"}})) == 0);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.teams_post_render == false);
+    CHECK(cfg.teams_post_summarize == false);
+}
+
+TEST_CASE("set_teams_post_leaves_other_toggle_alone") {
+    TempRepo repo("set_teams_post_leaves_other");
+    repo.init(); repo.new_project();
+    cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}}));
+    // A later call touching only --summarize must not turn render back on.
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"summarize", "off"}})) == 0);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.teams_post_render == false);
+    CHECK(cfg.teams_post_summarize == false);
+}
+
+TEST_CASE("set_teams_post_turns_back_on") {
+    TempRepo repo("set_teams_post_back_on");
+    repo.init(); repo.new_project();
+    cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}}));
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "on"}})) == 0);
+    CHECK(read_repo_config(repo).teams_post_render == true);
+}
+
+TEST_CASE("set_teams_post_rejects_invalid_value") {
+    TempRepo repo("set_teams_post_invalid");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "yes"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"summarize", "true"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "ON"}})) == 1);
+}
+
+TEST_CASE("set_teams_post_invalid_value_changes_nothing") {
+    TempRepo repo("set_teams_post_invalid_noop");
+    repo.init(); repo.new_project();
+    // The valid --render must not be applied when --summarize is rejected.
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}, {"summarize", "bogus"}})) == 1);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.teams_post_render == true);
+    CHECK(cfg.teams_post_summarize == true);
+}
+
+TEST_CASE("set_teams_post_requires_a_flag") {
+    TempRepo repo("set_teams_post_no_flags");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post")) == 1);
+}
+
+TEST_CASE("set_teams_post_fails_without_project") {
+    TempRepo repo("set_teams_post_no_project");
+    repo.init();  // no new_project()
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"render", "off"}})) == 1);
+}
+
+TEST_CASE("set_teams_post_help_returns_zero") {
+    Args a = make_args("set-teams-post");
+    a.help_requested = true;
+    CHECK(cmd_set_teams_post(a) == 0);
+}
+
 // ── set-app-id ───────────────────────────────────────────────────────────────
 
 TEST_CASE("set_app_id_sets_value") {

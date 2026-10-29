@@ -15,10 +15,10 @@ function __projot_open_todo_ids
 end
 
 function __projot_no_subcommand
-    not __fish_seen_subcommand_from init new close add-todo list complete status summarize add-note \
+    not __fish_seen_subcommand_from init new close add add-todo list links complete status summarize add-note \
         set-link set-app-id add-github add-swagger add-blizzard add-azure render \
         install-hook uninstall-hook install-mcp-server uninstall-mcp-server \
-        set-global set-teams-webhook
+        set-global set-teams-webhook set-teams-post
 end
 
 # Top-level flags
@@ -29,8 +29,10 @@ complete -c projot -n __projot_no_subcommand -l version -d 'Show version'
 complete -c projot -n __projot_no_subcommand -a init          -d 'Initialize projot for this repository'
 complete -c projot -n __projot_no_subcommand -a new           -d 'Start a new RPM project'
 complete -c projot -n __projot_no_subcommand -a close         -d 'Archive current project and reset'
-complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new todo'
+complete -c projot -n __projot_no_subcommand -a add           -d 'Append a new todo'
+complete -c projot -n __projot_no_subcommand -a add-todo      -d 'Append a new todo (alias for add)'
 complete -c projot -n __projot_no_subcommand -a list          -d 'Show project summary and todos'
+complete -c projot -n __projot_no_subcommand -a links         -d 'Print all project URLs'
 complete -c projot -n __projot_no_subcommand -a complete      -d 'Mark a todo completed'
 complete -c projot -n __projot_no_subcommand -a status        -d "Set a todo's status"
 complete -c projot -n __projot_no_subcommand -a summarize     -d 'Display todos added and closed today'
@@ -48,12 +50,13 @@ complete -c projot -n __projot_no_subcommand -a install-mcp-server -d 'Configure
 complete -c projot -n __projot_no_subcommand -a uninstall-mcp-server -d 'Remove MCP server configuration'
 complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global defaults'
 complete -c projot -n __projot_no_subcommand -a set-teams-webhook -d 'Set the Teams incoming webhook URL'
+complete -c projot -n __projot_no_subcommand -a set-teams-post   -d 'Turn Teams posting on/off for render and summarize'
 
 # --help on every subcommand
-for sub in init new close add-todo list complete status summarize add-note set-link set-app-id \
+for sub in init new close add add-todo list links complete status summarize add-note set-link set-app-id \
            add-github add-swagger add-blizzard add-azure render install-hook \
            uninstall-hook install-mcp-server uninstall-mcp-server set-global \
-           set-teams-webhook
+           set-teams-webhook set-teams-post
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l help -d 'Show help'
 end
 
@@ -68,13 +71,14 @@ complete -c projot -n '__fish_seen_subcommand_from new' -l rpm       -d 'RPM pro
 complete -c projot -n '__fish_seen_subcommand_from new' -l name      -d 'Project name' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l jira      -d 'Jira ticket number' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams     -d 'Teams channel URL' -r
+complete -c projot -n '__fish_seen_subcommand_from new' -l teams-sync-url -d 'Teams sync endpoint URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l teams-webhook -d 'Teams incoming webhook URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l rpm-url   -d 'RPM system link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l jira-url -d 'Jira link' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l other     -d 'Other URL' -r
 complete -c projot -n '__fish_seen_subcommand_from new' -l no-hook   -d 'Skip hook installation'
 
-# add-todo (accepts a positional description argument)
+# add / add-todo (accepts a positional description argument)
 
 # list
 complete -c projot -n '__fish_seen_subcommand_from list' -l open   -d 'Open todos only'
@@ -115,13 +119,17 @@ end
 
 # add-azure
 complete -c projot -n '__fish_seen_subcommand_from add-azure' -l type -d 'Resource type' -r \
-    -a 'subscription\tSubscription key-vault\tKeyVault resource-group\tResourceGroup aks\tAKS log-analytics\tLogAnalytics storage\tStorage private-dns\tPrivateDNS'
+    -a 'subscription\tSubscriptions key-vault\tKey\ Vaults resource-group\tResource\ Groups aks\tAKS\ Clusters log-analytics\tLog\ Analytics storage\tStorage\ Containers private-dns\tPrivate\ DNS\ Zones'
 complete -c projot -n '__fish_seen_subcommand_from add-azure' -l name -d 'Resource name' -r
 complete -c projot -n '__fish_seen_subcommand_from add-azure' -l url -d 'URL' -r
 
 # install-mcp-server / uninstall-mcp-server
 complete -c projot -n '__fish_seen_subcommand_from install-mcp-server' -l no-vscode -d 'Skip VS Code configuration'
 complete -c projot -n '__fish_seen_subcommand_from uninstall-mcp-server' -l no-vscode -d 'Skip VS Code removal'
+
+# set-teams-post
+complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l render -d 'Post the Kanban board after render' -r -a 'on off'
+complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l summarize -d 'Post the daily summary after summarize' -r -a 'on off'
 
 # set-global
 complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r

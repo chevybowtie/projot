@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(projot VERSION 0.1.27 LANGUAGES CXX)
+project(projot VERSION 0.1.28 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -78,6 +78,8 @@ set(TEST_SOURCES
     tests/test_hook.cpp
     tests/test_versioning.cpp
     tests/test_errors.cpp
+    tests/test_completions.cpp
+    tests/test_teams_post.cpp
 )
 
 add_executable(projot_tests ${TEST_SOURCES})
@@ -88,6 +90,7 @@ target_include_directories(projot_tests PRIVATE
 target_link_libraries(projot_tests PRIVATE projot_core)
 target_compile_definitions(projot_tests PRIVATE
     PROJOT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+    PROJOT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     $<$<CXX_COMPILER_ID:MSVC>:DOCTEST_CONFIG_USE_STD_HEADERS>
 )
 
