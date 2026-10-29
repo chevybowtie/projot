@@ -78,6 +78,7 @@ set(TEST_SOURCES
     tests/test_hook.cpp
     tests/test_versioning.cpp
     tests/test_errors.cpp
+    tests/test_completions.cpp
 )
 
 add_executable(projot_tests ${TEST_SOURCES})
@@ -88,6 +89,7 @@ target_include_directories(projot_tests PRIVATE
 target_link_libraries(projot_tests PRIVATE projot_core)
 target_compile_definitions(projot_tests PRIVATE
     PROJOT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+    PROJOT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
     $<$<CXX_COMPILER_ID:MSVC>:DOCTEST_CONFIG_USE_STD_HEADERS>
 )
 
