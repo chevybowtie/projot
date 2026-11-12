@@ -27,6 +27,7 @@ static void print_usage() {
         "  summarize     Display todos added and closed today\n"
         "  add-note      Add a note to a todo\n"
         "  set-link      Set or update a single-value link URL\n"
+        "  set-project   Change the project's RPM and/or Jira number\n"
         "  set-app-id    Set the application ID\n"
         "  add-github    Add a GitHub URL\n"
         "  add-swagger   Add a Swagger URL\n"
@@ -40,7 +41,8 @@ static void print_usage() {
         "  uninstall-mcp-server  Remove MCP server configuration\n"
         "  set-global            Set global defaults (RPM and Jira base URLs)\n"
         "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n"
-        "  set-teams-post        Turn Teams posting on/off for render and summarize\n\n"
+        "  set-teams-page        Set the Teams status page endpoint URL\n"
+        "  set-teams-post        Turn Teams posting on/off; set Kanban Done column size\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -70,9 +72,11 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-hook",        {}},
         {"install-mcp-server",    {"no-vscode"}},
         {"uninstall-mcp-server",  {"no-vscode"}},
+        {"set-project",         {"rpm", "jira"}},
         {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
-        {"set-teams-post",      {"render", "summarize"}},
+        {"set-teams-page",      {"clear"}},
+        {"set-teams-post",      {"render", "summarize", "done-limit"}},
     };
     return m;
 }
@@ -116,8 +120,10 @@ int main(int argc, char* argv[]) {
         {"uninstall-hook",      cmd_uninstall_hook},
         {"install-mcp-server",  cmd_install_mcp_server},
         {"uninstall-mcp-server", cmd_uninstall_mcp_server},
+        {"set-project",         cmd_set_project},
         {"set-global",          cmd_set_global},
         {"set-teams-webhook",   cmd_set_teams_webhook},
+        {"set-teams-page",      cmd_set_teams_page},
         {"set-teams-post",      cmd_set_teams_post},
     };
 
@@ -148,7 +154,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         // Reject unexpected positional arguments for commands that don't use them.
-        static const std::set<std::string> positional_commands{"add", "add-todo", "add-note", "status", "set-teams-webhook"};
+        static const std::set<std::string> positional_commands{"add", "add-todo", "add-note", "status", "set-teams-webhook", "set-teams-page"};
         if (!args.positional.empty() && !positional_commands.count(args.subcommand)) {
             std::cerr << "error: unexpected argument '" << args.positional[0] << "'. "
                       << "Run 'projot " << args.subcommand << " --help' for usage.\n";

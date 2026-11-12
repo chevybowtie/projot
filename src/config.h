@@ -56,10 +56,18 @@ struct Config {
     // Teams sync endpoint URL for Kanban sync (legacy webhook or flow endpoint).
     std::string teams_sync_url;
 
+    // Separate endpoint for the Teams status page. Its flow creates or updates a page,
+    // which the message-posting flow behind teams_sync_url cannot do.
+    std::string teams_page_url;
+
     // Whether `render` and `summarize` post to the Teams sync endpoint. Both default
     // on, so setting a sync URL is enough; these switch off one kind of post.
     bool teams_post_render = true;
     bool teams_post_summarize = true;
+
+    // How many of the most recently completed todos the Kanban post's Done column
+    // shows (0 = all). Only the channel post is capped; the status page lists every todo.
+    int teams_done_limit = 5;
 
     // Azure resources (project-level). Each entry is "name|url" or just "url".
     std::vector<std::string> azure_subscription;
@@ -87,8 +95,10 @@ struct Config {
         azure_storage.clear();
         azure_private_dns.clear();
         teams_sync_url.clear();
+        teams_page_url.clear();
         teams_post_render = true;
         teams_post_summarize = true;
+        teams_done_limit = 5;
     }
 };
 

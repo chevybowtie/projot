@@ -67,10 +67,14 @@ int cmd_install_mcp_server(const Args& args);
 // Remove MCP server configuration from Claude Code and VS Code.
 int cmd_uninstall_mcp_server(const Args& args);
 
+int cmd_set_project(const Args& args);
 int cmd_set_global(const Args& args);
 
 // Set the Teams sync endpoint URL for Kanban sync.
 int cmd_set_teams_webhook(const Args& args);
+
+// Set (or --clear) the endpoint URL for the Teams status page.
+int cmd_set_teams_page(const Args& args);
 
 // Turn Teams posting for render and summarize on or off.
 int cmd_set_teams_post(const Args& args);

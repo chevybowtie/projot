@@ -89,8 +89,10 @@ All projot files are stored under a `.projot/` directory at the repository root:
 
 ```bash
 {repo_root}/.projot/
-    config          ← project configuration (key = value)
-    {RPM}.md       ← project notes file
+    config               ← project configuration (key = value)
+    {RPM}.md             ← project notes file
+    carryover_todos.md   ← open todos saved by `close`, restored and deleted by the next `new`
+    archive/{RPM}.md     ← notes files of closed projects
 ```
 
 Example:
@@ -176,6 +178,11 @@ Users may optionally specify `--config <path>` in later versions.
 | `links`          | Optional | Ordered list of single-value link keys to include                            |
 | `label.<key>`    | Optional | Human-friendly label for a link key                                          |
 | `link.<key>`     | Optional | URL value for a single-value link key (e.g. `link.teams = https://...`)      |
+| `teams_sync_url` | Optional | Teams endpoint that receives the Kanban post and daily summary (see section 9.6). The older key `teams_webhook` is still read. Secret: do not commit to a public repo. |
+| `teams_page_url` | Optional | Separate Teams endpoint that receives the project status page payload (see section 9.6). Secret. |
+| `teams_post_render` | Optional | `true` (default) or `false`. Whether `render` posts the Kanban board to `teams_sync_url`. Written only when a Teams URL is set or a toggle is off. |
+| `teams_post_summarize` | Optional | `true` (default) or `false`. Whether `summarize` posts the daily summary to `teams_sync_url`. Written together with `teams_post_render`. |
+| `teams_done_limit` | Optional | Non-negative integer, default `5`; `0` means no cap. How many of the most recently completed todos the Kanban post's Done column shows; the post also states the total complete. The status page is never capped. Written together with `teams_post_render`. |
 
 > Repo-level fields (`app_id`, `github`, `swagger`, `blizzard`) are set once and shared across projects. They are rendered into the project markdown file by projot and should not be hand-edited there.
 >
@@ -241,6 +248,13 @@ link.teams = https://teams.microsoft.com/l/channel/...
 link.jira = https://yourcompany.atlassian.net/browse/PROJ-67890
 link.rpm = https://rpm.example.com/project/12345
 link.other = https://wiki.example.com/project
+
+# Teams endpoints (optional; see section 9.6)
+teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
+teams_page_url = https://prod-00.westus.logic.azure.com:443/workflows/...
+teams_post_render = true
+teams_post_summarize = true
+teams_done_limit = 5
 ```
 
 **Date format tokens** (display only):
@@ -367,12 +381,15 @@ Setup commands:
   close         Archive the current project and reset for the next one
 
 Project commands:
-  add-todo      Append a new todo
+  add           Append a new todo (alias: add-todo)
   list          Show project summary and todos
+  links         Print all project URLs to the terminal
   complete      Mark a todo completed
   status        Set a todo's status (todo, in-progress, blocked, done)
+  summarize     Display todos added and closed today
   add-note      Add a note to a todo
   set-link      Set or update a single-value link URL
+  set-project   Change the project's RPM and/or Jira number
   set-app-id    Set the application ID
   add-github    Add a GitHub URL
   add-swagger   Add a Swagger URL
@@ -386,7 +403,9 @@ Maintenance commands:
   install-mcp-server    Configure MCP server for Claude Code and VS Code
   uninstall-mcp-server  Remove MCP server configuration
   set-global            Set global defaults (RPM and Jira base URLs)
-  set-teams-webhook     Set the Teams incoming webhook URL for Kanban sync
+  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync
+  set-teams-page        Set the Teams status page endpoint URL
+  set-teams-post        Turn Teams posting on/off for render and summarize
 
 Run 'projot <subcommand> --help' for subcommand options.
 ```
@@ -447,7 +466,8 @@ Required:
 
 Optional:
 
-- `--teams <URL>`
+- `--teams <URL>` — the Teams channel link (`link.teams`)
+- `--teams-sync-url <URL>` — Teams sync endpoint (`teams_sync_url`); `--teams-webhook` is an alias
 - `--rpm-url <URL>` — the RPM system link for this project
 - `--jira-url <URL>`
 - `--other <URL>`
@@ -502,6 +522,14 @@ Optional:
 - `--closed` — closed todos only
 - `--all` — all todos regardless of status
 
+#### `links`
+
+Print all project URLs (the single-value links, GitHub, Swagger, Blizzard and Azure resources) to the terminal. No flags.
+
+#### `summarize`
+
+Display the todos added and closed today, for time-entry tracking. `--today` is accepted and is the default. If `teams_sync_url` is set and `teams_post_summarize` is on, the same summary is also posted to the channel (see section 9.6).
+
 #### `complete`
 
 Mark a todo completed (shorthand for `status --todo <ID> done`). Warns if already completed but does not error.
@@ -542,6 +570,23 @@ Required:
 
 - `--key <key>` — e.g. `teams`, `jira`, `rpm`, `other`
 - `--url <URL>`
+
+#### `set-project`
+
+Change the RPM project number and/or Jira ticket number of the current project, for example after a typo in `new` or when a ticket is re-filed. Todos, notes and links are kept.
+
+Optional (at least one required):
+
+- `--rpm <RPM>` — new RPM project number. Subject to the same file-name rules as `new --rpm`. The notes file is renamed from `.projot/{old}.md` to `.projot/{new}.md` (an existing file with the new name is never overwritten) and re-rendered; the rename is undone if the config cannot be saved.
+- `--jira <Jira>` — new Jira ticket number (non-empty, one line).
+
+Setting a value the project already has is a no-op. Things to know after changing the RPM number:
+
+- Stage the rename (`git add -A .projot`); the pre-commit hook stages only the new file.
+- A `link.rpm` / `link.jira` set explicitly (`--rpm-url`, `--jira-url`, `set-link`) does not follow the number; projot warns when one is present.
+- The Teams status page is keyed by RPM number (`projot-{rpm}`), so a new number creates a new page rather than updating the old one.
+
+To change the base URLs these numbers are appended to, use `set-global` (below), not this command.
 
 #### `set-app-id`
 
@@ -605,6 +650,8 @@ Re-render `.projot/{RPM}.md` from `.projot/config` and the current todo state, t
 
 This subcommand is called automatically by the pre-commit hook installed by `new`. It can also be run manually at any time to sync the notes file after hand-editing `.projot/config`.
 
+After rendering it also runs the Teams sync (best effort, never blocks the commit; see section 9.6): the Kanban post if `teams_sync_url` is set and `teams_post_render` is on, and the status page update if `teams_page_url` is set. With no active project (`rpm` empty) it does nothing, so the hook is a no-op between projects.
+
 No flags required. Exits 0 on success.
 
 ### 9.3 Maintenance Commands
@@ -652,23 +699,56 @@ Example:
 projot set-global --rpm-base-url "https://rpm.example.com/" --jira-base-url "https://yourcompany.atlassian.net/browse/"
 ```
 
+**Changing a base URL later.** Run `set-global` again with the new value. Only the flags you pass are changed; the other base URL is kept. You can also edit `rpm_base_url` / `jira_base_url` directly in the global config file. To override a base URL for a single repository, add `rpm_base_url` / `jira_base_url` to that repo's `.projot/config` by hand (there is no command for this); projot preserves them. A project's `link.rpm` / `link.jira`, if set, is used before any base URL. Base URLs are read when a link is opened, so changing them does not alter existing notes files.
+
 These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_jira`) to construct full project/ticket links automatically.
 
 #### `set-teams-webhook`
 
-Set the Teams incoming webhook URL used for Kanban sync. The URL is created in Teams channel settings (Connectors → Incoming Webhook) and stored as `teams_webhook` in `.projot/config`.
+Set the Teams sync endpoint URL used for the Kanban post and daily summary, stored as `teams_sync_url` in `.projot/config`. The URL is either a legacy Teams Incoming Webhook or a Power Automate / Workflows HTTP trigger URL (see section 9.6).
 
 Required:
 
-- `<URL>` — webhook URL as positional argument
+- `<URL>` — endpoint URL as positional argument
 
 Example:
 
 ```sh
-projot set-teams-webhook https://xxx.webhook.office.com/webhookb2/...
+projot set-teams-webhook https://prod-00.westus.logic.azure.com:443/workflows/...
 ```
 
-> **Security note:** `.projot/config` is git-tracked. For public repos, avoid committing a webhook URL, or gitignore `.projot/config`.
+> **Security note:** `.projot/config` is git-tracked. For public repos, avoid committing a sync URL, or gitignore `.projot/config`.
+
+#### `set-teams-page`
+
+Set the endpoint URL for the Teams status page, stored as `teams_page_url`. Requires exactly one of:
+
+- `<URL>` — endpoint URL as positional argument
+- `--clear` — remove the URL and stop status page updates
+
+Example:
+
+```sh
+projot set-teams-page https://prod-00.westus.logic.azure.com:443/workflows/...
+projot set-teams-page --clear
+```
+
+The same security note as `set-teams-webhook` applies.
+
+#### `set-teams-post`
+
+Turn Teams posting on or off per command. At least one flag is required:
+
+- `--render <on|off>` — post the Kanban board after `render`
+- `--summarize <on|off>` — post the daily summary after `summarize`
+
+Both default to on once `teams_sync_url` is set. The toggles affect only `teams_sync_url`; the status page is controlled by whether `teams_page_url` is set.
+
+Example:
+
+```sh
+projot set-teams-post --render off
+```
 
 ### 9.4 Git Hook
 
@@ -739,6 +819,36 @@ The completion scripts are static and hand-authored in v0.1. The `--todo` dynami
 #### Installation
 
 Run `make install-completion` after installing the binary (see section 14.3). The Makefile target detects the current shell from `$SHELL` and copies the appropriate script to the standard location automatically. PowerShell must be installed manually.
+
+### 9.6 Teams Sync
+
+Teams integration is a best-effort, one-way push from projot to HTTP endpoints. projot never signs in to Microsoft, never reads a response, and stores no sync state.
+
+**Mechanism.** `render` and `summarize` launch `mcp/teams-sync.js` through `run_process()` (Node.js must be on `PATH`; otherwise a warning is printed and the sync is skipped). The script is given the config and notes file paths, never the URL: it reads `teams_sync_url` or `teams_page_url` from `.projot/config`, so the secret does not appear in the process list. It runs with a 10-second timeout, always exits 0, and logs failures as warnings, so a sync problem never blocks a commit.
+
+**Three posts**, each a separate JSON POST:
+
+| Post | Trigger | Endpoint | Content |
+|------|---------|----------|---------|
+| Kanban | `render`, if `teams_post_render` | `teams_sync_url` | Adaptive Card with TODO / In Progress / Blocked / Done columns |
+| Daily summary | `summarize`, if `teams_post_summarize` | `teams_sync_url` | Todos added and closed on the day, plus the open count (`kind: "summary"`) |
+| Status page | `render`, whenever `teams_page_url` is set | `teams_page_url` | Overall project status (`kind: "status"`) |
+
+**Endpoint types for `teams_sync_url`.** A legacy Incoming Webhook URL (`*.webhook.office.com`, `outlook.office.com`, `/webhookb2/` paths) receives just the Adaptive Card message. Any other URL is treated as a Workflows endpoint and receives the same message shape plus generic fields (`projectName`, `rpm`, `summary`, `card`, `kanban.*`; for summaries `kind`, `date`, `added`, `closed`, `openCount`), so the default "post to channel" flow works unchanged and custom flows can use the fields.
+
+**Status page.** A webhook or workflow URL can only receive data; it cannot edit an existing message. Keeping "one page that is created if missing and updated otherwise" is therefore the job of a flow built behind `teams_page_url`, which is why this endpoint is separate from `teams_sync_url` (whose flow just posts a new message each time). projot sends, on every `render`:
+
+- `kind: "status"`, `key` (`projot-<rpm>`, stable, for finding the page), `title`, `date`, `projectName`, `rpm`
+- `markdown` — a ready-to-write page body
+- `counts` (`todo`, `inProgress`, `blocked`, `done`, `total`) and `percentDone`
+- `windowDays` (14), `addedInWindow`, `completedInWindow`
+- `todos.{todo,inProgress,blocked,done}` — items with `id`, `text`, `created`, `completed`, `notes`
+- `recentlyCompleted` — done items completed within the window, newest first
+- `links` — `{section, label, url}` entries from the notes file
+
+History is derived only from the `Created` and `Completed` dates in the current notes file, so it covers the current project and restarts after `close`.
+
+**Lifecycle.** `teams_sync_url`, `teams_page_url` and both `teams_post_*` toggles are project-level: `close` clears them, and `new` accepts `--teams-sync-url`.
 
 ---
 
@@ -938,6 +1048,10 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `add_note_warns_if_closed`        | `add-note` on closed todo → warning on stderr, note still written                              |
 | `set_link_new_key`                | `set-link --key teams --url <url>` → `link.teams` written to config                            |
 | `set_link_update_key`             | `set-link` on existing key → value replaced, not duplicated                                    |
+| `set_project_changes_jira`        | `set-project --jira X` → `jira = X` in config and notes file                                   |
+| `set_project_changes_rpm_and_renames_notes` | `set-project --rpm X` → config updated, notes file renamed, todos kept               |
+| `set_project_refuses_to_overwrite_existing_notes` | new RPM whose notes file exists → error, nothing changed                       |
+| `set_project_rejects_unsafe_rpm`  | `--rpm ../evil`, `.hidden`, `a b` → error, nothing changed                                     |
 | `set_app_id_sets_value`           | `set-app-id --app-id X` → `app_id = X` in config                                              |
 | `set_app_id_no_force_fails`       | `set-app-id` when `app_id` already set, no `--force` → non-zero exit                           |
 | `set_app_id_force_overwrites`     | `set-app-id --force --app-id X` → value replaced                                              |

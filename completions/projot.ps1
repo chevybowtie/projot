@@ -5,9 +5,9 @@
 
 $projotSubcommands = @(
     'init', 'new', 'close', 'add', 'add-todo', 'list', 'links', 'complete', 'status', 'summarize', 'add-note',
-    'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
+    'set-link', 'set-project', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
     'add-azure', 'render', 'install-hook', 'uninstall-hook',
-    'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook', 'set-teams-post'
+    'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook', 'set-teams-page', 'set-teams-post'
 )
 
 $projotFlags = @{
@@ -23,6 +23,7 @@ $projotFlags = @{
     'summarize'            = @('--today', '--help')
     'add-note'             = @('--todo', '--help')
     'set-link'             = @('--key', '--url', '--help')
+    'set-project'          = @('--rpm', '--jira', '--help')
     'set-app-id'           = @('--app-id', '--force', '--help')
     'add-github'           = @('--url', '--help')
     'add-swagger'          = @('--url', '--help')
@@ -35,7 +36,8 @@ $projotFlags = @{
     'uninstall-mcp-server' = @('--no-vscode', '--help')
     'set-global'           = @('--rpm-base-url', '--jira-base-url', '--help')
     'set-teams-webhook'    = @('--help')
-    'set-teams-post'       = @('--render', '--summarize', '--help')
+    'set-teams-page'       = @('--clear', '--help')
+    'set-teams-post'       = @('--render', '--summarize', '--done-limit', '--help')
 }
 
 $projotFlagValues = @{

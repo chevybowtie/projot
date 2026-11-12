@@ -24,6 +24,7 @@ namespace fs = std::filesystem;
 namespace {
 
 const char* const kSyncUrl = "https://flow.example.com/invoke?sig=SECRET";
+const char* const kPageUrl = "https://flow.example.com/page?sig=PAGESECRET";
 
 // Prepends a directory holding a recording fake `node` to PATH for its lifetime.
 struct FakeNode {
@@ -107,6 +108,13 @@ struct PostRepo {
         a.subcommand = "set-teams-webhook";
         a.positional.push_back(kSyncUrl);
         REQUIRE(cmd_set_teams_webhook(a) == 0);
+    }
+
+    void set_page_url() {
+        Args a;
+        a.subcommand = "set-teams-page";
+        a.positional.push_back(kPageUrl);
+        REQUIRE(cmd_set_teams_page(a) == 0);
     }
 
     void set_post(const std::string& flag, const std::string& value) {
@@ -261,6 +269,102 @@ TEST_CASE("summarize_still_posts_when_only_render_is_off") {
 
     CHECK(repo.summarize() == 0);
     CHECK(node.calls().size() == 1);
+}
+
+// ── status page ──────────────────────────────────────────────────────────────
+
+TEST_CASE("render_updates_status_page_when_page_url_set") {
+    FakeNode node("page_updates");
+    PostRepo repo("page_updates");
+    repo.set_page_url();
+
+    CHECK(repo.render() == 0);
+
+    // Only the page update: no sync URL, so no Kanban post.
+    auto calls = node.calls();
+    REQUIRE(calls.size() == 1);
+    CHECK(contains(calls[0], "--status"));
+}
+
+TEST_CASE("render_does_not_update_status_page_without_page_url") {
+    FakeNode node("page_no_url");
+    PostRepo repo("page_no_url");
+    repo.set_sync_url();
+
+    CHECK(repo.render() == 0);
+
+    auto calls = node.calls();
+    REQUIRE(calls.size() == 1);
+    CHECK(!contains(calls[0], "--status"));
+}
+
+TEST_CASE("render_does_both_when_both_urls_set") {
+    FakeNode node("page_and_post");
+    PostRepo repo("page_and_post");
+    repo.set_sync_url();
+    repo.set_page_url();
+
+    CHECK(repo.render() == 0);
+
+    auto calls = node.calls();
+    REQUIRE(calls.size() == 2);
+    CHECK(!contains(calls[0], "--status"));
+    CHECK(contains(calls[1], "--status"));
+}
+
+TEST_CASE("status_page_updates_even_when_render_toggle_is_off") {
+    // The way to have the page *instead of* channel posts.
+    FakeNode node("page_instead");
+    PostRepo repo("page_instead");
+    repo.set_sync_url();
+    repo.set_page_url();
+    repo.set_post("render", "off");
+
+    CHECK(repo.render() == 0);
+
+    auto calls = node.calls();
+    REQUIRE(calls.size() == 1);
+    CHECK(contains(calls[0], "--status"));
+}
+
+TEST_CASE("status_page_never_puts_the_page_url_on_the_command_line") {
+    FakeNode node("page_secret");
+    PostRepo repo("page_secret");
+    repo.set_page_url();
+    repo.render();
+
+    auto calls = node.calls();
+    REQUIRE(calls.size() == 1);
+    for (const auto& arg : calls[0])
+        CHECK(arg.find("PAGESECRET") == std::string::npos);
+}
+
+TEST_CASE("clearing_the_page_url_stops_status_updates") {
+    FakeNode node("page_clear");
+    PostRepo repo("page_clear");
+    repo.set_page_url();
+
+    Args a;
+    a.subcommand = "set-teams-page";
+    a.flags["clear"].push_back("true");
+    REQUIRE(cmd_set_teams_page(a) == 0);
+
+    CHECK(repo.render() == 0);
+    CHECK(node.calls().empty());
+}
+
+TEST_CASE("set_teams_page_needs_exactly_one_of_url_or_clear") {
+    PostRepo repo("page_args");
+
+    Args neither;
+    neither.subcommand = "set-teams-page";
+    CHECK(cmd_set_teams_page(neither) == 1);
+
+    Args both;
+    both.subcommand = "set-teams-page";
+    both.positional.push_back(kPageUrl);
+    both.flags["clear"].push_back("true");
+    CHECK(cmd_set_teams_page(both) == 1);
 }
 
 #endif  // _WIN32

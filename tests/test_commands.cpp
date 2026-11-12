@@ -583,13 +583,119 @@ TEST_CASE("set_teams_webhook_writes_sync_url_key") {
     CHECK(buffer.str().find("teams_sync_url = https://flow.example.com/invoke") != std::string::npos);
 }
 
-// ── set-teams-post ───────────────────────────────────────────────────────────
-
 static Config read_repo_config(const TempRepo& repo) {
     Config cfg;
     parse_config((repo.path / ".projot" / "config").string(), cfg);
     return cfg;
 }
+
+// ── set-project ──────────────────────────────────────────────────────────────
+
+static std::string slurp(const fs::path& p) {
+    std::ifstream in(p);
+    std::stringstream ss;
+    ss << in.rdbuf();
+    return ss.str();
+}
+
+TEST_CASE("set_project_changes_jira") {
+    TempRepo repo("set_project_jira");
+    repo.init(); repo.new_project("12345", "Test Project", "67890");
+    CHECK(cmd_set_project(make_args("set-project", {{"jira", "11111"}})) == 0);
+
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.jira == "11111");
+    CHECK(cfg.rpm == "12345");
+    CHECK(fs::exists(repo.path / ".projot" / "12345.md"));
+    CHECK(slurp(repo.path / ".projot" / "12345.md").find("11111") != std::string::npos);
+}
+
+TEST_CASE("set_project_changes_rpm_and_renames_notes") {
+    TempRepo repo("set_project_rpm");
+    repo.init(); repo.new_project("12345");
+    cmd_add_todo(make_args("add-todo", {}, "keep me"));
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "54321"}})) == 0);
+
+    CHECK(read_repo_config(repo).rpm == "54321");
+    CHECK_FALSE(fs::exists(repo.path / ".projot" / "12345.md"));
+    REQUIRE(fs::exists(repo.path / ".projot" / "54321.md"));
+
+    // Todos survive the rename and the file header shows the new number.
+    Project proj;
+    parse_markdown((repo.path / ".projot" / "54321.md").string(), proj);
+    REQUIRE(proj.todos.size() == 1);
+    CHECK(proj.todos[0].text == "keep me");
+    CHECK(proj.rpm == "54321");
+}
+
+TEST_CASE("set_project_changes_both") {
+    TempRepo repo("set_project_both");
+    repo.init(); repo.new_project("12345", "Test Project", "67890");
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "22222"}, {"jira", "33333"}})) == 0);
+    Config cfg = read_repo_config(repo);
+    CHECK(cfg.rpm == "22222");
+    CHECK(cfg.jira == "33333");
+    CHECK(fs::exists(repo.path / ".projot" / "22222.md"));
+}
+
+TEST_CASE("set_project_same_values_is_a_noop") {
+    TempRepo repo("set_project_noop");
+    repo.init(); repo.new_project("12345", "Test Project", "67890");
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "12345"}, {"jira", "67890"}})) == 0);
+    CHECK(fs::exists(repo.path / ".projot" / "12345.md"));
+}
+
+TEST_CASE("set_project_rejects_unsafe_rpm") {
+    TempRepo repo("set_project_unsafe_rpm");
+    repo.init(); repo.new_project("12345");
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "../evil"}})) == 1);
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", ".hidden"}})) == 1);
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "a b"}})) == 1);
+    CHECK(read_repo_config(repo).rpm == "12345");
+    CHECK(fs::exists(repo.path / ".projot" / "12345.md"));
+}
+
+TEST_CASE("set_project_rejects_empty_or_multiline_jira") {
+    TempRepo repo("set_project_bad_jira");
+    repo.init(); repo.new_project("12345", "Test Project", "67890");
+    CHECK(cmd_set_project(make_args("set-project", {{"jira", ""}})) == 1);
+    CHECK(cmd_set_project(make_args("set-project", {{"jira", "1\nrpm = evil"}})) == 1);
+    CHECK(read_repo_config(repo).jira == "67890");
+}
+
+TEST_CASE("set_project_refuses_to_overwrite_existing_notes") {
+    TempRepo repo("set_project_collision");
+    repo.init(); repo.new_project("12345");
+    {
+        std::ofstream other(repo.path / ".projot" / "99999.md");
+        other << "precious";
+    }
+    CHECK(cmd_set_project(make_args("set-project", {{"rpm", "99999"}})) == 1);
+    CHECK(slurp(repo.path / ".projot" / "99999.md") == "precious");
+    CHECK(fs::exists(repo.path / ".projot" / "12345.md"));
+    CHECK(read_repo_config(repo).rpm == "12345");
+}
+
+TEST_CASE("set_project_requires_a_flag") {
+    TempRepo repo("set_project_no_flags");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_project(make_args("set-project")) == 1);
+}
+
+TEST_CASE("set_project_fails_without_project") {
+    TempRepo repo("set_project_no_project");
+    repo.init();
+    CHECK(cmd_set_project(make_args("set-project", {{"jira", "1"}})) == 1);
+}
+
+TEST_CASE("set_project_help_returns_zero") {
+    Args a = make_args("set-project");
+    a.help_requested = true;
+    CHECK(cmd_set_project(a) == 0);
+}
+
+// ── set-teams-post ───────────────────────────────────────────────────────────
+
 
 TEST_CASE("set_teams_post_turns_render_off") {
     TempRepo repo("set_teams_post_render_off");
@@ -658,6 +764,39 @@ TEST_CASE("set_teams_post_invalid_value_changes_nothing") {
     Config cfg = read_repo_config(repo);
     CHECK(cfg.teams_post_render == true);
     CHECK(cfg.teams_post_summarize == true);
+}
+
+TEST_CASE("set_teams_post_done_limit_defaults_to_five") {
+    TempRepo repo("set_teams_post_done_default");
+    repo.init(); repo.new_project();
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
+}
+
+TEST_CASE("set_teams_post_done_limit_round_trips") {
+    TempRepo repo("set_teams_post_done_limit");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "10"}})) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 10);
+    // 0 means "show all" and must survive the round trip, not read back as default.
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "0"}})) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 0);
+}
+
+TEST_CASE("set_teams_post_done_limit_rejects_invalid_value") {
+    TempRepo repo("set_teams_post_done_limit_bad");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "-1"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "abc"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "5x"}})) == 1);
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
+}
+
+TEST_CASE("close_resets_done_limit") {
+    TempRepo repo("set_teams_post_done_limit_close");
+    repo.init(); repo.new_project();
+    cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "10"}}));
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
 }
 
 TEST_CASE("set_teams_post_requires_a_flag") {

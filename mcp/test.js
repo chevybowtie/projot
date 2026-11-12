@@ -10,7 +10,7 @@ import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 
 import { join } from "path";
 import { tmpdir, platform } from "os";
 import { fileURLToPath } from "url";
-import { buildSyncBody, buildSummaryBody, isLegacyTeamsWebhook, parseTodos, parseTodoRecords, summarizeDay, renderDaySummary } from "./teams-sync.js";
+import { buildSyncBody, buildSummaryBody, buildStatusBody, parseLinks, isLegacyTeamsWebhook, parseTodos, parseTodoRecords, summarizeDay, renderDaySummary } from "./teams-sync.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SERVER = join(__dirname, "server.js");
@@ -237,6 +237,52 @@ test("set_teams_link: projot set-link with correct key and url", (assert) => {
   assert("--key teams present", cmd.includes("--key") && cmd.includes("teams"));
   assert("--url present", cmd.includes("--url"));
   assert("url in call", cmd.includes("https://teams.new.com/channel"));
+});
+
+test("set_project: passes --rpm and --jira to projot set-project", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_project", { project_number: "54321", jira_number: "99" });
+  assert("no error", !isError);
+  const cmd = projotCalls[0];
+  assert("subcommand is set-project", cmd.includes("set-project"));
+  assert("--rpm 54321", cmd.includes("--rpm 54321"));
+  assert("--jira 99", cmd.includes("--jira 99"));
+});
+
+test("set_project: only the given value is passed", (assert) => {
+  const { projotCalls } = runTool("projot_set_project", { jira_number: "99" });
+  assert("--jira present", projotCalls[0].includes("--jira 99"));
+  assert("--rpm absent", !projotCalls[0].includes("--rpm"));
+});
+
+test("set_project: neither value fails before calling projot", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_project", {});
+  assert("is error", isError);
+  assert("projot not called", projotCalls.length === 0);
+});
+
+test("set_project: projot failure is reported as an error", (assert) => {
+  const { isError } = runTool("projot_set_project", { project_number: "1" }, { MOCK_PROJOT_FAIL: "set-project" });
+  assert("is error", isError);
+});
+
+test("set_done_limit: calls set-teams-post --done-limit", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: 10 });
+  assert("no error", !isError);
+  assert("command", projotCalls[0].includes("set-teams-post --done-limit 10"));
+});
+
+test("set_done_limit: 0 is accepted (show all)", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: 0 });
+  assert("no error", !isError);
+  assert("--done-limit 0", projotCalls[0].includes("--done-limit 0"));
+});
+
+test("set_done_limit: invalid values fail before calling projot", (assert) => {
+  for (const bad of [-1, 2.5, "5", null, undefined]) {
+    const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: bad });
+    assert(`${JSON.stringify(bad)} is an error`, isError);
+    assert(`${JSON.stringify(bad)} makes no projot call`, projotCalls.length === 0);
+  }
 });
 
 test("set_github_link: projot add-github called with url", (assert) => {
@@ -475,6 +521,100 @@ test("summary: legacy webhook body is message-only", (assert) => {
   const body = buildSummaryBody(url, "Demo", "123", "2026-10-28", RECORDS);
   assert("type message", body.type === "message");
   assert("no generic fields", body.kind === undefined && body.summary === undefined);
+});
+
+// ── Status page ────────────────────────────────────────────────────────────
+
+console.log("\nTeams status page tests\n");
+
+const STATUS_NOTES = [
+  "# Project: Demo",
+  "",
+  "## Links",
+  "- Teams: https://teams.example.com/channel",
+  "- Jira: N/A",
+  "",
+  "## GitHub",
+  "- https://github.com/example/demo",
+  "",
+  "## Azure",
+  "### Key Vaults",
+  "- [kv-prod](https://portal.azure.com/kv)",
+  "",
+  "## Todos",
+  "",
+  "1. [x] shipped this week",
+  "   - Created: 2026-10-20",
+  "   - Completed: 2026-10-26",
+  "   - Notes:",
+  "2. [x] shipped long ago",
+  "   - Created: 2026-08-01",
+  "   - Completed: 2026-08-05",
+  "   - Notes:",
+  "3. [>] in flight",
+  "   - Created: 2026-10-27",
+  "   - Notes:",
+  "     - waiting on review",
+  "4. [~] stuck",
+  "   - Created: 2026-10-01",
+  "   - Notes:",
+  "5. [ ] not started",
+  "   - Created: 2026-10-28",
+  "   - Notes:",
+].join("\n");
+
+const STATUS_RECORDS = parseTodoRecords(STATUS_NOTES);
+const STATUS_LINKS = parseLinks(STATUS_NOTES);
+const STATUS = buildStatusBody("Demo", "123", "2026-10-28", STATUS_RECORDS, STATUS_LINKS);
+
+test("status: payload identifies itself with a stable key", (assert) => {
+  assert("kind is status", STATUS.kind === "status");
+  assert("key from rpm", STATUS.key === "projot-123");
+  assert("title names the project", STATUS.title.includes("Demo"));
+  assert("markdown present", typeof STATUS.markdown === "string" && STATUS.markdown.length > 0);
+});
+
+test("status: counts and progress cover every todo", (assert) => {
+  assert("total", STATUS.counts.total === 5);
+  assert("done", STATUS.counts.done === 2);
+  assert("in progress", STATUS.counts.inProgress === 1);
+  assert("blocked", STATUS.counts.blocked === 1);
+  assert("todo", STATUS.counts.todo === 1);
+  assert("percent done", STATUS.percentDone === 40);
+});
+
+test("status: recent history only includes the window", (assert) => {
+  assert("window days", STATUS.windowDays === 14);
+  assert("only the recent completion", STATUS.recentlyCompleted.length === 1);
+  assert("it is todo 1", STATUS.recentlyCompleted[0].id === "1");
+  assert("added in window", STATUS.addedInWindow === 3);
+  assert("old completion not in markdown history",
+    !STATUS.markdown.split("## Completed")[1].includes("shipped long ago"));
+});
+
+test("status: notes are carried on todos and in the markdown", (assert) => {
+  assert("note on todo", STATUS.todos.inProgress[0].notes[0] === "waiting on review");
+  assert("note in markdown", STATUS.markdown.includes("waiting on review"));
+});
+
+test("status: links parsed from every link section, skipping N/A", (assert) => {
+  const urls = STATUS_LINKS.map((l) => l.url);
+  assert("labelled link", urls.includes("https://teams.example.com/channel"));
+  assert("github url", urls.includes("https://github.com/example/demo"));
+  assert("azure markdown link", urls.includes("https://portal.azure.com/kv"));
+  assert("N/A skipped", STATUS_LINKS.length === 3);
+});
+
+test("status: empty project has zero progress, not NaN", (assert) => {
+  const body = buildStatusBody("Demo", "123", "2026-10-28", [], []);
+  assert("percent is 0", body.percentDone === 0);
+  assert("no links section", !body.markdown.includes("## Links"));
+});
+
+test("status: body carries no auth field", (assert) => {
+  const json = JSON.stringify(STATUS).toLowerCase();
+  assert("no authorization key", !json.includes("authorization"));
+  assert("no sig key", !json.includes('"sig"'));
 });
 
 // ── Summary ────────────────────────────────────────────────────────────────

@@ -132,6 +132,8 @@ ParseResult parse_config(const std::string& path, Config& out) {
             out.created = value;
         } else if (key == "teams_sync_url" || key == "teams_webhook") {
             out.teams_sync_url = value;
+        } else if (key == "teams_page_url") {
+            out.teams_page_url = value;
         } else if (key == "teams_post_render" || key == "teams_post_summarize") {
             if (value != "true" && value != "false") {
                 return {false, "Invalid " + key + " '" + value + "' in " + path +
@@ -139,6 +141,14 @@ ParseResult parse_config(const std::string& path, Config& out) {
             }
             (key == "teams_post_render" ? out.teams_post_render : out.teams_post_summarize) =
                 (value == "true");
+        } else if (key == "teams_done_limit") {
+            // Digits only, so "-1", "5x" and "" are rejected rather than half-parsed.
+            if (value.empty() || value.size() > 6 ||
+                value.find_first_not_of("0123456789") != std::string::npos) {
+                return {false, "Invalid teams_done_limit '" + value + "' in " + path +
+                               " (expected a non-negative whole number)"};
+            }
+            out.teams_done_limit = std::stoi(value);
         } else if (is_list_key(key)) {
             auto items = split_list(value);
             if (key == "github")                out.github                = items;
@@ -181,7 +191,7 @@ std::string invalid_config_value(const Config& cfg) {
     const std::pair<const char*, const std::string*> scalars[] = {
         {"app_id", &cfg.app_id}, {"rpm", &cfg.rpm}, {"name", &cfg.name},
         {"jira", &cfg.jira}, {"created", &cfg.created}, {"date_format", &cfg.date_format},
-        {"teams_sync_url", &cfg.teams_sync_url},
+        {"teams_sync_url", &cfg.teams_sync_url}, {"teams_page_url", &cfg.teams_page_url},
         {"rpm_base_url", &cfg.rpm_base_url}, {"jira_base_url", &cfg.jira_base_url},
     };
     for (const auto& [key, value] : scalars)
@@ -271,11 +281,16 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     if (!cfg.teams_sync_url.empty()) {
         file << "teams_sync_url = " << cfg.teams_sync_url << "\n";
     }
+    if (!cfg.teams_page_url.empty()) {
+        file << "teams_page_url = " << cfg.teams_page_url << "\n";
+    }
     // Written whenever a URL is set or a toggle is off, so turning one off before the
     // sync URL exists isn't silently dropped.
-    if (!cfg.teams_sync_url.empty() || !cfg.teams_post_render || !cfg.teams_post_summarize) {
+    if (!cfg.teams_sync_url.empty() || !cfg.teams_post_render || !cfg.teams_post_summarize ||
+        cfg.teams_done_limit != 5) {
         file << "teams_post_render = " << (cfg.teams_post_render ? "true" : "false") << "\n";
         file << "teams_post_summarize = " << (cfg.teams_post_summarize ? "true" : "false") << "\n";
+        file << "teams_done_limit = " << cfg.teams_done_limit << "\n";
     }
 
     file << "\n";

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // teams-sync.js — post a Kanban update to a Teams sync endpoint.
-// Invoked by `projot render` when teams_sync_url is configured.
-// Usage: node teams-sync.js <config_path> <notes_md_path> <sync_url>
+// Invoked by `projot render` when teams_sync_url is configured, and with --status
+// (to teams_page_url) when a status page is configured.
+// Usage: node teams-sync.js <config_path> <notes_md_path> [sync_url] [--summary|--status]
 // Always exits 0; sync failure must never block a git commit.
 
 "use strict";
@@ -33,7 +34,7 @@ function parseTodoRecords(mdText) {
     const m = line.match(TODO_RE);
     if (m) {
       const [, id, marker, text] = m;
-      current = { id, marker, text: text.trim(), created: "", completed: "" };
+      current = { id, marker, text: text.trim(), created: "", completed: "", notes: [] };
       records.push(current);
       continue;
     }
@@ -41,25 +42,45 @@ function parseTodoRecords(mdText) {
     const created = line.match(/^ {3}- Created: (.*)$/);
     if (created) { current.created = created[1].trim(); continue; }
     const completed = line.match(/^ {3}- Completed: (.*)$/);
-    if (completed) current.completed = completed[1].trim();
+    if (completed) { current.completed = completed[1].trim(); continue; }
+    const note = line.match(/^ {5}- (.+)$/);
+    if (note) current.notes.push(note[1].trim());
   }
   return records;
 }
 
-function bucketTodos(records) {
-  const buckets = { todo: [], inProgress: [], blocked: [], done: [] };
+// Done column size on the Kanban post when teams_done_limit is not configured.
+const DEFAULT_DONE_LIMIT = 5;
+
+// teams_done_limit from the config: a non-negative integer, 0 meaning "show all".
+// Anything missing or malformed falls back to the default rather than failing a sync.
+function parseDoneLimit(value) {
+  return /^\d+$/.test(value || "") ? Number(value) : DEFAULT_DONE_LIMIT;
+}
+
+// Done items are capped to the `doneLimit` most recently completed (0 = no cap), so a
+// long history doesn't swamp the post. `doneTotal` keeps the uncapped count.
+function bucketTodos(records, doneLimit = DEFAULT_DONE_LIMIT) {
+  const buckets = { todo: [], inProgress: [], blocked: [], done: [], doneTotal: 0 };
+  const done = [];
   for (const r of records) {
     const entry = `${r.id}. ${r.text}`;
     if (r.marker === " ") buckets.todo.push(entry);
     else if (r.marker === ">") buckets.inProgress.push(entry);
     else if (r.marker === "~") buckets.blocked.push(entry);
-    else if (r.marker === "x") buckets.done.push(entry);
+    else if (r.marker === "x") done.push(r);
   }
+  // Newest completion first; same-day ties (dates have day granularity) go to the
+  // higher id, and todos with no date sort last.
+  done.sort((a, b) => b.completed.localeCompare(a.completed) || Number(b.id) - Number(a.id));
+  buckets.doneTotal = done.length;
+  const shown = doneLimit > 0 ? done.slice(0, doneLimit) : done;
+  buckets.done = shown.map((r) => `${r.id}. ${r.text}`);
   return buckets;
 }
 
-function parseTodos(mdText) {
-  return bucketTodos(parseTodoRecords(mdText));
+function parseTodos(mdText, doneLimit) {
+  return bucketTodos(parseTodoRecords(mdText), doneLimit);
 }
 
 // What was added and closed on `today`, plus how many todos are still open.
@@ -90,6 +111,21 @@ function kanbanColumn(title, items, color) {
   return { type: "Column", width: "stretch", items: cells };
 }
 
+// "N todos complete" line under the board. Uses the uncapped total, so it stays
+// accurate when the Done column is truncated.
+function doneTotalOf(buckets) {
+  return buckets.doneTotal === undefined ? buckets.done.length : buckets.doneTotal;
+}
+
+function doneSummary(buckets) {
+  const n = doneTotalOf(buckets);
+  const shown = buckets.done.length;
+  const noun = n === 1 ? "todo" : "todos";
+  return shown < n
+    ? `${n} ${noun} complete (showing the ${shown} most recent).`
+    : `${n} ${noun} complete.`;
+}
+
 function buildAdaptiveCard(projectName, rpm, buckets) {
   return {
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -106,6 +142,7 @@ function buildAdaptiveCard(projectName, rpm, buckets) {
           kanbanColumn("Done",        buckets.done,       "Good"),
         ],
       },
+      textBlock(doneSummary(buckets), { isSubtle: true, size: "Small" }),
     ],
   };
 }
@@ -138,6 +175,7 @@ function renderSummary(projectName, rpm, buckets) {
     }
     lines.push("");
   }
+  lines.push(doneSummary(buckets));
   return lines.join("\n").trim();
 }
 
@@ -164,6 +202,7 @@ function buildWorkflowBody(projectName, rpm, buckets, card) {
       inProgress: buckets.inProgress,
       blocked: buckets.blocked,
       done: buckets.done,
+      doneTotal: doneTotalOf(buckets),
     },
   };
 }
@@ -250,6 +289,136 @@ function buildSummaryBody(syncUrl, projectName, rpm, today, records) {
   };
 }
 
+// ── status page ───────────────────────────────────────────────────────────────
+
+const STATUS_WINDOW_DAYS = 14;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Link entries from the rendered notes file: "- Label: url" under "## Links" (skipping
+// unset "N/A" ones), and "- url" or "- [name](url)" in the other link sections.
+function parseLinks(mdText) {
+  const links = [];
+  let section = "";
+  for (const line of mdText.split("\n")) {
+    const heading = line.match(/^#{2,3} (.+)$/);
+    if (heading) { section = heading[1].trim(); continue; }
+    if (section === "" || section === "Todos") continue;
+    const item = line.match(/^- (.+)$/);
+    if (!item) continue;
+    const text = item[1].trim();
+    const md = text.match(/^\[(.*)\]\((.+)\)$/);
+    if (md) { links.push({ section, label: md[1], url: md[2] }); continue; }
+    if (section === "Links") {
+      const kv = text.match(/^(.+?): (\S.*)$/);
+      if (kv && kv[2] !== "N/A") links.push({ section, label: kv[1], url: kv[2] });
+      continue;
+    }
+    if (/^https?:\/\//.test(text)) links.push({ section, label: text, url: text });
+  }
+  return links;
+}
+
+// First day of a window of `days` days ending on `today` (inclusive), as ISO.
+function windowStart(today, days) {
+  const [y, m, d] = today.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d - (days - 1)));
+  return start.toISOString().slice(0, 10);
+}
+
+function inWindow(date, start, today) {
+  return ISO_DATE_RE.test(date) && date >= start && date <= today;
+}
+
+// Overall state of the project: every todo by status, how much finished recently, and
+// progress. Derived only from the notes file, so history reaches back as far as its
+// Created/Completed dates do.
+function summarizeStatus(records, today, days) {
+  const start = windowStart(today, days);
+  const entry = (r) => ({ id: r.id, text: r.text, created: r.created, completed: r.completed, notes: r.notes });
+  const group = (marker) => records.filter((r) => r.marker === marker).map(entry);
+  const todos = { todo: group(" "), inProgress: group(">"), blocked: group("~"), done: group("x") };
+  const recentlyCompleted = todos.done
+    .filter((r) => inWindow(r.completed, start, today))
+    .sort((a, b) => b.completed.localeCompare(a.completed) || Number(b.id) - Number(a.id));
+  const addedInWindow = records.filter((r) => inWindow(r.created, start, today)).length;
+  const total = records.length;
+  return {
+    todos,
+    recentlyCompleted,
+    counts: {
+      todo: todos.todo.length,
+      inProgress: todos.inProgress.length,
+      blocked: todos.blocked.length,
+      done: todos.done.length,
+      total,
+    },
+    percentDone: total === 0 ? 0 : Math.round((todos.done.length / total) * 100),
+    windowDays: days,
+    addedInWindow,
+    completedInWindow: recentlyCompleted.length,
+  };
+}
+
+function renderStatusMarkdown(projectName, rpm, today, status, links) {
+  const c = status.counts;
+  const lines = [
+    `# ${projectName} (RPM ${rpm})`,
+    "",
+    `Updated ${today}. ${status.percentDone}% done (${c.done} of ${c.total} todos).`,
+    "",
+    `Open: ${c.todo} todo, ${c.inProgress} in progress, ${c.blocked} blocked.`,
+    `Last ${status.windowDays} days: ${status.addedInWindow} added, ${status.completedInWindow} completed.`,
+    "",
+  ];
+  const section = (title, items, line) => {
+    lines.push(`## ${title} (${items.length})`, "");
+    if (items.length === 0) lines.push("- —");
+    for (const item of items) {
+      lines.push(line(item));
+      for (const note of item.notes || []) lines.push(`  - ${note}`);
+    }
+    lines.push("");
+  };
+  const plain = (r) => `- ${r.id}. ${r.text}`;
+  section("In progress", status.todos.inProgress, plain);
+  section("Blocked", status.todos.blocked, plain);
+  section("Todo", status.todos.todo, plain);
+  section(`Completed in the last ${status.windowDays} days`, status.recentlyCompleted,
+    (r) => `- ${r.id}. ${r.text} (${r.completed})`);
+  if (links.length > 0) {
+    lines.push("## Links", "");
+    for (const l of links) lines.push(`- ${l.section}: [${l.label}](${l.url})`);
+    lines.push("");
+  }
+  return lines.join("\n").trim();
+}
+
+// The page endpoint's flow does the create-or-update, so the body is generic JSON
+// rather than a card: `key` is stable for the project (find the page by it), and
+// `markdown` is a ready-to-write body. `kind: "status"` tells it apart from the posts.
+function buildStatusBody(projectName, rpm, today, records, links, days = STATUS_WINDOW_DAYS) {
+  const status = summarizeStatus(records, today, days);
+  return {
+    source: "projot",
+    version: 1,
+    kind: "status",
+    key: `projot-${rpm}`,
+    title: `${projectName} (RPM ${rpm}): project status`,
+    date: today,
+    projectName,
+    rpm,
+    markdown: renderStatusMarkdown(projectName, rpm, today, status, links),
+    counts: status.counts,
+    percentDone: status.percentDone,
+    windowDays: status.windowDays,
+    addedInWindow: status.addedInWindow,
+    completedInWindow: status.completedInWindow,
+    todos: status.todos,
+    recentlyCompleted: status.recentlyCompleted,
+    links,
+  };
+}
+
 // ── http post ─────────────────────────────────────────────────────────────────
 
 function postJson(webhookUrl, body) {
@@ -307,6 +476,7 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
   const summaryMode = flags.includes("--summary");
+  const statusMode = flags.includes("--status");
   const todayFlag = flags.find((f) => f.startsWith("--today="));
   const today = todayFlag ? todayFlag.slice("--today=".length) : localIsoDate();
 
@@ -319,19 +489,29 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  const webhookUrl = urlArg
-    || readConfigValue(configText, "teams_sync_url")
-    || readConfigValue(configText, "teams_webhook");
+  // The status page has its own endpoint; it never falls back to the message one,
+  // since that flow would post a new message on every render.
+  const webhookUrl = statusMode
+    ? urlArg || readConfigValue(configText, "teams_page_url")
+    : urlArg
+      || readConfigValue(configText, "teams_sync_url")
+      || readConfigValue(configText, "teams_webhook");
   if (!webhookUrl) {
-    process.stderr.write("teams-sync: warning: no teams_sync_url in config; skipping\n");
+    process.stderr.write(`teams-sync: warning: no ${statusMode ? "teams_page_url" : "teams_sync_url"} in config; skipping\n`);
     return;
   }
 
   const projectName = readConfigValue(configText, "name") || "Unknown project";
   const rpm         = readConfigValue(configText, "rpm")  || "?";
-  const body = summaryMode
-    ? buildSummaryBody(webhookUrl, projectName, rpm, today, parseTodoRecords(notesText))
-    : buildSyncBody(webhookUrl, projectName, rpm, parseTodos(notesText));
+  let body;
+  if (statusMode) {
+    body = buildStatusBody(projectName, rpm, today, parseTodoRecords(notesText), parseLinks(notesText));
+  } else if (summaryMode) {
+    body = buildSummaryBody(webhookUrl, projectName, rpm, today, parseTodoRecords(notesText));
+  } else {
+    const doneLimit = parseDoneLimit(readConfigValue(configText, "teams_done_limit"));
+    body = buildSyncBody(webhookUrl, projectName, rpm, parseTodos(notesText, doneLimit));
+  }
 
   try {
     await postJson(webhookUrl, body);
@@ -352,9 +532,12 @@ export {
   buildSummaryBody,
   buildSummaryCard,
   buildSyncBody,
+  buildStatusBody,
   buildWorkflowBody,
   isLegacyTeamsWebhook,
+  parseLinks,
   parseTodoRecords,
+  parseDoneLimit,
   parseTodos,
   renderDaySummary,
   renderSummary,

@@ -16,7 +16,7 @@ end
 
 function __projot_no_subcommand
     not __fish_seen_subcommand_from init new close add add-todo list links complete status summarize add-note \
-        set-link set-app-id add-github add-swagger add-blizzard add-azure render \
+        set-link set-project set-app-id add-github add-swagger add-blizzard add-azure render \
         install-hook uninstall-hook install-mcp-server uninstall-mcp-server \
         set-global set-teams-webhook set-teams-post
 end
@@ -38,6 +38,7 @@ complete -c projot -n __projot_no_subcommand -a status        -d "Set a todo's s
 complete -c projot -n __projot_no_subcommand -a summarize     -d 'Display todos added and closed today'
 complete -c projot -n __projot_no_subcommand -a add-note      -d 'Add a note to a todo'
 complete -c projot -n __projot_no_subcommand -a set-link      -d 'Set or update a single-value link URL'
+complete -c projot -n __projot_no_subcommand -a set-project   -d 'Change the project RPM and/or Jira number'
 complete -c projot -n __projot_no_subcommand -a set-app-id    -d 'Set the application ID'
 complete -c projot -n __projot_no_subcommand -a add-github    -d 'Add a GitHub URL'
 complete -c projot -n __projot_no_subcommand -a add-swagger   -d 'Add a Swagger URL'
@@ -50,13 +51,14 @@ complete -c projot -n __projot_no_subcommand -a install-mcp-server -d 'Configure
 complete -c projot -n __projot_no_subcommand -a uninstall-mcp-server -d 'Remove MCP server configuration'
 complete -c projot -n __projot_no_subcommand -a set-global       -d 'Set global defaults'
 complete -c projot -n __projot_no_subcommand -a set-teams-webhook -d 'Set the Teams incoming webhook URL'
+complete -c projot -n __projot_no_subcommand -a set-teams-page   -d 'Set the Teams status page endpoint URL'
 complete -c projot -n __projot_no_subcommand -a set-teams-post   -d 'Turn Teams posting on/off for render and summarize'
 
 # --help on every subcommand
-for sub in init new close add add-todo list links complete status summarize add-note set-link set-app-id \
+for sub in init new close add add-todo list links complete status summarize add-note set-link set-project set-app-id \
            add-github add-swagger add-blizzard add-azure render install-hook \
            uninstall-hook install-mcp-server uninstall-mcp-server set-global \
-           set-teams-webhook set-teams-post
+           set-teams-webhook set-teams-page set-teams-post
     complete -c projot -n "__fish_seen_subcommand_from $sub" -l help -d 'Show help'
 end
 
@@ -108,6 +110,10 @@ complete -c projot -n '__fish_seen_subcommand_from set-link' -l key \
     -d 'Link key' -r -a 'teams jira rpm other'
 complete -c projot -n '__fish_seen_subcommand_from set-link' -l url -d 'URL' -r
 
+# set-project
+complete -c projot -n '__fish_seen_subcommand_from set-project' -l rpm -d 'New RPM project number' -r
+complete -c projot -n '__fish_seen_subcommand_from set-project' -l jira -d 'New Jira ticket number' -r
+
 # set-app-id
 complete -c projot -n '__fish_seen_subcommand_from set-app-id' -l app-id -d 'Application ID' -r
 complete -c projot -n '__fish_seen_subcommand_from set-app-id' -l force  -d 'Overwrite existing value'
@@ -127,9 +133,13 @@ complete -c projot -n '__fish_seen_subcommand_from add-azure' -l url -d 'URL' -r
 complete -c projot -n '__fish_seen_subcommand_from install-mcp-server' -l no-vscode -d 'Skip VS Code configuration'
 complete -c projot -n '__fish_seen_subcommand_from uninstall-mcp-server' -l no-vscode -d 'Skip VS Code removal'
 
+# set-teams-page
+complete -c projot -n '__fish_seen_subcommand_from set-teams-page' -l clear -d 'Stop sending status page updates'
+
 # set-teams-post
 complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l render -d 'Post the Kanban board after render' -r -a 'on off'
 complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l summarize -d 'Post the daily summary after summarize' -r -a 'on off'
+complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l done-limit -d 'Done column size on the Kanban post (0 = all)' -r
 
 # set-global
 complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r

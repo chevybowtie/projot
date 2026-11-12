@@ -37,6 +37,7 @@ _projot() {
                 'summarize:display todos added and closed today'
                 'add-note:add a note to a todo'
                 'set-link:set or update a single-value link URL'
+                'set-project:change the project RPM and/or Jira number'
                 'set-app-id:set the application ID'
                 'add-github:add a GitHub URL'
                 'add-swagger:add a Swagger URL'
@@ -49,6 +50,7 @@ _projot() {
                 'uninstall-mcp-server:remove MCP server configuration'
                 'set-global:set global defaults'
                 'set-teams-webhook:set the Teams incoming webhook URL'
+                'set-teams-page:set the Teams status page endpoint URL'
                 'set-teams-post:turn Teams posting on/off for render and summarize'
             )
             _describe 'subcommand' subcommands
@@ -123,6 +125,12 @@ _projot() {
                         '--today[show only today activity]' \
                         '--help[show help]'
                     ;;
+                set-project)
+                    _arguments \
+                        '--rpm[new RPM project number]:rpm:' \
+                        '--jira[new Jira ticket number]:jira:' \
+                        '--help[show help]'
+                    ;;
                 set-link)
                     _arguments \
                 '--key[link key]:key:(teams jira rpm other)' \
@@ -165,10 +173,17 @@ _projot() {
                         '1:webhook URL:' \
                         '--help[show help]'
                     ;;
+                set-teams-page)
+                    _arguments \
+                        '1:page URL:' \
+                        '--clear[stop sending status page updates]' \
+                        '--help[show help]'
+                    ;;
                 set-teams-post)
                     _arguments \
                         '--render[post the Kanban board after render]:state:(on off)' \
                         '--summarize[post the daily summary after summarize]:state:(on off)' \
+                        '--done-limit[Done column size on the Kanban post (0 = all)]:count:' \
                         '--help[show help]'
                     ;;
                 set-global)
