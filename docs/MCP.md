@@ -111,6 +111,8 @@ All tools are prefixed with `projot_` to avoid conflicts with built-in AI task m
 | `projot_set_swagger_link` | Update the Swagger URL |
 | `projot_set_blizzard_link` | Update the Blizzard URL |
 | `projot_set_teams_link` | Update the Teams channel URL |
+| `projot_set_project` | Change the project's RPM and/or Jira number (`project_number`, `jira_number`; renames the notes file if the RPM number changes) |
+| `projot_set_done_limit` | Set how many completed todos the Teams Kanban Done column shows (`limit`, default 5, `0` = all; the status page is never capped) |
 
 ---
 

@@ -239,6 +239,52 @@ test("set_teams_link: projot set-link with correct key and url", (assert) => {
   assert("url in call", cmd.includes("https://teams.new.com/channel"));
 });
 
+test("set_project: passes --rpm and --jira to projot set-project", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_project", { project_number: "54321", jira_number: "99" });
+  assert("no error", !isError);
+  const cmd = projotCalls[0];
+  assert("subcommand is set-project", cmd.includes("set-project"));
+  assert("--rpm 54321", cmd.includes("--rpm 54321"));
+  assert("--jira 99", cmd.includes("--jira 99"));
+});
+
+test("set_project: only the given value is passed", (assert) => {
+  const { projotCalls } = runTool("projot_set_project", { jira_number: "99" });
+  assert("--jira present", projotCalls[0].includes("--jira 99"));
+  assert("--rpm absent", !projotCalls[0].includes("--rpm"));
+});
+
+test("set_project: neither value fails before calling projot", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_project", {});
+  assert("is error", isError);
+  assert("projot not called", projotCalls.length === 0);
+});
+
+test("set_project: projot failure is reported as an error", (assert) => {
+  const { isError } = runTool("projot_set_project", { project_number: "1" }, { MOCK_PROJOT_FAIL: "set-project" });
+  assert("is error", isError);
+});
+
+test("set_done_limit: calls set-teams-post --done-limit", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: 10 });
+  assert("no error", !isError);
+  assert("command", projotCalls[0].includes("set-teams-post --done-limit 10"));
+});
+
+test("set_done_limit: 0 is accepted (show all)", (assert) => {
+  const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: 0 });
+  assert("no error", !isError);
+  assert("--done-limit 0", projotCalls[0].includes("--done-limit 0"));
+});
+
+test("set_done_limit: invalid values fail before calling projot", (assert) => {
+  for (const bad of [-1, 2.5, "5", null, undefined]) {
+    const { projotCalls, isError } = runTool("projot_set_done_limit", { limit: bad });
+    assert(`${JSON.stringify(bad)} is an error`, isError);
+    assert(`${JSON.stringify(bad)} makes no projot call`, projotCalls.length === 0);
+  }
+});
+
 test("set_github_link: projot add-github called with url", (assert) => {
   const { projotCalls } = runTool("projot_set_github_link", { url: "https://github.com/example/new" });
   assert("projot called", projotCalls.length > 0);

@@ -271,6 +271,38 @@ function handleRequest(request) {
           },
         },
         {
+          name: "projot_set_project",
+          description: "Change the RPM project number and/or Jira number of the current projot project. Todos are kept; the notes file is renamed if the RPM number changes. Does not change the base URLs (use 'projot set-global' for those).",
+          inputSchema: {
+            type: "object",
+            properties: {
+              project_number: {
+                type: "string",
+                description: "New RPM project number (letters, digits, '-', '_', '.'; not starting with '.')",
+              },
+              jira_number: {
+                type: "string",
+                description: "New Jira number",
+              },
+            },
+          },
+        },
+        {
+          name: "projot_set_done_limit",
+          description: "Set how many of the most recently completed todos the Teams Kanban post's Done column shows (default 5, 0 = all). The post also states the total complete. The Teams status page is never capped.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              limit: {
+                type: "integer",
+                minimum: 0,
+                description: "Number of completed todos to show; 0 shows all",
+              },
+            },
+            required: ["limit"],
+          },
+        },
+        {
           name: "projot_open_github",
           description: "Open the GitHub repository URL configured in .projot/ for this project.",
           inputSchema: { type: "object", properties: {} },
@@ -456,6 +488,24 @@ function handleRequest(request) {
           return err(`${e.message}\n${undoBranchCreation(original, suggestedBranch)}`);
         }
         return ok(`Project setup complete:\n- Branch: ${suggestedBranch}\n- Project: ${project_number} - ${description}\n- Jira: ${jira_number}`);
+      }
+
+      if (name === "projot_set_project") {
+        const { project_number, jira_number } = args;
+        if (!project_number && !jira_number) return err("project_number and/or jira_number is required");
+        const setArgs = ["set-project"];
+        if (project_number) setArgs.push("--rpm", String(project_number));
+        if (jira_number) setArgs.push("--jira", String(jira_number));
+        const out = execArgs("projot", setArgs).trim();
+        return ok(out || "Project updated");
+      }
+
+      if (name === "projot_set_done_limit") {
+        // Checked here as well as by projot so a bad value never reaches the CLI.
+        const limit = args.limit;
+        if (!Number.isInteger(limit) || limit < 0) return err("limit must be a non-negative integer (0 = show all)");
+        execArgs("projot", ["set-teams-post", "--done-limit", String(limit)]);
+        return ok(`Kanban Done column limit set to ${limit === 0 ? "all" : limit}`);
       }
 
       if (name === "projot_set_teams_link") {
