@@ -41,7 +41,7 @@ static void print_usage() {
         "  set-global            Set global defaults (RPM and Jira base URLs)\n"
         "  set-teams-webhook     Set the Teams sync endpoint URL for Kanban sync\n"
         "  set-teams-page        Set the Teams status page endpoint URL\n"
-        "  set-teams-post        Turn Teams posting on/off for render and summarize\n\n"
+        "  set-teams-post        Turn Teams posting on/off; set Kanban Done column size\n\n"
         "Run 'projot <subcommand> --help' for subcommand options.\n";
 }
 
@@ -74,7 +74,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
         {"set-teams-page",      {"clear"}},
-        {"set-teams-post",      {"render", "summarize"}},
+        {"set-teams-post",      {"render", "summarize", "done-limit"}},
     };
     return m;
 }

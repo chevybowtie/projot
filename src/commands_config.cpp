@@ -536,19 +536,23 @@ static bool parse_on_off(const std::string& text, bool& out) {
 int cmd_set_teams_post(const Args& args) {
     if (args.help_requested) {
         std::cout <<
-            "Usage: projot set-teams-post [--render on|off] [--summarize on|off]\n\n"
+            "Usage: projot set-teams-post [--render on|off] [--summarize on|off] [--done-limit N]\n\n"
             "Turn Teams posting on or off for each command. Both are on by default\n"
-            "once a Teams sync URL is set (see set-teams-webhook).\n\n"
+            "once a Teams sync URL is set (see set-teams-webhook), and the Kanban Done\n"
+            "column shows the 5 most recently completed todos.\n\n"
             "Optional:\n"
             "  --render <on|off>      Post the Kanban board after 'projot render'\n"
-            "  --summarize <on|off>   Post the daily summary after 'projot summarize'\n\n"
+            "  --summarize <on|off>   Post the daily summary after 'projot summarize'\n"
+            "  --done-limit <N>       Completed todos shown in the Kanban Done column\n"
+            "                         (default 5, 0 = all; the status page is never capped)\n\n"
             "Example:\n"
-            "  projot set-teams-post --summarize off\n";
+            "  projot set-teams-post --summarize off\n"
+            "  projot set-teams-post --done-limit 10\n";
         return 0;
     }
 
-    if (!args.has("render") && !args.has("summarize")) {
-        std::cerr << "error: give --render and/or --summarize. "
+    if (!args.has("render") && !args.has("summarize") && !args.has("done-limit")) {
+        std::cerr << "error: give --render, --summarize and/or --done-limit. "
                      "Run 'projot set-teams-post --help' for usage.\n";
         return 1;
     }
@@ -564,16 +568,29 @@ int cmd_set_teams_post(const Args& args) {
         return 1;
     }
 
+    int done_limit = 0;
+    if (args.has("done-limit")) {
+        const std::string text = args.get("done-limit");
+        if (text.empty() || text.size() > 6 ||
+            text.find_first_not_of("0123456789") != std::string::npos) {
+            std::cerr << "error: --done-limit must be a non-negative whole number (0 = all).\n";
+            return 1;
+        }
+        done_limit = std::stoi(text);
+    }
+
     auto ctx = load_context();
     if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
     if (!require_project(ctx)) return 1;
 
     const bool set_render = args.has("render");
     const bool set_summarize = args.has("summarize");
+    const bool set_done_limit = args.has("done-limit");
 
     return execute_config_command(ctx, [=](Context& c) {
         if (set_render)    c.config.teams_post_render = render_on;
         if (set_summarize) c.config.teams_post_summarize = summarize_on;
+        if (set_done_limit) c.config.teams_done_limit = done_limit;
         return ParseResult{true, ""};
     }, false, "Updated Teams post settings.");
 }

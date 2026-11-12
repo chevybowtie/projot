@@ -660,6 +660,39 @@ TEST_CASE("set_teams_post_invalid_value_changes_nothing") {
     CHECK(cfg.teams_post_summarize == true);
 }
 
+TEST_CASE("set_teams_post_done_limit_defaults_to_five") {
+    TempRepo repo("set_teams_post_done_default");
+    repo.init(); repo.new_project();
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
+}
+
+TEST_CASE("set_teams_post_done_limit_round_trips") {
+    TempRepo repo("set_teams_post_done_limit");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "10"}})) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 10);
+    // 0 means "show all" and must survive the round trip, not read back as default.
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "0"}})) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 0);
+}
+
+TEST_CASE("set_teams_post_done_limit_rejects_invalid_value") {
+    TempRepo repo("set_teams_post_done_limit_bad");
+    repo.init(); repo.new_project();
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "-1"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "abc"}})) == 1);
+    CHECK(cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "5x"}})) == 1);
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
+}
+
+TEST_CASE("close_resets_done_limit") {
+    TempRepo repo("set_teams_post_done_limit_close");
+    repo.init(); repo.new_project();
+    cmd_set_teams_post(make_args("set-teams-post", {{"done-limit", "10"}}));
+    CHECK(cmd_close(make_args("close")) == 0);
+    CHECK(read_repo_config(repo).teams_done_limit == 5);
+}
+
 TEST_CASE("set_teams_post_requires_a_flag") {
     TempRepo repo("set_teams_post_no_flags");
     repo.init(); repo.new_project();

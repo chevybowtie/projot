@@ -36,7 +36,7 @@ $projotFlags = @{
     'set-global'           = @('--rpm-base-url', '--jira-base-url', '--help')
     'set-teams-webhook'    = @('--help')
     'set-teams-page'       = @('--clear', '--help')
-    'set-teams-post'       = @('--render', '--summarize', '--help')
+    'set-teams-post'       = @('--render', '--summarize', '--done-limit', '--help')
 }
 
 $projotFlagValues = @{

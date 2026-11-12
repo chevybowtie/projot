@@ -176,6 +176,7 @@ _projot() {
                     _arguments \
                         '--render[post the Kanban board after render]:state:(on off)' \
                         '--summarize[post the daily summary after summarize]:state:(on off)' \
+                        '--done-limit[Done column size on the Kanban post (0 = all)]:count:' \
                         '--help[show help]'
                     ;;
                 set-global)

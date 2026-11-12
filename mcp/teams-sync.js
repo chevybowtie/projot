@@ -49,20 +49,38 @@ function parseTodoRecords(mdText) {
   return records;
 }
 
-function bucketTodos(records) {
-  const buckets = { todo: [], inProgress: [], blocked: [], done: [] };
+// Done column size on the Kanban post when teams_done_limit is not configured.
+const DEFAULT_DONE_LIMIT = 5;
+
+// teams_done_limit from the config: a non-negative integer, 0 meaning "show all".
+// Anything missing or malformed falls back to the default rather than failing a sync.
+function parseDoneLimit(value) {
+  return /^\d+$/.test(value || "") ? Number(value) : DEFAULT_DONE_LIMIT;
+}
+
+// Done items are capped to the `doneLimit` most recently completed (0 = no cap), so a
+// long history doesn't swamp the post. `doneTotal` keeps the uncapped count.
+function bucketTodos(records, doneLimit = DEFAULT_DONE_LIMIT) {
+  const buckets = { todo: [], inProgress: [], blocked: [], done: [], doneTotal: 0 };
+  const done = [];
   for (const r of records) {
     const entry = `${r.id}. ${r.text}`;
     if (r.marker === " ") buckets.todo.push(entry);
     else if (r.marker === ">") buckets.inProgress.push(entry);
     else if (r.marker === "~") buckets.blocked.push(entry);
-    else if (r.marker === "x") buckets.done.push(entry);
+    else if (r.marker === "x") done.push(r);
   }
+  // Newest completion first; same-day ties (dates have day granularity) go to the
+  // higher id, and todos with no date sort last.
+  done.sort((a, b) => b.completed.localeCompare(a.completed) || Number(b.id) - Number(a.id));
+  buckets.doneTotal = done.length;
+  const shown = doneLimit > 0 ? done.slice(0, doneLimit) : done;
+  buckets.done = shown.map((r) => `${r.id}. ${r.text}`);
   return buckets;
 }
 
-function parseTodos(mdText) {
-  return bucketTodos(parseTodoRecords(mdText));
+function parseTodos(mdText, doneLimit) {
+  return bucketTodos(parseTodoRecords(mdText), doneLimit);
 }
 
 // What was added and closed on `today`, plus how many todos are still open.
@@ -93,6 +111,21 @@ function kanbanColumn(title, items, color) {
   return { type: "Column", width: "stretch", items: cells };
 }
 
+// "N todos complete" line under the board. Uses the uncapped total, so it stays
+// accurate when the Done column is truncated.
+function doneTotalOf(buckets) {
+  return buckets.doneTotal === undefined ? buckets.done.length : buckets.doneTotal;
+}
+
+function doneSummary(buckets) {
+  const n = doneTotalOf(buckets);
+  const shown = buckets.done.length;
+  const noun = n === 1 ? "todo" : "todos";
+  return shown < n
+    ? `${n} ${noun} complete (showing the ${shown} most recent).`
+    : `${n} ${noun} complete.`;
+}
+
 function buildAdaptiveCard(projectName, rpm, buckets) {
   return {
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -109,6 +142,7 @@ function buildAdaptiveCard(projectName, rpm, buckets) {
           kanbanColumn("Done",        buckets.done,       "Good"),
         ],
       },
+      textBlock(doneSummary(buckets), { isSubtle: true, size: "Small" }),
     ],
   };
 }
@@ -141,6 +175,7 @@ function renderSummary(projectName, rpm, buckets) {
     }
     lines.push("");
   }
+  lines.push(doneSummary(buckets));
   return lines.join("\n").trim();
 }
 
@@ -167,6 +202,7 @@ function buildWorkflowBody(projectName, rpm, buckets, card) {
       inProgress: buckets.inProgress,
       blocked: buckets.blocked,
       done: buckets.done,
+      doneTotal: doneTotalOf(buckets),
     },
   };
 }
@@ -473,7 +509,8 @@ async function main(argv = process.argv.slice(2)) {
   } else if (summaryMode) {
     body = buildSummaryBody(webhookUrl, projectName, rpm, today, parseTodoRecords(notesText));
   } else {
-    body = buildSyncBody(webhookUrl, projectName, rpm, parseTodos(notesText));
+    const doneLimit = parseDoneLimit(readConfigValue(configText, "teams_done_limit"));
+    body = buildSyncBody(webhookUrl, projectName, rpm, parseTodos(notesText, doneLimit));
   }
 
   try {
@@ -500,6 +537,7 @@ export {
   isLegacyTeamsWebhook,
   parseLinks,
   parseTodoRecords,
+  parseDoneLimit,
   parseTodos,
   renderDaySummary,
   renderSummary,

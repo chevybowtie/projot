@@ -274,6 +274,14 @@ projot set-teams-post --render on --summarize on
 
 These settings are stored in `.projot/config` as `teams_post_render` and `teams_post_summarize` (`true` or `false`).
 
+The Kanban post's Done column shows only the 5 most recently completed todos (by completion date), followed by a line giving the total number complete. Change the cap with `--done-limit` (`0` shows all):
+
+```bash
+projot set-teams-post --done-limit 10
+```
+
+It is stored as `teams_done_limit`. Only the channel post is capped; the status page always lists every todo.
+
 The summary uses the same message shape as the Kanban post, so the default Teams flow posts it unchanged. Custom flows can tell the two apart by the `kind` field: `"kanban"` is absent on Kanban posts, and `"summary"` marks summary posts.
 
 ### Status page

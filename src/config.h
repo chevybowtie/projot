@@ -65,6 +65,10 @@ struct Config {
     bool teams_post_render = true;
     bool teams_post_summarize = true;
 
+    // How many of the most recently completed todos the Kanban post's Done column
+    // shows (0 = all). Only the channel post is capped; the status page lists every todo.
+    int teams_done_limit = 5;
+
     // Azure resources (project-level). Each entry is "name|url" or just "url".
     std::vector<std::string> azure_subscription;
     std::vector<std::string> azure_key_vault;
@@ -94,6 +98,7 @@ struct Config {
         teams_page_url.clear();
         teams_post_render = true;
         teams_post_summarize = true;
+        teams_done_limit = 5;
     }
 };
 

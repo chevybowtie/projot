@@ -141,6 +141,14 @@ ParseResult parse_config(const std::string& path, Config& out) {
             }
             (key == "teams_post_render" ? out.teams_post_render : out.teams_post_summarize) =
                 (value == "true");
+        } else if (key == "teams_done_limit") {
+            // Digits only, so "-1", "5x" and "" are rejected rather than half-parsed.
+            if (value.empty() || value.size() > 6 ||
+                value.find_first_not_of("0123456789") != std::string::npos) {
+                return {false, "Invalid teams_done_limit '" + value + "' in " + path +
+                               " (expected a non-negative whole number)"};
+            }
+            out.teams_done_limit = std::stoi(value);
         } else if (is_list_key(key)) {
             auto items = split_list(value);
             if (key == "github")                out.github                = items;
@@ -278,9 +286,11 @@ ParseResult write_config(const std::string& path, const Config& cfg) {
     }
     // Written whenever a URL is set or a toggle is off, so turning one off before the
     // sync URL exists isn't silently dropped.
-    if (!cfg.teams_sync_url.empty() || !cfg.teams_post_render || !cfg.teams_post_summarize) {
+    if (!cfg.teams_sync_url.empty() || !cfg.teams_post_render || !cfg.teams_post_summarize ||
+        cfg.teams_done_limit != 5) {
         file << "teams_post_render = " << (cfg.teams_post_render ? "true" : "false") << "\n";
         file << "teams_post_summarize = " << (cfg.teams_post_summarize ? "true" : "false") << "\n";
+        file << "teams_done_limit = " << cfg.teams_done_limit << "\n";
     }
 
     file << "\n";

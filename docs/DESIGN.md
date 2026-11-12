@@ -182,6 +182,7 @@ Users may optionally specify `--config <path>` in later versions.
 | `teams_page_url` | Optional | Separate Teams endpoint that receives the project status page payload (see section 9.6). Secret. |
 | `teams_post_render` | Optional | `true` (default) or `false`. Whether `render` posts the Kanban board to `teams_sync_url`. Written only when a Teams URL is set or a toggle is off. |
 | `teams_post_summarize` | Optional | `true` (default) or `false`. Whether `summarize` posts the daily summary to `teams_sync_url`. Written together with `teams_post_render`. |
+| `teams_done_limit` | Optional | Non-negative integer, default `5`; `0` means no cap. How many of the most recently completed todos the Kanban post's Done column shows; the post also states the total complete. The status page is never capped. Written together with `teams_post_render`. |
 
 > Repo-level fields (`app_id`, `github`, `swagger`, `blizzard`) are set once and shared across projects. They are rendered into the project markdown file by projot and should not be hand-edited there.
 >
@@ -253,6 +254,7 @@ teams_sync_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 teams_page_url = https://prod-00.westus.logic.azure.com:443/workflows/...
 teams_post_render = true
 teams_post_summarize = true
+teams_done_limit = 5
 ```
 
 **Date format tokens** (display only):

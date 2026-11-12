@@ -134,6 +134,7 @@ complete -c projot -n '__fish_seen_subcommand_from set-teams-page' -l clear -d '
 # set-teams-post
 complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l render -d 'Post the Kanban board after render' -r -a 'on off'
 complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l summarize -d 'Post the daily summary after summarize' -r -a 'on off'
+complete -c projot -n '__fish_seen_subcommand_from set-teams-post' -l done-limit -d 'Done column size on the Kanban post (0 = all)' -r
 
 # set-global
 complete -c projot -n '__fish_seen_subcommand_from set-global' -l rpm-base-url -d 'Base URL for RPM links' -r

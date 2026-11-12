@@ -82,7 +82,7 @@ _projot() {
                 COMPREPLY=( $(compgen -W "--clear --help" -- "${cur}") )
                 ;;
             set-teams-post)
-                COMPREPLY=( $(compgen -W "--render --summarize --help" -- "${cur}") )
+                COMPREPLY=( $(compgen -W "--render --summarize --done-limit --help" -- "${cur}") )
                 ;;
         esac
         return
