@@ -27,6 +27,7 @@ static void print_usage() {
         "  summarize     Display todos added and closed today\n"
         "  add-note      Add a note to a todo\n"
         "  set-link      Set or update a single-value link URL\n"
+        "  set-project   Change the project's RPM and/or Jira number\n"
         "  set-app-id    Set the application ID\n"
         "  add-github    Add a GitHub URL\n"
         "  add-swagger   Add a Swagger URL\n"
@@ -71,6 +72,7 @@ static const std::map<std::string, std::set<std::string>>& valid_flags() {
         {"uninstall-hook",        {}},
         {"install-mcp-server",    {"no-vscode"}},
         {"uninstall-mcp-server",  {"no-vscode"}},
+        {"set-project",         {"rpm", "jira"}},
         {"set-global",          {"rpm-base-url", "jira-base-url"}},
         {"set-teams-webhook",   {}},
         {"set-teams-page",      {"clear"}},
@@ -118,6 +120,7 @@ int main(int argc, char* argv[]) {
         {"uninstall-hook",      cmd_uninstall_hook},
         {"install-mcp-server",  cmd_install_mcp_server},
         {"uninstall-mcp-server", cmd_uninstall_mcp_server},
+        {"set-project",         cmd_set_project},
         {"set-global",          cmd_set_global},
         {"set-teams-webhook",   cmd_set_teams_webhook},
         {"set-teams-page",      cmd_set_teams_page},

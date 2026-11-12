@@ -206,13 +206,14 @@ Once set, projot will post a Kanban summary to the channel on every commit.
 | `add-note` | Add a note to a todo (`--todo <ID> "note text"`) |
 | `links` | Print all project URLs (links, GitHub, Swagger, Blizzard, Azure) to the terminal |
 | `set-link` | Set a single-value link URL (`--key <key> --url <url>`) |
+| `set-project` | Change the project's RPM and/or Jira number (`--rpm <RPM> --jira <Jira>`) |
 | `set-app-id` | Update the app ID (`--force` required if already set) |
 | `add-github` | Add a GitHub URL to config |
 | `add-swagger` | Add a Swagger URL to config |
 | `add-blizzard` | Add a Blizzard URL to config |
 | `add-azure` | Add an Azure resource URL (`--type <type> --url <url> [--name <label>]`) |
 | `render` | Re-render the notes file from config |
-| `set-global` | Set global defaults (`--rpm-base-url`, `--jira-base-url`) |
+| `set-global` | Set or change the global RPM/Jira base URLs (`--rpm-base-url`, `--jira-base-url`) |
 | `set-teams-webhook` | Set the Teams sync endpoint URL for Kanban sync |
 | `set-teams-page` | Set (or `--clear`) the endpoint URL for the Teams status page |
 | `set-teams-post` | Turn Teams posting on/off for `render` and `summarize` |

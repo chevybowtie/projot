@@ -398,6 +398,116 @@ int cmd_add_azure(const Args& args) {
     }, true, "Added Azure " + label + ": " + raw);
 }
 
+// set-project
+
+int cmd_set_project(const Args& args) {
+    if (args.help_requested) {
+        std::cout <<
+            "Usage: projot set-project [--rpm <RPM>] [--jira <Jira>]\n\n"
+            "Change the RPM project number and/or Jira ticket number of the current\n"
+            "project. Todos, notes and links are kept; the notes file is renamed to\n"
+            "match a new RPM number and re-rendered.\n\n"
+            "Optional (at least one required):\n"
+            "  --rpm <RPM>     New RPM project number\n"
+            "  --jira <Jira>   New Jira ticket number\n\n"
+            "To change the base URLs the numbers are appended to, see 'projot set-global'.\n\n"
+            "Examples:\n"
+            "  projot set-project --jira 67891\n"
+            "  projot set-project --rpm 12346 --jira 67891\n";
+        return 0;
+    }
+
+    if (!args.has("rpm") && !args.has("jira")) {
+        std::cerr << "error: give --rpm and/or --jira. "
+                     "Run 'projot set-project --help' for usage.\n";
+        return 1;
+    }
+
+    auto ctx = load_context();
+    if (!ctx.ok) { std::cerr << "error: " << ctx.error << "\n"; return 1; }
+    if (!require_project(ctx)) return 1;
+
+    const std::string old_rpm  = ctx.config.rpm;
+    const std::string old_jira = ctx.config.jira;
+    const std::string new_rpm  = args.has("rpm")  ? args.get("rpm")  : old_rpm;
+    const std::string new_jira = args.has("jira") ? args.get("jira") : old_jira;
+
+    // rpm names the notes file, so it gets the same check as in 'new'.
+    if (!is_safe_rpm(new_rpm)) {
+        std::cerr << "error: --rpm must be a plain file name: letters, digits, '-', '_' "
+                     "and '.', not starting with '.'.\n";
+        return 1;
+    }
+    // The value is written as one "jira = ..." config line.
+    if (new_jira.empty() ||
+        new_jira.find_first_of("\r\n") != std::string::npos) {
+        std::cerr << "error: --jira must be a non-empty single line.\n";
+        return 1;
+    }
+
+    const bool rpm_changed  = new_rpm != old_rpm;
+    const bool jira_changed = new_jira != old_jira;
+    if (!rpm_changed && !jira_changed) {
+        std::cout << "Project already has these values; nothing to change.\n";
+        return 0;
+    }
+
+    // The notes file is renamed before the config is saved and renamed back if the
+    // save fails, so the config never names a notes file that is missing.
+    const fs::path old_notes = ctx.repo_root / ".projot" / (old_rpm + ".md");
+    const fs::path new_notes = ctx.repo_root / ".projot" / (new_rpm + ".md");
+    if (rpm_changed) {
+        std::error_code ec;
+        if (fs::exists(new_notes, ec)) {
+            std::cerr << "error: " << new_notes.string() << " already exists; "
+                         "refusing to overwrite it.\n";
+            return 1;
+        }
+        fs::rename(old_notes, new_notes, ec);
+        if (ec) {
+            std::cerr << "error: cannot rename notes file: " << ec.message() << "\n";
+            return 1;
+        }
+    }
+
+    // Links set explicitly with --rpm-url/--jira-url or set-link don't follow the
+    // number, so say so rather than leave a stale link unnoticed.
+    const bool stale_rpm_link  = rpm_changed  && ctx.config.link_urls.count("rpm");
+    const bool stale_jira_link = jira_changed && ctx.config.link_urls.count("jira");
+
+    std::string msg = "Updated project:";
+    if (rpm_changed)  msg += " RPM " + old_rpm + " -> " + new_rpm + ";";
+    if (jira_changed) msg += " Jira " + old_jira + " -> " + new_jira + ";";
+    msg.pop_back();
+
+    const int rc = execute_config_command(ctx, [&](Context& c) {
+        c.config.rpm  = new_rpm;
+        c.config.jira = new_jira;
+        return ParseResult{true, ""};
+    }, true, msg);
+
+    if (rc != 0) {
+        if (rpm_changed) {
+            std::error_code ec;
+            fs::rename(new_notes, old_notes, ec);
+            if (ec) std::cerr << "warning: could not restore " << old_notes.string()
+                              << ": " << ec.message() << "\n";
+        }
+        return rc;
+    }
+
+    if (stale_rpm_link)
+        std::cerr << "warning: link.rpm is set explicitly and still points at the old "
+                     "project; update it with 'projot set-link --key rpm --url <URL>'.\n";
+    if (stale_jira_link)
+        std::cerr << "warning: link.jira is set explicitly and still points at the old "
+                     "ticket; update it with 'projot set-link --key jira --url <URL>'.\n";
+    if (rpm_changed)
+        std::cout << "Renamed .projot/" << old_rpm << ".md to .projot/" << new_rpm
+                  << ".md; stage both paths (git add -A .projot) to record the rename.\n";
+    return 0;
+}
+
 // set-global
 
 int cmd_set_global(const Args& args) {

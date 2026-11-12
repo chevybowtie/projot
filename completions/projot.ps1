@@ -5,7 +5,7 @@
 
 $projotSubcommands = @(
     'init', 'new', 'close', 'add', 'add-todo', 'list', 'links', 'complete', 'status', 'summarize', 'add-note',
-    'set-link', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
+    'set-link', 'set-project', 'set-app-id', 'add-github', 'add-swagger', 'add-blizzard',
     'add-azure', 'render', 'install-hook', 'uninstall-hook',
     'install-mcp-server', 'uninstall-mcp-server', 'set-global', 'set-teams-webhook', 'set-teams-page', 'set-teams-post'
 )
@@ -23,6 +23,7 @@ $projotFlags = @{
     'summarize'            = @('--today', '--help')
     'add-note'             = @('--todo', '--help')
     'set-link'             = @('--key', '--url', '--help')
+    'set-project'          = @('--rpm', '--jira', '--help')
     'set-app-id'           = @('--app-id', '--force', '--help')
     'add-github'           = @('--url', '--help')
     'add-swagger'          = @('--url', '--help')

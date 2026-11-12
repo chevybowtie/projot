@@ -37,6 +37,7 @@ _projot() {
                 'summarize:display todos added and closed today'
                 'add-note:add a note to a todo'
                 'set-link:set or update a single-value link URL'
+                'set-project:change the project RPM and/or Jira number'
                 'set-app-id:set the application ID'
                 'add-github:add a GitHub URL'
                 'add-swagger:add a Swagger URL'
@@ -122,6 +123,12 @@ _projot() {
                 summarize)
                     _arguments \
                         '--today[show only today activity]' \
+                        '--help[show help]'
+                    ;;
+                set-project)
+                    _arguments \
+                        '--rpm[new RPM project number]:rpm:' \
+                        '--jira[new Jira ticket number]:jira:' \
                         '--help[show help]'
                     ;;
                 set-link)

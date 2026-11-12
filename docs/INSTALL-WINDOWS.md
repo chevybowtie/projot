@@ -104,6 +104,8 @@ projot set-global `
 
 These base URLs are automatically used by all projects in the MCP tools (e.g., `projot_open_rpm`, `projot_open_jira`). The Jira base URL is used for Jira integration.
 
+To change a base URL later, run `projot set-global` again with the new value (only the flags you pass are changed), or edit `rpm_base_url` / `jira_base_url` in `%APPDATA%\projot\config`. To override one for a single repository, add the same key to that repo's `.projot/config`. To change a project's own RPM or Jira *number* (not the base URL), use `projot set-project --rpm <RPM> --jira <Jira>`.
+
 ## Troubleshooting
 
 **PowerShell completion not working**

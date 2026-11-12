@@ -389,6 +389,7 @@ Project commands:
   summarize     Display todos added and closed today
   add-note      Add a note to a todo
   set-link      Set or update a single-value link URL
+  set-project   Change the project's RPM and/or Jira number
   set-app-id    Set the application ID
   add-github    Add a GitHub URL
   add-swagger   Add a Swagger URL
@@ -570,6 +571,23 @@ Required:
 - `--key <key>` — e.g. `teams`, `jira`, `rpm`, `other`
 - `--url <URL>`
 
+#### `set-project`
+
+Change the RPM project number and/or Jira ticket number of the current project, for example after a typo in `new` or when a ticket is re-filed. Todos, notes and links are kept.
+
+Optional (at least one required):
+
+- `--rpm <RPM>` — new RPM project number. Subject to the same file-name rules as `new --rpm`. The notes file is renamed from `.projot/{old}.md` to `.projot/{new}.md` (an existing file with the new name is never overwritten) and re-rendered; the rename is undone if the config cannot be saved.
+- `--jira <Jira>` — new Jira ticket number (non-empty, one line).
+
+Setting a value the project already has is a no-op. Things to know after changing the RPM number:
+
+- Stage the rename (`git add -A .projot`); the pre-commit hook stages only the new file.
+- A `link.rpm` / `link.jira` set explicitly (`--rpm-url`, `--jira-url`, `set-link`) does not follow the number; projot warns when one is present.
+- The Teams status page is keyed by RPM number (`projot-{rpm}`), so a new number creates a new page rather than updating the old one.
+
+To change the base URLs these numbers are appended to, use `set-global` (below), not this command.
+
 #### `set-app-id`
 
 Set the app ID in `.projot/config`.
@@ -680,6 +698,8 @@ Example:
 ```sh
 projot set-global --rpm-base-url "https://rpm.example.com/" --jira-base-url "https://yourcompany.atlassian.net/browse/"
 ```
+
+**Changing a base URL later.** Run `set-global` again with the new value. Only the flags you pass are changed; the other base URL is kept. You can also edit `rpm_base_url` / `jira_base_url` directly in the global config file. To override a base URL for a single repository, add `rpm_base_url` / `jira_base_url` to that repo's `.projot/config` by hand (there is no command for this); projot preserves them. A project's `link.rpm` / `link.jira`, if set, is used before any base URL. Base URLs are read when a link is opened, so changing them does not alter existing notes files.
 
 These base URLs are used by the MCP tools (e.g., `projot_open_rpm`, `projot_open_jira`) to construct full project/ticket links automatically.
 
@@ -1028,6 +1048,10 @@ These tests use temporary directories created with `std::filesystem::temp_direct
 | `add_note_warns_if_closed`        | `add-note` on closed todo → warning on stderr, note still written                              |
 | `set_link_new_key`                | `set-link --key teams --url <url>` → `link.teams` written to config                            |
 | `set_link_update_key`             | `set-link` on existing key → value replaced, not duplicated                                    |
+| `set_project_changes_jira`        | `set-project --jira X` → `jira = X` in config and notes file                                   |
+| `set_project_changes_rpm_and_renames_notes` | `set-project --rpm X` → config updated, notes file renamed, todos kept               |
+| `set_project_refuses_to_overwrite_existing_notes` | new RPM whose notes file exists → error, nothing changed                       |
+| `set_project_rejects_unsafe_rpm`  | `--rpm ../evil`, `.hidden`, `a b` → error, nothing changed                                     |
 | `set_app_id_sets_value`           | `set-app-id --app-id X` → `app_id = X` in config                                              |
 | `set_app_id_no_force_fails`       | `set-app-id` when `app_id` already set, no `--force` → non-zero exit                           |
 | `set_app_id_force_overwrites`     | `set-app-id --force --app-id X` → value replaced                                              |

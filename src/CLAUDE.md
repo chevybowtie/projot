@@ -9,7 +9,7 @@ Commands are split by concern into three files:
 | File | Responsibility | Examples |
 |------|-----------------|----------|
 | `commands_project.cpp` | Modify project todos in-memory, parse markdown, render | add-todo, list, complete, add-note, set-link |
-| `commands_config.cpp` | Modify `.projot/config`, validate, optionally re-render | init, new, set-app-id, add-github/swagger/blizzard, add-azure |
+| `commands_config.cpp` | Modify `.projot/config`, validate, optionally re-render | init, new, set-project, set-app-id, add-github/swagger/blizzard, add-azure |
 | `commands_maint.cpp` | Utility and infrastructure | render, install-hook, install-mcp-server |
 
 Shared infrastructure lives in `commands_internal.h` and `commands_shared.cpp`:
