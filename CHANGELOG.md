@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.1.29] - 2026-11-12
+
+### DOCUMENTATION
+
+- Update CHANGELOG.md for 0.1.28
+
+### FEATURES
+
+- Experimental page sync in teams channel
+- Cap Kanban Done column and show total complete (#55) ([#5a4b70a](https://github.com/chevybowtie/projot/commit/5a4b70a5ab0facb0df2b58e136bd1ecec166e001))
+- Add set-project to change a project's RPM and Jira numbers (#56) ([#df95818](https://github.com/chevybowtie/projot/commit/df958185bc13fe74509cc6351a5657fa089d633a))
+- Add MCP tools for set-project and the Kanban Done limit ([#1d64b9e](https://github.com/chevybowtie/projot/commit/1d64b9e704ee4947d70804774ab1178395d6bc2d))
+
 ## [v0.1.28] - 2026-10-29
 
 ### DOCUMENTATION
@@ -10,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 ### FEATURES
 
-- Post daily summary to Teams and add post toggles ([#f2d7d62](https://github.com/chevybowtie/projot/commit/f2d7d629353b609b187fec45640c1dab562f3acc))
+- Post daily summary to Teams and add post toggles ([#fa6a1c9](https://github.com/chevybowtie/projot/commit/fa6a1c91283dc7482f3e0a9b4867c885ea103e88))
 - Improve tab completion
 - Add tests for teams post toggles and update config writing logic
 - Add tests for shell completions and update project configuration
@@ -23,7 +36,7 @@ All notable changes to this project will be documented in this file.
 
 ### BUG FIXES
 
-- Send default Teams webhook flow shape to Power Automate endpoints (#50) ([#52e413f](https://github.com/chevybowtie/projot/commit/52e413f7fcd5a06e27806c66b01aee6dc007084d))
+- Send default Teams webhook flow shape to Power Automate endpoints (#50) ([#6041c85](https://github.com/chevybowtie/projot/commit/6041c85dfce080eb18f41bca2a3dcc4bd8c70915))
 
 ### DOCUMENTATION
 
@@ -33,20 +46,20 @@ All notable changes to this project will be documented in this file.
 
 ### FEATURES
 
-- Add 'add' as primary command for appending todos ([#0947147](https://github.com/chevybowtie/projot/commit/0947147b12565663c845e296e4ed130f826b4368))
+- Add 'add' as primary command for appending todos ([#a517b76](https://github.com/chevybowtie/projot/commit/a517b767e5f474302ca660059616216c929fc89b))
 
 ### TESTING
 
-- Cover Power Automate Teams sync routing (#50) ([#86b2a6d](https://github.com/chevybowtie/projot/commit/86b2a6dc544b58587b129ba333093694c2a73b5d))
+- Cover Power Automate Teams sync routing (#50) ([#8d29c72](https://github.com/chevybowtie/projot/commit/8d29c727a4d437d789336844ecb239c201222805))
 
 ## [v0.1.24] - 2026-09-30
 
 ### BUG FIXES
 
-- Checkout master branch before pushing CHANGELOG.md in release workflow ([#b8ed896](https://github.com/chevybowtie/projot/commit/b8ed8968787f53a4bb8629f7b81a99abd25d12d6))
-- Add comprehensive stream state validation to file I/O operations ([#0708f2c](https://github.com/chevybowtie/projot/commit/0708f2c7a0105b1ac6d06512f69f3bffefaba142))
-- Add proper process creation error handling for git staging and Teams sync ([#213b41b](https://github.com/chevybowtie/projot/commit/213b41b96349e85264a941c670f4f4b02b23e2c1))
-- Improve robustness of config parsing, hook installation, and date formatting ([#a90a48d](https://github.com/chevybowtie/projot/commit/a90a48d98730906e5c3c0b5ee425f5d833472da9))
+- Checkout master branch before pushing CHANGELOG.md in release workflow ([#ec7b408](https://github.com/chevybowtie/projot/commit/ec7b408176faa2bd1caab23016c557af656e4ca6))
+- Add comprehensive stream state validation to file I/O operations ([#1991172](https://github.com/chevybowtie/projot/commit/19911723a01f0f788f6776dcadb4677fef1955d0))
+- Add proper process creation error handling for git staging and Teams sync ([#027501a](https://github.com/chevybowtie/projot/commit/027501afdd86d832c9eaffcaa9a92e9077af3161))
+- Improve robustness of config parsing, hook installation, and date formatting ([#f2f4b07](https://github.com/chevybowtie/projot/commit/f2f4b07381becc0ae96fc887ab3a235a9868bc0a))
 - Enhance todo line parsing and handle unparsed lines in markdown
 - Improve atomic file writing with enhanced error handling and symlink support
 - Enhance file writing by rejecting invalid values and improving error handling
@@ -75,12 +88,12 @@ All notable changes to this project will be documented in this file.
 
 ### DOCUMENTATION
 
-- Add summarize command to documentation and shell completions ([#e969091](https://github.com/chevybowtie/projot/commit/e96909183381a77319a552e3f85b44c602d3e077))
+- Add summarize command to documentation and shell completions ([#bfd9ca5](https://github.com/chevybowtie/projot/commit/bfd9ca50d58ac05ce1b7639239214af029327ec0))
 - Update CHANGELOG.md for 0.1.22
 
 ### FEATURES
 
-- Add summarize command for daily todo summary ([#102e4e8](https://github.com/chevybowtie/projot/commit/102e4e8151d1521aea656670b74716ddf42245c1))
+- Add summarize command for daily todo summary ([#e584344](https://github.com/chevybowtie/projot/commit/e5843444263b0ec9713f7b05426b17690a8c59fa))
 - Add 'links' subcommand to project completion scripts
 - Implement process management functions for cross-platform execution
 
@@ -93,7 +106,7 @@ All notable changes to this project will be documented in this file.
 
 ### BUG FIXES
 
-- Quote Windows CreateProcess arguments properly; test failed carryover write ([#5d907ee](https://github.com/chevybowtie/projot/commit/5d907eeb98f63b626914c7765bd9330ef3033f71))
+- Quote Windows CreateProcess arguments properly; test failed carryover write ([#45f85cc](https://github.com/chevybowtie/projot/commit/45f85cc77145791b985f727bdfea72fcfeb74c5d))
 
 ### DOCUMENTATION
 
@@ -111,8 +124,8 @@ All notable changes to this project will be documented in this file.
 
 ### DOCUMENTATION
 
-- Remove completed tech debt audit and update documentation ([#983c7ab](https://github.com/chevybowtie/projot/commit/983c7abd7407de403d5032eb763e9ca0af62a744))
-- Add missing 'links' command to README documentation ([#8fb96f5](https://github.com/chevybowtie/projot/commit/8fb96f5da994f264a87a0b0ce4274c3941765eb8))
+- Remove completed tech debt audit and update documentation ([#12fccf2](https://github.com/chevybowtie/projot/commit/12fccf2d86729d94337f146eaf56b0b7419b372f))
+- Add missing 'links' command to README documentation ([#59b4ba5](https://github.com/chevybowtie/projot/commit/59b4ba59a9074cbad5c8cf52c72993eb701e6112))
 - Add Teams webhook setup instructions to README
 - Drop references to removed TECH_DEBT_AUDIT.md from CLAUDE.md
 - Correct CLAUDE.md gotchas on shell usage
@@ -122,12 +135,12 @@ All notable changes to this project will be documented in this file.
 ### FEATURES
 
 - Add todo count summary to list, rename iTrack to Jira in user-facing text
-- Add --jira flags as the primary spelling, keep --itrack as a synonym ([#ce0195f](https://github.com/chevybowtie/projot/commit/ce0195ff7387cf79f9901029158fa750b8327803))
-- Rename itrack config keys to jira, keep reading legacy keys ([#101c1fc](https://github.com/chevybowtie/projot/commit/101c1fcf7f57e4b86e682e486a91ac42f1056257))
+- Add --jira flags as the primary spelling, keep --itrack as a synonym ([#4cee0cc](https://github.com/chevybowtie/projot/commit/4cee0cc27b27708edae147ed57f06470c688b38a))
+- Rename itrack config keys to jira, keep reading legacy keys ([#b01eb07](https://github.com/chevybowtie/projot/commit/b01eb07e3ce22e58085629a011beb3fd5f33fa23))
 
 ### BUMP
 
-- Version 0.1.19 for release ([#c40018b](https://github.com/chevybowtie/projot/commit/c40018b3194ff89fc997affe15e85cec3a8f0584))
+- Version 0.1.19 for release ([#41700ee](https://github.com/chevybowtie/projot/commit/41700ee2517bc8fea93b4a773514b65b779df230))
 - Version 0.1.20
 
 ## [v0.1.17-beta] - 2026-09-10
@@ -206,7 +219,7 @@ All notable changes to this project will be documented in this file.
 
 ### REFACTORING
 
-- Improve code quality for demo readiness ([#0f608d0](https://github.com/chevybowtie/projot/commit/0f608d0d5b1e6e806530fcdf6b19bd5fd187399d))
+- Improve code quality for demo readiness ([#2c33535](https://github.com/chevybowtie/projot/commit/2c33535711df99ae94145a03afd54bbb75a94881))
 
 ## [v0.1.10] - 2026-05-15
 
@@ -236,10 +249,10 @@ All notable changes to this project will be documented in this file.
 
 ### BUG FIXES
 
-- Use _dupenv_s on Windows to avoid C4996 warning ([#8e79f0b](https://github.com/chevybowtie/projot/commit/8e79f0bdd3c533e7b3298c7b0c30f1f04f5b3a10))
-- Use non-const char* for _dupenv_s on Windows ([#8c2ce98](https://github.com/chevybowtie/projot/commit/8c2ce982387e3ff8db056407546629d5e932092e))
-- TempGlobalConfig test helper now redirects APPDATA on Windows ([#12d60bf](https://github.com/chevybowtie/projot/commit/12d60bff2f50fff3328f7bbe6fc16dbd1ce377cb))
-- Use non-const char* for _dupenv_s in TempGlobalConfig ([#6f5cd21](https://github.com/chevybowtie/projot/commit/6f5cd21166bc2e5f4216eaf5ac71ef6e3eabb5bd))
+- Use _dupenv_s on Windows to avoid C4996 warning ([#ec88112](https://github.com/chevybowtie/projot/commit/ec88112f8923f017c43b3e512257affdcb015af3))
+- Use non-const char* for _dupenv_s on Windows ([#56aa89e](https://github.com/chevybowtie/projot/commit/56aa89ef02d8815f221d1b5561c8dff3eba6dde5))
+- TempGlobalConfig test helper now redirects APPDATA on Windows ([#4099836](https://github.com/chevybowtie/projot/commit/40998364631ca2d9d36bdb86a56f67631e92af4c))
+- Use non-const char* for _dupenv_s in TempGlobalConfig ([#a96f52b](https://github.com/chevybowtie/projot/commit/a96f52b0896805bf23a58ba7ebdacae6d1119662))
 
 ## [v0.1.8] - 2026-05-13
 
@@ -249,9 +262,9 @@ All notable changes to this project will be documented in this file.
 
 ### DOCUMENTATION
 
-- Add docstrings to all command function declarations ([#820deb1](https://github.com/chevybowtie/projot/commit/820deb1bbd42d8047cacd5bd4abec489de8d0952))
+- Add docstrings to all command function declarations ([#4698027](https://github.com/chevybowtie/projot/commit/4698027ce2793ea74836649ad75746cca636291d))
 - Mark F007 and F017 as completed in tech debt audit
-- Update audit with repeat-run results (2026-05-05) ([#29687b7](https://github.com/chevybowtie/projot/commit/29687b740bc6e5ccdefc0afd5321b410b6642ee3))
+- Update audit with repeat-run results (2026-05-05) ([#3757f72](https://github.com/chevybowtie/projot/commit/3757f72744817786d1d68345b42e7e2465cbb911))
 - Add local .deb build instructions
 - Document new features
 
@@ -266,13 +279,13 @@ All notable changes to this project will be documented in this file.
 
 ### REFACTORING
 
-- Extract deduplicate utility to utils.h ([#a5d3556](https://github.com/chevybowtie/projot/commit/a5d3556269906f6d137f24be8b5920b93720d1ed))
-- Remove legacy --text flag from add-todo and add-note ([#e945225](https://github.com/chevybowtie/projot/commit/e945225f72d1ff2b0437a6775727009fa6fde21f))
-- Remove legacy ranp terminology and fix docstring ([#9cae8b9](https://github.com/chevybowtie/projot/commit/9cae8b9743ba666c3c9740f3a522040a8d2e593f))
-- Merge duplicate path builder functions ([#529c433](https://github.com/chevybowtie/projot/commit/529c4336f6e4c48ac2d2fcca5c1fb0eedd20eace))
-- Extract project command boilerplate pattern ([#cc67ad4](https://github.com/chevybowtie/projot/commit/cc67ad45d3b17bcda0c6b4e43c0ba56884a0d88b))
-- Apply execute_project_command helper to complete and add_note ([#5fb556e](https://github.com/chevybowtie/projot/commit/5fb556e4a85f41acf98f35809cad2942ccd8ee53))
-- Complete F003 boilerplate extraction and resolve F002, F004, F006, F015 ([#1915098](https://github.com/chevybowtie/projot/commit/1915098a7b454a6e6efe501d7ff8493ede961723))
+- Extract deduplicate utility to utils.h ([#0e8b420](https://github.com/chevybowtie/projot/commit/0e8b4200f452bbcf1958f7d5c52cea654df7cf36))
+- Remove legacy --text flag from add-todo and add-note ([#0a560cb](https://github.com/chevybowtie/projot/commit/0a560cbc8de700d36e414e938ae67efab6b12feb))
+- Remove legacy ranp terminology and fix docstring ([#9c0c35d](https://github.com/chevybowtie/projot/commit/9c0c35da2b59c437472b76b9a526c3f8fce015e1))
+- Merge duplicate path builder functions ([#166ce2a](https://github.com/chevybowtie/projot/commit/166ce2a29e8dcd4acd02797b6da53e75a44acd31))
+- Extract project command boilerplate pattern ([#51efdad](https://github.com/chevybowtie/projot/commit/51efdada180bc7e4928d1b3ee7cbe883c19859cd))
+- Apply execute_project_command helper to complete and add_note ([#b2ed760](https://github.com/chevybowtie/projot/commit/b2ed760e4a502e1cf21ef3e3e1db1a0da05f89a3))
+- Complete F003 boilerplate extraction and resolve F002, F004, F006, F015 ([#6ba355b](https://github.com/chevybowtie/projot/commit/6ba355b79e33cc3eba1a68c81b476d1f6566da91))
 - Split commands.cpp by concern (F001)
 - Enhance URL handling with lookup table and improve error path test coverage
 - Replace std::system calls with git_stage_file helper for safer file staging
@@ -323,7 +336,7 @@ All notable changes to this project will be documented in this file.
 ### FEATURES
 
 - Add MCP server for AI integration with projot CLI
-- Setup MCP server and VSCode during `projot init` (--no-mcp to skip) (#4) ([#3f42834](https://github.com/chevybowtie/projot/commit/3f428340d4ed749a4383b63b7609a0da1e342ce8))
+- Setup MCP server and VSCode during `projot init` (--no-mcp to skip) (#4) ([#af9a5ff](https://github.com/chevybowtie/projot/commit/af9a5ff61ee28cde11ccfe5eed20f5a3a08c185e))
 - Add MCP server configuration and command support
 
 ## [v0.1.4] - 2026-05-04
@@ -340,7 +353,7 @@ All notable changes to this project will be documented in this file.
 
 ### FEATURES
 
-- Add Azure resource tracking to projot projects (#5) ([#8e7db14](https://github.com/chevybowtie/projot/commit/8e7db143ce651950cb99b44d233e073877ddac20))
+- Add Azure resource tracking to projot projects (#5) ([#af49ef5](https://github.com/chevybowtie/projot/commit/af49ef5134efa644a0aa004df014f0d990a79e5a))
 - Update add-note command to accept note text as a positional argument
 - Add packaging support for .deb and tar.gz files, update README with installation instructions
 - Add Chocolatey package support and installation instructions in README
